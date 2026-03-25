@@ -16,7 +16,8 @@ export default function AdminDashboard({
   if (!tournament) return <div className="flex items-center justify-center min-h-screen text-zinc-400">Tournament not found</div>;
 
   const links = [
-    { href: `/t/${slug}/admin/matches`, label: 'Matches', desc: 'Create, assign courts, update scores', emoji: '🎯' },
+    { href: `/t/${slug}/admin/draws`, label: 'Draws & Scheduling', desc: 'Generate brackets, auto-schedule matches', emoji: '🏆' },
+    { href: `/t/${slug}/admin/matches`, label: 'Matches', desc: 'Assign courts, update scores, manage day-of', emoji: '🎯' },
     { href: `/t/${slug}/admin/players`, label: 'Players', desc: 'Add and manage players', emoji: '👥' },
     { href: `/t/${slug}/admin/courts`, label: 'Courts', desc: 'Court status and scheduling', emoji: '🏟️' },
     { href: `/t/${slug}/admin/announcements`, label: 'Announcements', desc: 'Push messages to everyone', emoji: '📢' },

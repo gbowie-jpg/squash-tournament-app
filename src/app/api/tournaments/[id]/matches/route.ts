@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getProgression } from '@/lib/draws/progression';
 
 export async function GET(
   _req: NextRequest,
@@ -77,6 +78,40 @@ export async function PATCH(req: NextRequest) {
         .from('matches')
         .update({ status: 'on_deck', updated_at: new Date().toISOString() })
         .eq('id', nextMatch.id);
+    }
+  }
+
+  // Winner progression: advance winner to next round match
+  if (updates.status === 'completed' && (updates.winner_id || data.winner_id) && data.match_number && data.draw) {
+    const winnerId = updates.winner_id || data.winner_id;
+    // Fetch all matches in same draw to find progression target
+    const { data: drawMatches } = await supabase
+      .from('matches')
+      .select('id, match_number, notes')
+      .eq('tournament_id', data.tournament_id)
+      .eq('draw', data.draw);
+
+    if (drawMatches) {
+      const progression = getProgression(
+        data.match_number,
+        drawMatches.map((m) => m.match_number),
+        drawMatches,
+      );
+
+      if (progression) {
+        const target = drawMatches.find(
+          (m) => m.match_number === progression.feedsIntoMatchNumber,
+        );
+        if (target) {
+          await supabase
+            .from('matches')
+            .update({
+              [progression.slot]: winnerId,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', target.id);
+        }
+      }
     }
   }
 
