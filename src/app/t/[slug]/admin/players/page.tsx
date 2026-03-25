@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { useTournament } from '@/lib/useTournament';
+import CsvUpload from '@/components/admin/CsvUpload';
 import type { Player } from '@/lib/supabase/types';
 
 export default function PlayerManagement({
@@ -166,6 +167,16 @@ export default function PlayerManagement({
               {editingId ? 'Update Player' : 'Add Player'}
             </button>
           </form>
+        )}
+
+        {/* CSV Upload */}
+        {!showForm && tournament && (
+          <div className="mb-8">
+            <CsvUpload
+              tournamentId={tournament.id}
+              onImport={(imported) => setPlayers((prev) => [...prev, ...imported as unknown as Player[]])}
+            />
+          </div>
         )}
 
         {loading ? (
