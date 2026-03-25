@@ -1,0 +1,67 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from('players')
+    .select('*')
+    .eq('tournament_id', id)
+    .order('draw')
+    .order('seed', { nullsFirst: false })
+    .order('name');
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data);
+}
+
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const supabase = createAdminClient();
+  const body = await req.json();
+
+  // Support bulk insert (array) or single
+  const records = Array.isArray(body)
+    ? body.map((p: Record<string, unknown>) => ({ ...p, tournament_id: id }))
+    : [{ ...body, tournament_id: id }];
+
+  const { data, error } = await supabase
+    .from('players')
+    .insert(records)
+    .select();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(Array.isArray(body) ? data : data[0], { status: 201 });
+}
+
+export async function PATCH(req: NextRequest) {
+  const supabase = createAdminClient();
+  const body = await req.json();
+  const { id: playerId, ...updates } = body;
+
+  const { data, error } = await supabase
+    .from('players')
+    .update(updates)
+    .eq('id', playerId)
+    .select()
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data);
+}
+
+export async function DELETE(req: NextRequest) {
+  const supabase = createAdminClient();
+  const { playerId } = await req.json();
+
+  const { error } = await supabase.from('players').delete().eq('id', playerId);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}
