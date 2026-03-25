@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireAuth } from '@/lib/supabase/auth-check';
 
-// GET all tournaments
+// GET all tournaments (public)
 export async function GET() {
   const supabase = createAdminClient();
   const { data, error } = await supabase
@@ -13,8 +14,11 @@ export async function GET() {
   return NextResponse.json(data);
 }
 
-// POST create tournament
+// POST create tournament (auth required)
 export async function POST(req: NextRequest) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
   const supabase = createAdminClient();
   const body = await req.json();
 
@@ -35,6 +39,13 @@ export async function POST(req: NextRequest) {
     }));
     await supabase.from('courts').insert(courts);
   }
+
+  // Auto-add creator as organizer
+  await supabase.from('organizers').insert({
+    tournament_id: data.id,
+    user_id: auth.user.id,
+    role: 'admin',
+  });
 
   return NextResponse.json(data, { status: 201 });
 }

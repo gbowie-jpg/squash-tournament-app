@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireAuth } from '@/lib/supabase/auth-check';
 
 // GET single tournament
 export async function GET(
@@ -18,11 +19,14 @@ export async function GET(
   return NextResponse.json(data);
 }
 
-// PATCH update tournament
+// PATCH update tournament (auth required)
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
   const { id } = await params;
   const supabase = createAdminClient();
   const body = await req.json();
@@ -38,11 +42,14 @@ export async function PATCH(
   return NextResponse.json(data);
 }
 
-// DELETE tournament
+// DELETE tournament (auth required)
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
   const { id } = await params;
   const supabase = createAdminClient();
   const { error } = await supabase.from('tournaments').delete().eq('id', id);

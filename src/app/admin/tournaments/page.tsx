@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { slugify } from '@/lib/utils';
+import { useAuth } from '@/lib/useAuth';
 import type { Tournament } from '@/lib/supabase/types';
 
 export default function TournamentSetup() {
+  const { user, signOut } = useAuth();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -67,12 +69,20 @@ export default function TournamentSetup() {
             <Link href="/" className="text-sm text-zinc-400 hover:text-zinc-600">&larr; Home</Link>
             <h1 className="text-2xl font-bold tracking-tight mt-1">Tournament Setup</h1>
           </div>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors"
-          >
-            {showForm ? 'Cancel' : '+ New Tournament'}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowForm(!showForm)}
+              className="bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors"
+            >
+              {showForm ? 'Cancel' : '+ New Tournament'}
+            </button>
+            <button
+              onClick={signOut}
+              className="text-zinc-400 hover:text-zinc-600 text-sm transition-colors"
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
       </header>
 

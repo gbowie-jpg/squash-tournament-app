@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getProgression } from '@/lib/draws/progression';
+import { requireAuth } from '@/lib/supabase/auth-check';
 
 export async function GET(
   _req: NextRequest,
@@ -23,6 +24,9 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
   const { id } = await params;
   const supabase = createAdminClient();
   const body = await req.json();
@@ -38,6 +42,9 @@ export async function POST(
 }
 
 export async function PATCH(req: NextRequest) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
   const supabase = createAdminClient();
   const body = await req.json();
   const { id: matchId, ...updates } = body;
@@ -119,6 +126,9 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
   const supabase = createAdminClient();
   const { matchId } = await req.json();
 

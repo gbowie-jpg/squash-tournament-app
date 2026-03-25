@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireAuth } from '@/lib/supabase/auth-check';
 import { generateSingleElimination } from '@/lib/draws/singleElimination';
 import { generateRoundRobin } from '@/lib/draws/roundRobin';
 import type { DrawFormat } from '@/lib/draws/types';
@@ -9,6 +10,9 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
   const { id: tournamentId } = await params;
   const supabase = createAdminClient();
   const body = await req.json();
