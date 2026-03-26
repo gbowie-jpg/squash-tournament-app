@@ -84,7 +84,7 @@ export default function PlayerLookup({
                     >
                       <div className="flex items-center gap-3">
                         {p.seed && (
-                          <span className="w-6 h-6 rounded-full bg-zinc-100 text-zinc-500 text-xs font-medium flex items-center justify-center">
+                          <span className="w-6 h-6 rounded-full bg-zinc-100 text-zinc-600 text-xs font-medium flex items-center justify-center">
                             {p.seed}
                           </span>
                         )}
@@ -93,7 +93,7 @@ export default function PlayerLookup({
                           {p.club && <p className="text-xs text-zinc-600">{p.club}</p>}
                         </div>
                       </div>
-                      <span className="text-zinc-300 text-sm">&rsaquo;</span>
+                      <span className="text-zinc-600 text-sm">&rsaquo;</span>
                     </Link>
                   ))}
               </div>

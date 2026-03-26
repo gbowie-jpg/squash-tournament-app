@@ -152,7 +152,7 @@ export default function CsvUpload({ tournamentId, onImport }: CsvUploadProps) {
   if (step === 'idle') {
     return (
       <div className="border-2 border-dashed border-zinc-300 rounded-xl p-6 text-center">
-        <p className="text-sm text-zinc-500 mb-3">Upload a CSV file to bulk-add players</p>
+        <p className="text-sm text-zinc-600 mb-3">Upload a CSV file to bulk-add players</p>
         <p className="text-xs text-zinc-600 mb-4">Works with ClubLocker exports, or any CSV with player names</p>
         <label className="inline-block bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-800 cursor-pointer transition-colors">
           Choose CSV File
@@ -184,7 +184,7 @@ export default function CsvUpload({ tournamentId, onImport }: CsvUploadProps) {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {headers.map((h, i) => (
             <div key={i}>
-              <p className="text-xs text-zinc-500 mb-1 truncate" title={h}>{h}</p>
+              <p className="text-xs text-zinc-600 mb-1 truncate" title={h}>{h}</p>
               <select
                 value={mapping[i]}
                 onChange={(e) => {
@@ -201,7 +201,7 @@ export default function CsvUpload({ tournamentId, onImport }: CsvUploadProps) {
                 ))}
               </select>
               {rows[0]?.[i] && (
-                <p className="text-xs text-zinc-300 mt-0.5 truncate">e.g. {rows[0][i]}</p>
+                <p className="text-xs text-zinc-600 mt-0.5 truncate">e.g. {rows[0][i]}</p>
               )}
             </div>
           ))}
@@ -215,21 +215,21 @@ export default function CsvUpload({ tournamentId, onImport }: CsvUploadProps) {
           <table className="w-full text-xs">
             <thead>
               <tr className="bg-zinc-50 border-b border-zinc-100">
-                <th className="text-left px-3 py-2 font-medium text-zinc-500">Name</th>
-                <th className="text-left px-3 py-2 font-medium text-zinc-500">Draw</th>
-                <th className="text-left px-3 py-2 font-medium text-zinc-500">Seed</th>
-                <th className="text-left px-3 py-2 font-medium text-zinc-500">Club</th>
-                <th className="text-left px-3 py-2 font-medium text-zinc-500">Email</th>
+                <th className="text-left px-3 py-2 font-medium text-zinc-600">Name</th>
+                <th className="text-left px-3 py-2 font-medium text-zinc-600">Draw</th>
+                <th className="text-left px-3 py-2 font-medium text-zinc-600">Seed</th>
+                <th className="text-left px-3 py-2 font-medium text-zinc-600">Club</th>
+                <th className="text-left px-3 py-2 font-medium text-zinc-600">Email</th>
               </tr>
             </thead>
             <tbody>
               {previewPlayers.slice(0, 20).map((p, i) => (
                 <tr key={i} className="border-b border-zinc-50">
                   <td className="px-3 py-1.5 font-medium">{p.name}</td>
-                  <td className="px-3 py-1.5 text-zinc-500">{p.draw || '—'}</td>
-                  <td className="px-3 py-1.5 text-zinc-500">{p.seed || '—'}</td>
-                  <td className="px-3 py-1.5 text-zinc-500">{p.club || '—'}</td>
-                  <td className="px-3 py-1.5 text-zinc-500">{p.email || '—'}</td>
+                  <td className="px-3 py-1.5 text-zinc-600">{p.draw || '—'}</td>
+                  <td className="px-3 py-1.5 text-zinc-600">{p.seed || '—'}</td>
+                  <td className="px-3 py-1.5 text-zinc-600">{p.club || '—'}</td>
+                  <td className="px-3 py-1.5 text-zinc-600">{p.email || '—'}</td>
                 </tr>
               ))}
             </tbody>

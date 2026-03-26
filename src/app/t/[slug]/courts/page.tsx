@@ -125,8 +125,8 @@ function MatchDisplay({ match: m, compact }: { match: MatchWithDetails; compact?
         {m.player1?.name || 'TBD'} vs {m.player2?.name || 'TBD'}
       </p>
       <div className="flex items-center gap-2 mt-0.5">
-        {m.draw && <span className="text-xs text-zinc-500">{m.draw}</span>}
-        {m.round && <span className="text-xs text-zinc-500">&middot; {m.round}</span>}
+        {m.draw && <span className="text-xs text-zinc-600">{m.draw}</span>}
+        {m.round && <span className="text-xs text-zinc-600">&middot; {m.round}</span>}
       </div>
       {m.scores && m.scores.length > 0 && (
         <p className="text-sm font-mono font-medium mt-1">{formatScore(m.scores)}</p>

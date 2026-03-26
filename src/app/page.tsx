@@ -18,7 +18,7 @@ export default async function Home() {
       <header className="bg-white border-b border-zinc-200">
         <div className="max-w-3xl mx-auto px-4 py-6">
           <h1 className="text-2xl font-bold tracking-tight">Seattle Squash</h1>
-          <p className="text-zinc-500 text-sm mt-1">Tournament Companion</p>
+          <p className="text-zinc-600 text-sm mt-1">Tournament Companion</p>
         </div>
       </header>
 
@@ -68,7 +68,7 @@ function TournamentCard({ tournament: t }: { tournament: Tournament }) {
   const statusColors = {
     active: 'bg-green-100 text-green-700',
     upcoming: 'bg-blue-100 text-blue-700',
-    completed: 'bg-zinc-100 text-zinc-500',
+    completed: 'bg-zinc-100 text-zinc-600',
   };
 
   return (
@@ -79,7 +79,7 @@ function TournamentCard({ tournament: t }: { tournament: Tournament }) {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="font-semibold text-lg">{t.name}</h3>
-          {t.venue && <p className="text-zinc-500 text-sm mt-0.5">{t.venue}</p>}
+          {t.venue && <p className="text-zinc-600 text-sm mt-0.5">{t.venue}</p>}
           <p className="text-zinc-600 text-sm mt-1">{dateStr}</p>
         </div>
         <span className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 ${statusColors[t.status]}`}>

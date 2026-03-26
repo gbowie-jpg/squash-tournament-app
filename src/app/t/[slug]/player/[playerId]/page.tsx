@@ -13,7 +13,7 @@ const STATUS_LABELS: Record<string, { text: string; color: string }> = {
   in_progress: { text: "You're playing NOW", color: 'bg-green-600 text-white' },
   on_deck: { text: "You're ON DECK", color: 'bg-amber-500 text-white' },
   scheduled: { text: 'Upcoming', color: 'bg-blue-100 text-blue-700' },
-  completed: { text: 'Completed', color: 'bg-zinc-100 text-zinc-500' },
+  completed: { text: 'Completed', color: 'bg-zinc-100 text-zinc-600' },
   walkover: { text: 'Walkover', color: 'bg-purple-100 text-purple-600' },
   cancelled: { text: 'Cancelled', color: 'bg-red-100 text-red-500' },
 };

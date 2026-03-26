@@ -52,7 +52,7 @@ export default function ScheduleGrid({
           .map((m) => (
             <div key={m.id} className="bg-white border border-zinc-200 rounded-lg p-3">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs font-medium text-zinc-500">
+                <span className="text-xs font-medium text-zinc-600">
                   {formatTime(new Date(m.scheduled_time!))}
                 </span>
                 <span className="text-xs text-zinc-600">
@@ -90,7 +90,7 @@ export default function ScheduleGrid({
           <tbody>
             {timeSlots.map((time) => (
               <tr key={time.toISOString()} className="border-b border-zinc-100">
-                <td className="px-3 py-2 text-xs text-zinc-500 font-medium whitespace-nowrap">
+                <td className="px-3 py-2 text-xs text-zinc-600 font-medium whitespace-nowrap">
                   {formatTime(time)}
                 </td>
                 {courts.map((court) => {

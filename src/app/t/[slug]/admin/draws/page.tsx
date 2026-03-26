@@ -337,7 +337,7 @@ export default function DrawsPage({
                       <>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                           <div>
-                            <label className="block text-xs font-medium text-zinc-500 mb-1">
+                            <label className="block text-xs font-medium text-zinc-600 mb-1">
                               Start Time
                             </label>
                             <input
@@ -348,7 +348,7 @@ export default function DrawsPage({
                             />
                           </div>
                           <div>
-                            <label className="block text-xs font-medium text-zinc-500 mb-1">
+                            <label className="block text-xs font-medium text-zinc-600 mb-1">
                               Match Duration (min)
                             </label>
                             <input
@@ -361,7 +361,7 @@ export default function DrawsPage({
                             />
                           </div>
                           <div>
-                            <label className="block text-xs font-medium text-zinc-500 mb-1">
+                            <label className="block text-xs font-medium text-zinc-600 mb-1">
                               Rest Period (min)
                             </label>
                             <input

@@ -60,7 +60,7 @@ export default function AdminDashboard() {
             {isSuperadmin && (
               <Link
                 href="/admin/users"
-                className="text-zinc-500 hover:text-zinc-700 text-sm font-medium transition-colors"
+                className="text-zinc-600 hover:text-zinc-700 text-sm font-medium transition-colors"
               >
                 Users
               </Link>

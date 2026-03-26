@@ -358,7 +358,7 @@ export default function MatchManagement({
                       </button>
                     </div>
                     {m.scores && m.scores.length > 0 && (
-                      <p className="text-xs text-zinc-500 mt-2">Games: {formatScore(m.scores)}</p>
+                      <p className="text-xs text-zinc-600 mt-2">Games: {formatScore(m.scores)}</p>
                     )}
                   </div>
                 )}

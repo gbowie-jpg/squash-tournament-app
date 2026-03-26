@@ -197,7 +197,7 @@ export default function PlayerManagement({
                     >
                       <div className="flex items-center gap-3">
                         {p.seed && (
-                          <span className="w-6 h-6 rounded-full bg-zinc-100 text-zinc-500 text-xs font-medium flex items-center justify-center">
+                          <span className="w-6 h-6 rounded-full bg-zinc-100 text-zinc-600 text-xs font-medium flex items-center justify-center">
                             {p.seed}
                           </span>
                         )}

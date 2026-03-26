@@ -30,7 +30,7 @@ export default function AdminDashboard({
         <div className="max-w-3xl mx-auto px-4 py-6">
           <Link href="/admin/tournaments" className="text-sm text-zinc-600 hover:text-zinc-800">&larr; All Tournaments</Link>
           <h1 className="text-2xl font-bold tracking-tight mt-2">{tournament.name}</h1>
-          <p className="text-zinc-500 text-sm">Admin Dashboard</p>
+          <p className="text-zinc-600 text-sm">Admin Dashboard</p>
         </div>
       </header>
 
@@ -52,13 +52,13 @@ export default function AdminDashboard({
         <div className="mt-8 flex gap-3">
           <Link
             href={`/t/${slug}`}
-            className="text-sm text-zinc-500 hover:text-zinc-700 underline"
+            className="text-sm text-zinc-600 hover:text-zinc-700 underline"
           >
             View public page
           </Link>
           <Link
             href={`/t/${slug}/courts`}
-            className="text-sm text-zinc-500 hover:text-zinc-700 underline"
+            className="text-sm text-zinc-600 hover:text-zinc-700 underline"
           >
             View court board
           </Link>

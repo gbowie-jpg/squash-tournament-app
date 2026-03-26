@@ -76,7 +76,7 @@ export default async function TournamentHub({
           </Link>
           <h1 className="text-2xl font-bold tracking-tight mt-2">{tournament.name}</h1>
           {tournament.venue && (
-            <p className="text-zinc-500 text-sm mt-1">{tournament.venue}</p>
+            <p className="text-zinc-600 text-sm mt-1">{tournament.venue}</p>
           )}
           <p className="text-zinc-600 text-sm mt-0.5">{dateStr}</p>
         </div>

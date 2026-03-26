@@ -78,7 +78,7 @@ export default function TournamentSetup() {
             {isSuperadmin && (
               <Link
                 href="/admin/users"
-                className="text-zinc-500 hover:text-zinc-700 text-sm font-medium transition-colors"
+                className="text-zinc-600 hover:text-zinc-700 text-sm font-medium transition-colors"
               >
                 Users
               </Link>
@@ -196,7 +196,7 @@ export default function TournamentSetup() {
                       {t.venue} &middot; {new Date(t.start_date + 'T00:00:00').toLocaleDateString()}
                       {t.end_date && ` – ${new Date(t.end_date + 'T00:00:00').toLocaleDateString()}`}
                     </p>
-                    <p className="text-zinc-300 text-xs mt-1">/{t.slug}</p>
+                    <p className="text-zinc-600 text-xs mt-1">/{t.slug}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <select

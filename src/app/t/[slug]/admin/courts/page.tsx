@@ -8,7 +8,7 @@ import type { Court } from '@/lib/supabase/types';
 const STATUS_COLORS: Record<string, string> = {
   available: 'bg-green-100 text-green-700',
   in_use: 'bg-amber-100 text-amber-700',
-  maintenance: 'bg-zinc-100 text-zinc-500',
+  maintenance: 'bg-zinc-100 text-zinc-600',
 };
 
 export default function CourtManagement({

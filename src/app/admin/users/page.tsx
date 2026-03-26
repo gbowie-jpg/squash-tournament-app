@@ -160,7 +160,7 @@ export default function UserManagement() {
                       {roleBadge(u.role)}
                     </div>
                     <p className="text-sm text-zinc-600">{u.email}</p>
-                    <p className="text-xs text-zinc-300 mt-1">
+                    <p className="text-xs text-zinc-600 mt-1">
                       Joined {new Date(u.created_at).toLocaleDateString()}
                     </p>
                   </div>
@@ -181,7 +181,7 @@ export default function UserManagement() {
                     Tournament Access
                   </h4>
                   {u.organizers.length === 0 ? (
-                    <p className="text-sm text-zinc-300">No tournament access</p>
+                    <p className="text-sm text-zinc-600">No tournament access</p>
                   ) : (
                     <div className="space-y-1">
                       {u.organizers.map((o) => (
@@ -242,7 +242,7 @@ export default function UserManagement() {
                   ) : (
                     <button
                       onClick={() => setShowAddOrg(u.id)}
-                      className="text-xs text-zinc-500 hover:text-zinc-700 mt-2 underline"
+                      className="text-xs text-zinc-600 hover:text-zinc-700 mt-2 underline"
                     >
                       + Add tournament access
                     </button>
