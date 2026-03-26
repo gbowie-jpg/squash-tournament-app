@@ -45,7 +45,7 @@ export async function middleware(request: NextRequest) {
 
   // Don't let authenticated users see login page
   if (pathname === '/login' && user) {
-    return NextResponse.redirect(new URL('/admin/tournaments', request.url));
+    return NextResponse.redirect(new URL('/admin', request.url));
   }
 
   return supabaseResponse;

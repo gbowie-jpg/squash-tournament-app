@@ -27,7 +27,7 @@ export default function LoginPage() {
           setError(error.message);
           return;
         }
-        router.push('/admin/tournaments');
+        router.push('/admin');
         router.refresh();
       } else {
         const { error } = await supabase.auth.signUp({ email, password });

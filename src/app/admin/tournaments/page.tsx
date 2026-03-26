@@ -71,7 +71,7 @@ export default function TournamentSetup() {
       <header className="bg-white border-b border-zinc-200">
         <div className="max-w-4xl mx-auto px-4 py-6 flex items-center justify-between">
           <div>
-            <Link href="/" className="text-sm text-zinc-400 hover:text-zinc-600">&larr; Home</Link>
+            <Link href="/admin" className="text-sm text-zinc-400 hover:text-zinc-600">&larr; Dashboard</Link>
             <h1 className="text-2xl font-bold tracking-tight mt-1">Tournament Setup</h1>
           </div>
           <div className="flex items-center gap-3">
