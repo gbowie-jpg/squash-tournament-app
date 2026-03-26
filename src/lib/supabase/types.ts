@@ -188,4 +188,5 @@ export type MatchWithDetails = Match & {
   player1: Player | null;
   player2: Player | null;
   court: Court | null;
+  referee: { id: string; name: string } | null;
 };
