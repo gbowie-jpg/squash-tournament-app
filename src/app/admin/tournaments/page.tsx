@@ -11,6 +11,7 @@ export default function TournamentSetup() {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [isSuperadmin, setIsSuperadmin] = useState(false);
   const [form, setForm] = useState({
     name: '',
     venue: '',
@@ -25,6 +26,10 @@ export default function TournamentSetup() {
     fetch('/api/tournaments')
       .then((r) => r.json())
       .then((data) => { setTournaments(data); setLoading(false); });
+    fetch('/api/auth/me')
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data?.role === 'superadmin') setIsSuperadmin(true); })
+      .catch(() => {});
   }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -70,6 +75,14 @@ export default function TournamentSetup() {
             <h1 className="text-2xl font-bold tracking-tight mt-1">Tournament Setup</h1>
           </div>
           <div className="flex items-center gap-3">
+            {isSuperadmin && (
+              <Link
+                href="/admin/users"
+                className="text-zinc-500 hover:text-zinc-700 text-sm font-medium transition-colors"
+              >
+                Users
+              </Link>
+            )}
             <button
               onClick={() => setShowForm(!showForm)}
               className="bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors"
