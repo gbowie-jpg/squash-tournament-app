@@ -21,6 +21,7 @@ export default function AdminDashboard({
     { href: `/t/${slug}/admin/players`, label: 'Players', desc: 'Add and manage players', emoji: '👥' },
     { href: `/t/${slug}/admin/courts`, label: 'Courts', desc: 'Court status and scheduling', emoji: '🏟️' },
     { href: `/t/${slug}/admin/announcements`, label: 'Announcements', desc: 'Push messages to everyone', emoji: '📢' },
+    { href: `/t/${slug}/admin/volunteers`, label: 'Volunteers & Refs', desc: 'Manage signups, assign referees to matches', emoji: '🙋' },
   ];
 
   return (

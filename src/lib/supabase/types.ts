@@ -89,6 +89,7 @@ export type Database = {
           scores: GameScore[];
           winner_id: string | null;
           notes: string | null;
+          referee_id: string | null;
           sort_order: number;
           created_at: string;
           updated_at: string;
@@ -106,6 +107,7 @@ export type Database = {
           scheduled_time?: string | null;
           scores?: GameScore[];
           winner_id?: string | null;
+          referee_id?: string | null;
           notes?: string | null;
           sort_order?: number;
         };
@@ -128,6 +130,28 @@ export type Database = {
           created_by?: string | null;
         };
         Update: Partial<Database['public']['Tables']['announcements']['Insert']>;
+      };
+      volunteers: {
+        Row: {
+          id: string;
+          tournament_id: string;
+          name: string;
+          email: string | null;
+          phone: string | null;
+          role: 'referee' | 'volunteer' | 'helper';
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          tournament_id: string;
+          name: string;
+          email?: string | null;
+          phone?: string | null;
+          role?: 'referee' | 'volunteer' | 'helper';
+          notes?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['volunteers']['Insert']>;
       };
       organizers: {
         Row: {
@@ -157,6 +181,7 @@ export type Court = Database['public']['Tables']['courts']['Row'];
 export type Player = Database['public']['Tables']['players']['Row'];
 export type Match = Database['public']['Tables']['matches']['Row'];
 export type Announcement = Database['public']['Tables']['announcements']['Row'];
+export type Volunteer = Database['public']['Tables']['volunteers']['Row'];
 
 // Match with joined player/court data
 export type MatchWithDetails = Match & {

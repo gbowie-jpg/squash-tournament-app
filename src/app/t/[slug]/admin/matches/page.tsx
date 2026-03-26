@@ -256,6 +256,9 @@ export default function MatchManagement({
                       {m.scheduled_time && (
                         <span>🕐 {new Date(m.scheduled_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
                       )}
+                      {(m as MatchWithDetails & { referee?: { name: string } | null }).referee && (
+                        <span>🏁 {(m as MatchWithDetails & { referee?: { name: string } | null }).referee!.name}</span>
+                      )}
                       {m.scores && m.scores.length > 0 && (
                         <span className="font-medium text-zinc-600">{formatScore(m.scores)}</span>
                       )}

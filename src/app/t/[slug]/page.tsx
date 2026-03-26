@@ -59,6 +59,12 @@ export default async function TournamentHub({
       desc: 'Updates from the organizer',
       emoji: '📢',
     },
+    {
+      href: `/t/${slug}/volunteer`,
+      label: 'Volunteer / Referee',
+      desc: 'Sign up to help or officiate',
+      emoji: '🙋',
+    },
   ];
 
   return (

@@ -11,7 +11,7 @@ export async function GET(
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('matches')
-    .select('*, player1:players!player1_id(*), player2:players!player2_id(*), court:courts!court_id(*)')
+    .select('*, player1:players!player1_id(*), player2:players!player2_id(*), court:courts!court_id(*), referee:volunteers!referee_id(id, name)')
     .eq('tournament_id', id)
     .order('sort_order')
     .order('scheduled_time', { nullsFirst: false });
