@@ -36,13 +36,22 @@ export async function PATCH(req: NextRequest) {
   if (auth.error) return auth.error;
 
   const supabase = createAdminClient();
-  const { userId, role, full_name } = await req.json();
+  const { userId, role, full_name, status } = await req.json();
 
   if (!userId) return NextResponse.json({ error: 'userId required' }, { status: 400 });
 
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (role && ['user', 'admin', 'superadmin'].includes(role)) updates.role = role;
   if (full_name !== undefined) updates.full_name = full_name;
+  if (status && ['active', 'suspended', 'inactive'].includes(status)) {
+    updates.status = status;
+    // Also ban/unban in Supabase Auth
+    if (status === 'suspended') {
+      await supabase.auth.admin.updateUserById(userId, { ban_duration: '876000h' }); // ~100 years
+    } else if (status === 'active') {
+      await supabase.auth.admin.updateUserById(userId, { ban_duration: 'none' });
+    }
+  }
 
   const { data, error } = await supabase
     .from('profiles')

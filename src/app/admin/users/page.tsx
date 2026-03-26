@@ -9,6 +9,7 @@ type UserProfile = {
   email: string;
   full_name: string | null;
   role: string;
+  status: string;
   created_at: string;
   organizers: {
     id: string;
@@ -64,6 +65,19 @@ export default function UserManagement() {
     if (res.ok) {
       setUsers((prev) =>
         prev.map((u) => (u.id === userId ? { ...u, role } : u)),
+      );
+    }
+  };
+
+  const handleStatusChange = async (userId: string, status: string) => {
+    const res = await fetch('/api/admin/users', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, status }),
+    });
+    if (res.ok) {
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, status } : u)),
       );
     }
   };
@@ -124,6 +138,19 @@ export default function UserManagement() {
     );
   };
 
+  const statusBadge = (status: string) => {
+    const colors: Record<string, string> = {
+      active: 'bg-green-100 text-green-700',
+      suspended: 'bg-red-100 text-red-700',
+      inactive: 'bg-amber-100 text-amber-700',
+    };
+    return (
+      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${colors[status] || colors.active}`}>
+        {status || 'active'}
+      </span>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-zinc-50">
       <header className="bg-white border-b border-zinc-200">
@@ -158,21 +185,33 @@ export default function UserManagement() {
                     <div className="flex items-center gap-2">
                       <h3 className="font-medium">{u.full_name || u.email}</h3>
                       {roleBadge(u.role)}
+                      {statusBadge(u.status)}
                     </div>
                     <p className="text-sm text-zinc-600">{u.email}</p>
                     <p className="text-xs text-zinc-600 mt-1">
                       Joined {new Date(u.created_at).toLocaleDateString()}
                     </p>
                   </div>
-                  <select
-                    value={u.role}
-                    onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                    className="border border-zinc-300 rounded-lg px-2 py-1 text-xs focus:outline-none"
-                  >
-                    <option value="user">User</option>
-                    <option value="admin">Admin</option>
-                    <option value="superadmin">Superadmin</option>
-                  </select>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={u.status || 'active'}
+                      onChange={(e) => handleStatusChange(u.id, e.target.value)}
+                      className="border border-zinc-300 rounded-lg px-2 py-1 text-xs focus:outline-none"
+                    >
+                      <option value="active">Active</option>
+                      <option value="suspended">Suspended</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                    <select
+                      value={u.role}
+                      onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                      className="border border-zinc-300 rounded-lg px-2 py-1 text-xs focus:outline-none"
+                    >
+                      <option value="user">User</option>
+                      <option value="admin">Admin</option>
+                      <option value="superadmin">Superadmin</option>
+                    </select>
+                  </div>
                 </div>
 
                 {/* Tournament access */}
