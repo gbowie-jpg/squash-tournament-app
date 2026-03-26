@@ -15,8 +15,16 @@
 
 body {
   background: var(--background);
-  color: var(--foreground);
+  color: #27272a; /* zinc-800 — strong default for all text */
   font-family: Arial, Helvetica, sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #18181b; /* zinc-900 — bold headings always dark */
+}
+
+label, th, select, input, textarea {
+  color: #27272a; /* zinc-800 */
 }
 
 ::placeholder {
