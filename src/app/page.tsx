@@ -25,14 +25,14 @@ export default async function Home() {
       <main className="max-w-3xl mx-auto px-4 py-8">
         {upcoming.length === 0 && past.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-zinc-400 text-lg">No tournaments yet.</p>
-            <p className="text-zinc-400 text-sm mt-2">Check back soon or contact the organizer.</p>
+            <p className="text-zinc-600 text-lg">No tournaments yet.</p>
+            <p className="text-zinc-600 text-sm mt-2">Check back soon or contact the organizer.</p>
           </div>
         ) : null}
 
         {upcoming.length > 0 && (
           <section className="mb-10">
-            <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">
+            <h2 className="text-sm font-semibold text-zinc-600 uppercase tracking-wider mb-4">
               {upcoming.some((t) => t.status === 'active') ? 'Active & Upcoming' : 'Upcoming'}
             </h2>
             <div className="space-y-3">
@@ -45,7 +45,7 @@ export default async function Home() {
 
         {past.length > 0 && (
           <section>
-            <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">Past</h2>
+            <h2 className="text-sm font-semibold text-zinc-600 uppercase tracking-wider mb-4">Past</h2>
             <div className="space-y-3">
               {past.map((t) => (
                 <TournamentCard key={t.id} tournament={t} />
@@ -80,7 +80,7 @@ function TournamentCard({ tournament: t }: { tournament: Tournament }) {
         <div>
           <h3 className="font-semibold text-lg">{t.name}</h3>
           {t.venue && <p className="text-zinc-500 text-sm mt-0.5">{t.venue}</p>}
-          <p className="text-zinc-400 text-sm mt-1">{dateStr}</p>
+          <p className="text-zinc-600 text-sm mt-1">{dateStr}</p>
         </div>
         <span className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 ${statusColors[t.status]}`}>
           {t.status === 'active' ? 'Live' : t.status.charAt(0).toUpperCase() + t.status.slice(1)}

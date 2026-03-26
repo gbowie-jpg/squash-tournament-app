@@ -70,15 +70,15 @@ export default function VolunteerSignup({
     }
   };
 
-  if (loading) return <div className="flex items-center justify-center min-h-screen text-zinc-400">Loading...</div>;
-  if (!tournament) return <div className="flex items-center justify-center min-h-screen text-zinc-400">Not found</div>;
+  if (loading) return <div className="flex items-center justify-center min-h-screen text-zinc-600">Loading...</div>;
+  if (!tournament) return <div className="flex items-center justify-center min-h-screen text-zinc-600">Not found</div>;
 
   return (
     <div className="min-h-screen bg-zinc-50">
       <header className="bg-white border-b border-zinc-200">
         <div className="max-w-2xl mx-auto px-4 py-6">
           <h1 className="text-2xl font-bold tracking-tight">{tournament.name}</h1>
-          <p className="text-sm text-zinc-400 mt-1">
+          <p className="text-sm text-zinc-600 mt-1">
             Volunteer / Referee Signup
           </p>
         </div>
@@ -89,7 +89,7 @@ export default function VolunteerSignup({
           <div className="bg-white border border-zinc-200 rounded-xl p-8 text-center">
             <div className="text-4xl mb-4">🎉</div>
             <h2 className="text-xl font-bold">You&apos;re signed up!</h2>
-            <p className="text-zinc-400 mt-2">
+            <p className="text-zinc-600 mt-2">
               Your account has been created and you&apos;re now signed in.
               Redirecting to the tournament&hellip;
             </p>
@@ -182,7 +182,7 @@ export default function VolunteerSignup({
                     />
                     <div className="text-lg">{opt.label.split(' ')[0]}</div>
                     <div className="text-sm font-medium mt-1">{opt.label.split(' ').slice(1).join(' ')}</div>
-                    <div className="text-xs text-zinc-400 mt-0.5">{opt.desc}</div>
+                    <div className="text-xs text-zinc-600 mt-0.5">{opt.desc}</div>
                   </label>
                 ))}
               </div>
@@ -207,7 +207,7 @@ export default function VolunteerSignup({
               {submitting ? 'Creating account...' : 'Sign Up & Create Account'}
             </button>
 
-            <p className="text-center text-sm text-zinc-400">
+            <p className="text-center text-sm text-zinc-600">
               Already have an account?{' '}
               <Link href={`/login?redirect=/t/${slug}`} className="text-zinc-900 underline">
                 Sign in

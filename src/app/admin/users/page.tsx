@@ -129,13 +129,13 @@ export default function UserManagement() {
       <header className="bg-white border-b border-zinc-200">
         <div className="max-w-4xl mx-auto px-4 py-6 flex items-center justify-between">
           <div>
-            <Link href="/admin/tournaments" className="text-sm text-zinc-400 hover:text-zinc-600">
+            <Link href="/admin/tournaments" className="text-sm text-zinc-600 hover:text-zinc-800">
               &larr; Tournaments
             </Link>
             <h1 className="text-2xl font-bold tracking-tight mt-1">User Management</h1>
-            <p className="text-sm text-zinc-400">Manage users, roles, and tournament access</p>
+            <p className="text-sm text-zinc-600">Manage users, roles, and tournament access</p>
           </div>
-          <button onClick={signOut} className="text-zinc-400 hover:text-zinc-600 text-sm">
+          <button onClick={signOut} className="text-zinc-600 hover:text-zinc-800 text-sm">
             Sign Out
           </button>
         </div>
@@ -148,7 +148,7 @@ export default function UserManagement() {
             <p className="text-sm mt-1">You need superadmin permissions to manage users.</p>
           </div>
         ) : loading ? (
-          <p className="text-zinc-400 text-center py-12">Loading...</p>
+          <p className="text-zinc-600 text-center py-12">Loading...</p>
         ) : (
           <div className="space-y-4">
             {users.map((u) => (
@@ -159,7 +159,7 @@ export default function UserManagement() {
                       <h3 className="font-medium">{u.full_name || u.email}</h3>
                       {roleBadge(u.role)}
                     </div>
-                    <p className="text-sm text-zinc-400">{u.email}</p>
+                    <p className="text-sm text-zinc-600">{u.email}</p>
                     <p className="text-xs text-zinc-300 mt-1">
                       Joined {new Date(u.created_at).toLocaleDateString()}
                     </p>
@@ -177,7 +177,7 @@ export default function UserManagement() {
 
                 {/* Tournament access */}
                 <div className="mt-4">
-                  <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
+                  <h4 className="text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-2">
                     Tournament Access
                   </h4>
                   {u.organizers.length === 0 ? (
@@ -188,7 +188,7 @@ export default function UserManagement() {
                         <div key={o.id} className="flex items-center justify-between bg-zinc-50 rounded-lg px-3 py-2">
                           <div className="flex items-center gap-2">
                             <span className="text-sm">{o.tournament?.name || 'Unknown'}</span>
-                            <span className="text-xs text-zinc-400 bg-zinc-200 px-1.5 py-0.5 rounded">
+                            <span className="text-xs text-zinc-600 bg-zinc-200 px-1.5 py-0.5 rounded">
                               {o.role}
                             </span>
                           </div>
@@ -234,7 +234,7 @@ export default function UserManagement() {
                       </button>
                       <button
                         onClick={() => setShowAddOrg(null)}
-                        className="text-zinc-400 hover:text-zinc-600 text-xs"
+                        className="text-zinc-600 hover:text-zinc-800 text-xs"
                       >
                         Cancel
                       </button>

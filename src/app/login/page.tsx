@@ -50,7 +50,7 @@ function LoginForm() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold tracking-tight">Seattle Squash</h1>
-          <p className="text-zinc-400 text-sm mt-1">Tournament Admin</p>
+          <p className="text-zinc-600 text-sm mt-1">Tournament Admin</p>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white border border-zinc-200 rounded-xl p-6 space-y-4">
@@ -102,7 +102,7 @@ function LoginForm() {
             {loading ? 'Loading...' : mode === 'signin' ? 'Sign In' : 'Create Account'}
           </button>
 
-          <p className="text-center text-sm text-zinc-400">
+          <p className="text-center text-sm text-zinc-600">
             {mode === 'signin' ? (
               <>
                 Need an account?{' '}
@@ -127,7 +127,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen text-zinc-400">Loading...</div>}>
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen text-zinc-600">Loading...</div>}>
       <LoginForm />
     </Suspense>
   );

@@ -54,7 +54,7 @@ export default function AdminDashboard() {
         <div className="max-w-4xl mx-auto px-4 py-6 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Seattle Squash</h1>
-            <p className="text-sm text-zinc-400">Admin Dashboard</p>
+            <p className="text-sm text-zinc-600">Admin Dashboard</p>
           </div>
           <div className="flex items-center gap-3">
             {isSuperadmin && (
@@ -67,7 +67,7 @@ export default function AdminDashboard() {
             )}
             <button
               onClick={signOut}
-              className="text-zinc-400 hover:text-zinc-600 text-sm transition-colors"
+              className="text-zinc-600 hover:text-zinc-800 text-sm transition-colors"
             >
               Sign Out
             </button>
@@ -86,7 +86,7 @@ export default function AdminDashboard() {
               >
                 <span className="text-3xl">{card.emoji}</span>
                 <h3 className="font-semibold text-lg mt-3">{card.label}</h3>
-                <p className="text-sm text-zinc-400 mt-1">{card.desc}</p>
+                <p className="text-sm text-zinc-600 mt-1">{card.desc}</p>
               </Link>
             ) : (
               <div
@@ -96,11 +96,11 @@ export default function AdminDashboard() {
                 <span className="text-3xl">{card.emoji}</span>
                 <h3 className="font-semibold text-lg mt-3">
                   {card.label}
-                  <span className="text-xs font-normal text-zinc-400 ml-2 bg-zinc-100 px-2 py-0.5 rounded-full">
+                  <span className="text-xs font-normal text-zinc-600 ml-2 bg-zinc-100 px-2 py-0.5 rounded-full">
                     Coming Soon
                   </span>
                 </h3>
-                <p className="text-sm text-zinc-400 mt-1">{card.desc}</p>
+                <p className="text-sm text-zinc-600 mt-1">{card.desc}</p>
               </div>
             ),
           )}

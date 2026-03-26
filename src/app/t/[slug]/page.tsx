@@ -71,14 +71,14 @@ export default async function TournamentHub({
     <div className="min-h-screen bg-zinc-50">
       <header className="bg-white border-b border-zinc-200">
         <div className="max-w-2xl mx-auto px-4 py-6">
-          <Link href="/" className="text-sm text-zinc-400 hover:text-zinc-600 transition-colors">
+          <Link href="/" className="text-sm text-zinc-600 hover:text-zinc-800 transition-colors">
             &larr; All Tournaments
           </Link>
           <h1 className="text-2xl font-bold tracking-tight mt-2">{tournament.name}</h1>
           {tournament.venue && (
             <p className="text-zinc-500 text-sm mt-1">{tournament.venue}</p>
           )}
-          <p className="text-zinc-400 text-sm mt-0.5">{dateStr}</p>
+          <p className="text-zinc-600 text-sm mt-0.5">{dateStr}</p>
         </div>
       </header>
 
@@ -87,11 +87,11 @@ export default async function TournamentHub({
         <div className="flex gap-4 mb-8">
           <div className="flex-1 bg-white rounded-xl border border-zinc-200 p-4 text-center">
             <p className="text-3xl font-bold text-green-600">{inProgress ?? 0}</p>
-            <p className="text-xs text-zinc-400 mt-1">In Progress</p>
+            <p className="text-xs text-zinc-600 mt-1">In Progress</p>
           </div>
           <div className="flex-1 bg-white rounded-xl border border-zinc-200 p-4 text-center">
             <p className="text-3xl font-bold text-blue-600">{upcoming ?? 0}</p>
-            <p className="text-xs text-zinc-400 mt-1">Coming Up</p>
+            <p className="text-xs text-zinc-600 mt-1">Coming Up</p>
           </div>
         </div>
 
@@ -106,7 +106,7 @@ export default async function TournamentHub({
               <span className="text-2xl">{link.emoji}</span>
               <div>
                 <p className="font-semibold">{link.label}</p>
-                <p className="text-sm text-zinc-400">{link.desc}</p>
+                <p className="text-sm text-zinc-600">{link.desc}</p>
               </div>
             </Link>
           ))}

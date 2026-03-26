@@ -30,7 +30,7 @@ export default function CourtBoard({
   const { courts, loading: cLoading } = useRealtimeCourts(tournament?.id ?? '');
 
   if (tLoading || !tournament) {
-    return <div className="flex items-center justify-center min-h-screen text-zinc-400">Loading...</div>;
+    return <div className="flex items-center justify-center min-h-screen text-zinc-600">Loading...</div>;
   }
 
   const loading = mLoading || cLoading;
@@ -49,12 +49,12 @@ export default function CourtBoard({
       <header className="bg-white border-b border-zinc-200">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <div>
-            <Link href={`/t/${slug}`} className="text-sm text-zinc-400 hover:text-zinc-600">&larr; {tournament.name}</Link>
+            <Link href={`/t/${slug}`} className="text-sm text-zinc-600 hover:text-zinc-800">&larr; {tournament.name}</Link>
             <h1 className="text-xl font-bold tracking-tight mt-1">Court Board</h1>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-xs text-zinc-400">Live</span>
+            <span className="text-xs text-zinc-600">Live</span>
           </div>
         </div>
       </header>
@@ -71,7 +71,7 @@ export default function CourtBoard({
             ))}
           </div>
         ) : courts.length === 0 ? (
-          <p className="text-zinc-400 text-center py-16">No courts set up yet.</p>
+          <p className="text-zinc-600 text-center py-16">No courts set up yet.</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {courts.map((court) => {
@@ -94,9 +94,9 @@ export default function CourtBoard({
                       <MatchDisplay match={current} />
                     </div>
                   ) : court.status === 'maintenance' ? (
-                    <p className="text-sm text-zinc-400 mb-4">Under maintenance</p>
+                    <p className="text-sm text-zinc-600 mb-4">Under maintenance</p>
                   ) : (
-                    <p className="text-sm text-zinc-400 mb-4">Court available</p>
+                    <p className="text-sm text-zinc-600 mb-4">Court available</p>
                   )}
 
                   {/* Next match */}
@@ -132,7 +132,7 @@ function MatchDisplay({ match: m, compact }: { match: MatchWithDetails; compact?
         <p className="text-sm font-mono font-medium mt-1">{formatScore(m.scores)}</p>
       )}
       {!compact && m.scheduled_time && (
-        <p className="text-xs text-zinc-400 mt-1">
+        <p className="text-xs text-zinc-600 mt-1">
           {new Date(m.scheduled_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
         </p>
       )}

@@ -67,15 +67,15 @@ export default function CourtManagement({
     setCourts((prev) => prev.filter((c) => c.id !== courtId));
   };
 
-  if (!tournament) return <div className="flex items-center justify-center min-h-screen text-zinc-400">Loading...</div>;
+  if (!tournament) return <div className="flex items-center justify-center min-h-screen text-zinc-600">Loading...</div>;
 
   return (
     <div className="min-h-screen bg-zinc-50">
       <header className="bg-white border-b border-zinc-200">
         <div className="max-w-3xl mx-auto px-4 py-6">
-          <Link href={`/t/${slug}/admin`} className="text-sm text-zinc-400 hover:text-zinc-600">&larr; Admin</Link>
+          <Link href={`/t/${slug}/admin`} className="text-sm text-zinc-600 hover:text-zinc-800">&larr; Admin</Link>
           <h1 className="text-2xl font-bold tracking-tight mt-1">Courts</h1>
-          <p className="text-zinc-400 text-sm">{courts.length} courts</p>
+          <p className="text-zinc-600 text-sm">{courts.length} courts</p>
         </div>
       </header>
 
@@ -93,9 +93,9 @@ export default function CourtManagement({
         </form>
 
         {loading ? (
-          <p className="text-zinc-400 text-center py-12">Loading...</p>
+          <p className="text-zinc-600 text-center py-12">Loading...</p>
         ) : courts.length === 0 ? (
-          <p className="text-zinc-400 text-center py-12">No courts. Add one above.</p>
+          <p className="text-zinc-600 text-center py-12">No courts. Add one above.</p>
         ) : (
           <div className="space-y-3">
             {courts.map((c) => (

@@ -117,7 +117,7 @@ export default function MatchManagement({
   };
 
   if (!tournament || loading) {
-    return <div className="flex items-center justify-center min-h-screen text-zinc-400">Loading...</div>;
+    return <div className="flex items-center justify-center min-h-screen text-zinc-600">Loading...</div>;
   }
 
   const filtered = filter === 'all' ? matches : matches.filter((m) => m.status === filter);
@@ -127,9 +127,9 @@ export default function MatchManagement({
       <header className="bg-white border-b border-zinc-200">
         <div className="max-w-4xl mx-auto px-4 py-6 flex items-center justify-between">
           <div>
-            <Link href={`/t/${slug}/admin`} className="text-sm text-zinc-400 hover:text-zinc-600">&larr; Admin</Link>
+            <Link href={`/t/${slug}/admin`} className="text-sm text-zinc-600 hover:text-zinc-800">&larr; Admin</Link>
             <h1 className="text-2xl font-bold tracking-tight mt-1">Matches</h1>
-            <p className="text-zinc-400 text-sm">{matches.length} matches</p>
+            <p className="text-zinc-600 text-sm">{matches.length} matches</p>
           </div>
           <button
             onClick={() => setShowForm(!showForm)}
@@ -234,7 +234,7 @@ export default function MatchManagement({
 
         {/* Match list */}
         {filtered.length === 0 ? (
-          <p className="text-zinc-400 text-center py-12">No matches found.</p>
+          <p className="text-zinc-600 text-center py-12">No matches found.</p>
         ) : (
           <div className="space-y-3">
             {filtered.map((m) => (
@@ -245,13 +245,13 @@ export default function MatchManagement({
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_COLORS[m.status]}`}>
                         {m.status.replace('_', ' ')}
                       </span>
-                      {m.draw && <span className="text-xs text-zinc-400">{m.draw}</span>}
-                      {m.round && <span className="text-xs text-zinc-400">&middot; {m.round}</span>}
+                      {m.draw && <span className="text-xs text-zinc-600">{m.draw}</span>}
+                      {m.round && <span className="text-xs text-zinc-600">&middot; {m.round}</span>}
                     </div>
                     <p className="font-semibold">
                       {m.player1?.name || 'TBD'} vs {m.player2?.name || 'TBD'}
                     </p>
-                    <div className="flex items-center gap-3 mt-1 text-xs text-zinc-400">
+                    <div className="flex items-center gap-3 mt-1 text-xs text-zinc-600">
                       {m.court && <span>📍 {m.court.name}</span>}
                       {m.scheduled_time && (
                         <span>🕐 {new Date(m.scheduled_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
@@ -341,7 +341,7 @@ export default function MatchManagement({
                         onChange={(e) => setScoreInput({ ...scoreInput, p1: e.target.value })}
                         className="w-20 border border-zinc-300 rounded px-2 py-1.5 text-sm text-center"
                       />
-                      <span className="text-zinc-400 text-sm">—</span>
+                      <span className="text-zinc-600 text-sm">—</span>
                       <input
                         type="number"
                         min={0}

@@ -125,18 +125,18 @@ export default function VolunteersAdmin({
     return volunteers.find((v) => v.id === refId)?.name || 'Unknown';
   };
 
-  if (tournamentLoading) return <div className="flex items-center justify-center min-h-screen text-zinc-400">Loading...</div>;
-  if (!tournament) return <div className="flex items-center justify-center min-h-screen text-zinc-400">Not found</div>;
+  if (tournamentLoading) return <div className="flex items-center justify-center min-h-screen text-zinc-600">Loading...</div>;
+  if (!tournament) return <div className="flex items-center justify-center min-h-screen text-zinc-600">Not found</div>;
 
   return (
     <div className="min-h-screen bg-zinc-50">
       <header className="bg-white border-b border-zinc-200">
         <div className="max-w-5xl mx-auto px-4 py-6">
-          <Link href={`/t/${slug}/admin`} className="text-sm text-zinc-400 hover:text-zinc-600">
+          <Link href={`/t/${slug}/admin`} className="text-sm text-zinc-600 hover:text-zinc-800">
             &larr; Admin
           </Link>
           <h1 className="text-2xl font-bold tracking-tight mt-1">Volunteers & Referees</h1>
-          <p className="text-sm text-zinc-400">
+          <p className="text-sm text-zinc-600">
             Public signup: <span className="text-zinc-600 font-mono">/t/{slug}/volunteer</span>
           </p>
         </div>
@@ -144,7 +144,7 @@ export default function VolunteersAdmin({
 
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-8">
         {loading ? (
-          <p className="text-zinc-400 text-center py-12">Loading...</p>
+          <p className="text-zinc-600 text-center py-12">Loading...</p>
         ) : (
           <>
             {/* Volunteers list */}
@@ -167,7 +167,7 @@ export default function VolunteersAdmin({
                   </div>
                 )}
                 {referees.length === 0 ? (
-                  <p className="text-sm text-zinc-400">No referees signed up yet</p>
+                  <p className="text-sm text-zinc-600">No referees signed up yet</p>
                 ) : (
                   <div className="space-y-2">
                     {referees.map((v) => {
@@ -176,7 +176,7 @@ export default function VolunteersAdmin({
                         <div key={v.id} className="flex items-center justify-between bg-zinc-50 rounded-lg px-3 py-2">
                           <div>
                             <span className="text-sm font-medium">{v.name}</span>
-                            {v.email && <span className="text-xs text-zinc-400 ml-2">{v.email}</span>}
+                            {v.email && <span className="text-xs text-zinc-600 ml-2">{v.email}</span>}
                             {assignedCount > 0 && (
                               <span className="text-xs text-blue-600 ml-2">{assignedCount} matches</span>
                             )}
@@ -198,7 +198,7 @@ export default function VolunteersAdmin({
               <div className="bg-white border border-zinc-200 rounded-xl p-5">
                 <h2 className="font-semibold mb-4">Volunteers & Helpers ({others.length})</h2>
                 {others.length === 0 ? (
-                  <p className="text-sm text-zinc-400">No volunteers signed up yet</p>
+                  <p className="text-sm text-zinc-600">No volunteers signed up yet</p>
                 ) : (
                   <div className="space-y-2">
                     {others.map((v) => (
@@ -206,8 +206,8 @@ export default function VolunteersAdmin({
                         <div>
                           <span className="text-sm font-medium">{v.name}</span>
                           {roleBadge(v.role)}
-                          {v.email && <span className="text-xs text-zinc-400 ml-2">{v.email}</span>}
-                          {v.notes && <p className="text-xs text-zinc-400 mt-0.5">{v.notes}</p>}
+                          {v.email && <span className="text-xs text-zinc-600 ml-2">{v.email}</span>}
+                          {v.notes && <p className="text-xs text-zinc-600 mt-0.5">{v.notes}</p>}
                         </div>
                         <button
                           onClick={() => handleRemoveVolunteer(v.id)}
@@ -226,17 +226,17 @@ export default function VolunteersAdmin({
             <div className="bg-white border border-zinc-200 rounded-xl p-5">
               <h2 className="font-semibold mb-4">Match Referee Assignments</h2>
               {assignableMatches.length === 0 ? (
-                <p className="text-sm text-zinc-400">No matches to assign referees to</p>
+                <p className="text-sm text-zinc-600">No matches to assign referees to</p>
               ) : (
                 <div className="space-y-1 max-h-96 overflow-auto">
                   {assignableMatches
                     .sort((a, b) => (a.match_number || 0) - (b.match_number || 0))
                     .map((m) => (
                       <div key={m.id} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-zinc-50">
-                        <span className="text-xs text-zinc-400 w-8">M{m.match_number}</span>
-                        <span className="text-xs text-zinc-400 w-8">{m.round}</span>
+                        <span className="text-xs text-zinc-600 w-8">M{m.match_number}</span>
+                        <span className="text-xs text-zinc-600 w-8">{m.round}</span>
                         <span className="flex-1 text-sm">
-                          {m.player1?.name || 'TBD'} <span className="text-zinc-400">vs</span>{' '}
+                          {m.player1?.name || 'TBD'} <span className="text-zinc-600">vs</span>{' '}
                           {m.player2?.name || 'TBD'}
                         </span>
                         <select

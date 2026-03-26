@@ -85,8 +85,8 @@ export default function PlayerManagement({
     setPlayers((prev) => prev.filter((p) => p.id !== playerId));
   };
 
-  if (tournamentLoading) return <div className="flex items-center justify-center min-h-screen text-zinc-400">Loading...</div>;
-  if (!tournament) return <div className="flex items-center justify-center min-h-screen text-zinc-400">Not found</div>;
+  if (tournamentLoading) return <div className="flex items-center justify-center min-h-screen text-zinc-600">Loading...</div>;
+  if (!tournament) return <div className="flex items-center justify-center min-h-screen text-zinc-600">Not found</div>;
 
   // Group by draw
   const draws = [...new Set(players.map((p) => p.draw || 'Unassigned'))].sort();
@@ -96,9 +96,9 @@ export default function PlayerManagement({
       <header className="bg-white border-b border-zinc-200">
         <div className="max-w-4xl mx-auto px-4 py-6 flex items-center justify-between">
           <div>
-            <Link href={`/t/${slug}/admin`} className="text-sm text-zinc-400 hover:text-zinc-600">&larr; Admin</Link>
+            <Link href={`/t/${slug}/admin`} className="text-sm text-zinc-600 hover:text-zinc-800">&larr; Admin</Link>
             <h1 className="text-2xl font-bold tracking-tight mt-1">Players</h1>
-            <p className="text-zinc-400 text-sm">{players.length} players</p>
+            <p className="text-zinc-600 text-sm">{players.length} players</p>
           </div>
           <button
             onClick={() => { setShowForm(!showForm); setEditingId(null); setForm({ name: '', draw: '', seed: '', club: '', email: '' }); }}
@@ -180,13 +180,13 @@ export default function PlayerManagement({
         )}
 
         {loading ? (
-          <p className="text-zinc-400 text-center py-12">Loading...</p>
+          <p className="text-zinc-600 text-center py-12">Loading...</p>
         ) : players.length === 0 ? (
-          <p className="text-zinc-400 text-center py-12">No players yet. Add some to get started.</p>
+          <p className="text-zinc-600 text-center py-12">No players yet. Add some to get started.</p>
         ) : (
           draws.map((draw) => (
             <div key={draw} className="mb-6">
-              <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">{draw} Draw</h2>
+              <h2 className="text-sm font-semibold text-zinc-600 uppercase tracking-wider mb-3">{draw} Draw</h2>
               <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
                 {players
                   .filter((p) => (p.draw || 'Unassigned') === draw)
@@ -203,11 +203,11 @@ export default function PlayerManagement({
                         )}
                         <div>
                           <p className="text-sm font-medium">{p.name}</p>
-                          {p.club && <p className="text-xs text-zinc-400">{p.club}</p>}
+                          {p.club && <p className="text-xs text-zinc-600">{p.club}</p>}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <button onClick={() => handleEdit(p)} className="text-xs text-zinc-400 hover:text-zinc-600">Edit</button>
+                        <button onClick={() => handleEdit(p)} className="text-xs text-zinc-600 hover:text-zinc-800">Edit</button>
                         <button onClick={() => handleDelete(p.id)} className="text-xs text-red-400 hover:text-red-600">Delete</button>
                       </div>
                     </div>

@@ -50,13 +50,13 @@ export default function AnnouncementComposer({
     setAnnouncements((prev) => prev.filter((a) => a.id !== announcementId));
   };
 
-  if (!tournament) return <div className="flex items-center justify-center min-h-screen text-zinc-400">Loading...</div>;
+  if (!tournament) return <div className="flex items-center justify-center min-h-screen text-zinc-600">Loading...</div>;
 
   return (
     <div className="min-h-screen bg-zinc-50">
       <header className="bg-white border-b border-zinc-200">
         <div className="max-w-3xl mx-auto px-4 py-6">
-          <Link href={`/t/${slug}/admin`} className="text-sm text-zinc-400 hover:text-zinc-600">&larr; Admin</Link>
+          <Link href={`/t/${slug}/admin`} className="text-sm text-zinc-600 hover:text-zinc-800">&larr; Admin</Link>
           <h1 className="text-2xl font-bold tracking-tight mt-1">Announcements</h1>
         </div>
       </header>
@@ -98,9 +98,9 @@ export default function AnnouncementComposer({
         </form>
 
         {loading ? (
-          <p className="text-zinc-400 text-center py-12">Loading...</p>
+          <p className="text-zinc-600 text-center py-12">Loading...</p>
         ) : announcements.length === 0 ? (
-          <p className="text-zinc-400 text-center py-12">No announcements yet.</p>
+          <p className="text-zinc-600 text-center py-12">No announcements yet.</p>
         ) : (
           <div className="space-y-3">
             {announcements.map((a) => (
@@ -116,7 +116,7 @@ export default function AnnouncementComposer({
                       <span className="text-xs font-medium text-red-600 uppercase">⚠ Urgent</span>
                     )}
                     <p className="text-sm mt-1">{a.message}</p>
-                    <p className="text-xs text-zinc-400 mt-2">
+                    <p className="text-xs text-zinc-600 mt-2">
                       {new Date(a.created_at).toLocaleString()}
                     </p>
                   </div>

@@ -40,7 +40,7 @@ export default function MyMatches({
   }, [tournament, playerId]);
 
   if (tLoading || !tournament) {
-    return <div className="flex items-center justify-center min-h-screen text-zinc-400">Loading...</div>;
+    return <div className="flex items-center justify-center min-h-screen text-zinc-600">Loading...</div>;
   }
 
   const playerMatches = matches
@@ -56,9 +56,9 @@ export default function MyMatches({
     <div className="min-h-screen bg-zinc-50">
       <header className="bg-white border-b border-zinc-200">
         <div className="max-w-2xl mx-auto px-4 py-6">
-          <Link href={`/t/${slug}/players`} className="text-sm text-zinc-400 hover:text-zinc-600">&larr; All Players</Link>
+          <Link href={`/t/${slug}/players`} className="text-sm text-zinc-600 hover:text-zinc-800">&larr; All Players</Link>
           <h1 className="text-2xl font-bold tracking-tight mt-2">{player?.name || 'Loading...'}</h1>
-          {player?.club && <p className="text-zinc-400 text-sm">{player.club}</p>}
+          {player?.club && <p className="text-zinc-600 text-sm">{player.club}</p>}
         </div>
       </header>
 
@@ -83,9 +83,9 @@ export default function MyMatches({
 
         {/* All matches */}
         {mLoading ? (
-          <p className="text-zinc-400 text-center py-12">Loading matches...</p>
+          <p className="text-zinc-600 text-center py-12">Loading matches...</p>
         ) : playerMatches.length === 0 ? (
-          <p className="text-zinc-400 text-center py-12">No matches scheduled yet.</p>
+          <p className="text-zinc-600 text-center py-12">No matches scheduled yet.</p>
         ) : (
           <div className="space-y-3">
             {playerMatches.map((m) => {
@@ -100,7 +100,7 @@ export default function MyMatches({
                     <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${statusInfo.color}`}>
                       {statusInfo.text}
                     </span>
-                    <div className="flex items-center gap-2 text-xs text-zinc-400">
+                    <div className="flex items-center gap-2 text-xs text-zinc-600">
                       {m.draw && <span>{m.draw}</span>}
                       {m.round && <span>&middot; {m.round}</span>}
                     </div>
@@ -110,7 +110,7 @@ export default function MyMatches({
                     {didWin && <span className="text-green-600 ml-2 text-sm">W</span>}
                     {didLose && <span className="text-red-500 ml-2 text-sm">L</span>}
                   </p>
-                  <div className="flex items-center gap-3 mt-1 text-xs text-zinc-400">
+                  <div className="flex items-center gap-3 mt-1 text-xs text-zinc-600">
                     {m.court && <span>📍 {m.court.name}</span>}
                     {m.scheduled_time && (
                       <span>
@@ -129,7 +129,7 @@ export default function MyMatches({
 
         <div className="flex items-center gap-1.5 justify-center mt-8">
           <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-xs text-zinc-400">Updates automatically</span>
+          <span className="text-xs text-zinc-600">Updates automatically</span>
         </div>
       </main>
     </div>

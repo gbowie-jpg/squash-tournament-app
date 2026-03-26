@@ -23,7 +23,7 @@ export default function ScheduleGrid({
 
   if (scheduled.length === 0) {
     return (
-      <p className="text-sm text-zinc-400 text-center py-6">
+      <p className="text-sm text-zinc-600 text-center py-6">
         No matches scheduled yet. Use Auto-Schedule to assign courts and times.
       </p>
     );
@@ -55,16 +55,16 @@ export default function ScheduleGrid({
                 <span className="text-xs font-medium text-zinc-500">
                   {formatTime(new Date(m.scheduled_time!))}
                 </span>
-                <span className="text-xs text-zinc-400">
+                <span className="text-xs text-zinc-600">
                   {m.court?.name} · M{m.match_number}
                 </span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <span className="font-medium flex-1 truncate">{playerLabel(m.player1)}</span>
-                <span className="text-xs text-zinc-400">vs</span>
+                <span className="text-xs text-zinc-600">vs</span>
                 <span className="font-medium flex-1 truncate text-right">{playerLabel(m.player2)}</span>
               </div>
-              <div className="text-xs text-zinc-400 mt-1">{m.draw} {m.round}</div>
+              <div className="text-xs text-zinc-600 mt-1">{m.draw} {m.round}</div>
             </div>
           ))}
       </div>
@@ -74,13 +74,13 @@ export default function ScheduleGrid({
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr>
-              <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-400 border-b border-zinc-200 w-20">
+              <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600 border-b border-zinc-200 w-20">
                 Time
               </th>
               {courts.map((c) => (
                 <th
                   key={c.id}
-                  className="text-left px-3 py-2 text-xs font-semibold text-zinc-400 border-b border-zinc-200"
+                  className="text-left px-3 py-2 text-xs font-semibold text-zinc-600 border-b border-zinc-200"
                 >
                   {c.name}
                 </th>
@@ -103,13 +103,13 @@ export default function ScheduleGrid({
                     <td key={court.id} className="px-3 py-2">
                       {match ? (
                         <div className="bg-white border border-zinc-200 rounded-lg p-2">
-                          <div className="text-xs text-zinc-400 mb-1">
+                          <div className="text-xs text-zinc-600 mb-1">
                             M{match.match_number} · {match.draw} {match.round}
                           </div>
                           <div className="text-sm font-medium">
                             {playerLabel(match.player1)}
                           </div>
-                          <div className="text-xs text-zinc-400">vs</div>
+                          <div className="text-xs text-zinc-600">vs</div>
                           <div className="text-sm font-medium">
                             {playerLabel(match.player2)}
                           </div>

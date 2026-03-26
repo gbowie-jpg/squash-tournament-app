@@ -153,7 +153,7 @@ export default function CsvUpload({ tournamentId, onImport }: CsvUploadProps) {
     return (
       <div className="border-2 border-dashed border-zinc-300 rounded-xl p-6 text-center">
         <p className="text-sm text-zinc-500 mb-3">Upload a CSV file to bulk-add players</p>
-        <p className="text-xs text-zinc-400 mb-4">Works with ClubLocker exports, or any CSV with player names</p>
+        <p className="text-xs text-zinc-600 mb-4">Works with ClubLocker exports, or any CSV with player names</p>
         <label className="inline-block bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-800 cursor-pointer transition-colors">
           Choose CSV File
           <input
@@ -174,11 +174,11 @@ export default function CsvUpload({ tournamentId, onImport }: CsvUploadProps) {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold">Map Columns</h3>
-          <button onClick={() => { setStep('idle'); if (fileRef.current) fileRef.current.value = ''; }} className="text-xs text-zinc-400 hover:text-zinc-600">
+          <button onClick={() => { setStep('idle'); if (fileRef.current) fileRef.current.value = ''; }} className="text-xs text-zinc-600 hover:text-zinc-800">
             Cancel
           </button>
         </div>
-        <p className="text-xs text-zinc-400 mb-3">
+        <p className="text-xs text-zinc-600 mb-3">
           {rows.length} rows found. Confirm the column mapping below:
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -193,7 +193,7 @@ export default function CsvUpload({ tournamentId, onImport }: CsvUploadProps) {
                   setMapping(newMapping);
                 }}
                 className={`w-full border rounded-lg px-2 py-1.5 text-xs ${
-                  mapping[i] === 'skip' ? 'border-zinc-200 text-zinc-400' : 'border-zinc-400 text-zinc-900 font-medium'
+                  mapping[i] === 'skip' ? 'border-zinc-200 text-zinc-600' : 'border-zinc-400 text-zinc-900 font-medium'
                 }`}
               >
                 {fieldOptions.map((opt) => (
@@ -235,7 +235,7 @@ export default function CsvUpload({ tournamentId, onImport }: CsvUploadProps) {
             </tbody>
           </table>
           {previewPlayers.length > 20 && (
-            <p className="text-xs text-zinc-400 text-center py-2">...and {previewPlayers.length - 20} more</p>
+            <p className="text-xs text-zinc-600 text-center py-2">...and {previewPlayers.length - 20} more</p>
           )}
         </div>
       </div>

@@ -34,7 +34,7 @@ export default function PlayerLookup({
   }, [tournament]);
 
   if (tLoading || !tournament) {
-    return <div className="flex items-center justify-center min-h-screen text-zinc-400">Loading...</div>;
+    return <div className="flex items-center justify-center min-h-screen text-zinc-600">Loading...</div>;
   }
 
   const filtered = search
@@ -47,7 +47,7 @@ export default function PlayerLookup({
     <div className="min-h-screen bg-zinc-50">
       <header className="bg-white border-b border-zinc-200">
         <div className="max-w-3xl mx-auto px-4 py-6">
-          <Link href={`/t/${slug}`} className="text-sm text-zinc-400 hover:text-zinc-600">&larr; {tournament.name}</Link>
+          <Link href={`/t/${slug}`} className="text-sm text-zinc-600 hover:text-zinc-800">&larr; {tournament.name}</Link>
           <h1 className="text-2xl font-bold tracking-tight mt-2">Find My Matches</h1>
           <input
             type="search"
@@ -62,15 +62,15 @@ export default function PlayerLookup({
 
       <main className="max-w-3xl mx-auto px-4 py-6">
         {loading ? (
-          <p className="text-zinc-400 text-center py-12">Loading...</p>
+          <p className="text-zinc-600 text-center py-12">Loading...</p>
         ) : filtered.length === 0 ? (
-          <p className="text-zinc-400 text-center py-12">
+          <p className="text-zinc-600 text-center py-12">
             {search ? 'No players match your search.' : 'No players registered yet.'}
           </p>
         ) : (
           draws.map((draw) => (
             <div key={draw} className="mb-6">
-              <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">{draw}</h2>
+              <h2 className="text-sm font-semibold text-zinc-600 uppercase tracking-wider mb-3">{draw}</h2>
               <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
                 {filtered
                   .filter((p) => (p.draw || 'Unassigned') === draw)
@@ -90,7 +90,7 @@ export default function PlayerLookup({
                         )}
                         <div>
                           <p className="text-sm font-medium">{p.name}</p>
-                          {p.club && <p className="text-xs text-zinc-400">{p.club}</p>}
+                          {p.club && <p className="text-xs text-zinc-600">{p.club}</p>}
                         </div>
                       </div>
                       <span className="text-zinc-300 text-sm">&rsaquo;</span>

@@ -71,7 +71,7 @@ export default function TournamentSetup() {
       <header className="bg-white border-b border-zinc-200">
         <div className="max-w-4xl mx-auto px-4 py-6 flex items-center justify-between">
           <div>
-            <Link href="/admin" className="text-sm text-zinc-400 hover:text-zinc-600">&larr; Dashboard</Link>
+            <Link href="/admin" className="text-sm text-zinc-600 hover:text-zinc-800">&larr; Dashboard</Link>
             <h1 className="text-2xl font-bold tracking-tight mt-1">Tournament Setup</h1>
           </div>
           <div className="flex items-center gap-3">
@@ -91,7 +91,7 @@ export default function TournamentSetup() {
             </button>
             <button
               onClick={signOut}
-              className="text-zinc-400 hover:text-zinc-600 text-sm transition-colors"
+              className="text-zinc-600 hover:text-zinc-800 text-sm transition-colors"
             >
               Sign Out
             </button>
@@ -182,9 +182,9 @@ export default function TournamentSetup() {
         )}
 
         {loading ? (
-          <p className="text-zinc-400 text-center py-12">Loading...</p>
+          <p className="text-zinc-600 text-center py-12">Loading...</p>
         ) : tournaments.length === 0 ? (
-          <p className="text-zinc-400 text-center py-12">No tournaments yet. Create one to get started.</p>
+          <p className="text-zinc-600 text-center py-12">No tournaments yet. Create one to get started.</p>
         ) : (
           <div className="space-y-3">
             {tournaments.map((t) => (
@@ -192,7 +192,7 @@ export default function TournamentSetup() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h3 className="font-semibold text-lg">{t.name}</h3>
-                    <p className="text-zinc-400 text-sm">
+                    <p className="text-zinc-600 text-sm">
                       {t.venue} &middot; {new Date(t.start_date + 'T00:00:00').toLocaleDateString()}
                       {t.end_date && ` – ${new Date(t.end_date + 'T00:00:00').toLocaleDateString()}`}
                     </p>

@@ -12,8 +12,8 @@ export default function AdminDashboard({
   const { slug } = use(params);
   const { tournament, loading } = useTournament(slug);
 
-  if (loading) return <div className="flex items-center justify-center min-h-screen text-zinc-400">Loading...</div>;
-  if (!tournament) return <div className="flex items-center justify-center min-h-screen text-zinc-400">Tournament not found</div>;
+  if (loading) return <div className="flex items-center justify-center min-h-screen text-zinc-600">Loading...</div>;
+  if (!tournament) return <div className="flex items-center justify-center min-h-screen text-zinc-600">Tournament not found</div>;
 
   const links = [
     { href: `/t/${slug}/admin/draws`, label: 'Draws & Scheduling', desc: 'Generate brackets, auto-schedule matches', emoji: '🏆' },
@@ -28,7 +28,7 @@ export default function AdminDashboard({
     <div className="min-h-screen bg-zinc-50">
       <header className="bg-white border-b border-zinc-200">
         <div className="max-w-3xl mx-auto px-4 py-6">
-          <Link href="/admin/tournaments" className="text-sm text-zinc-400 hover:text-zinc-600">&larr; All Tournaments</Link>
+          <Link href="/admin/tournaments" className="text-sm text-zinc-600 hover:text-zinc-800">&larr; All Tournaments</Link>
           <h1 className="text-2xl font-bold tracking-tight mt-2">{tournament.name}</h1>
           <p className="text-zinc-500 text-sm">Admin Dashboard</p>
         </div>
@@ -44,7 +44,7 @@ export default function AdminDashboard({
             >
               <span className="text-2xl">{link.emoji}</span>
               <h3 className="font-semibold mt-2">{link.label}</h3>
-              <p className="text-sm text-zinc-400 mt-1">{link.desc}</p>
+              <p className="text-sm text-zinc-600 mt-1">{link.desc}</p>
             </Link>
           ))}
         </div>

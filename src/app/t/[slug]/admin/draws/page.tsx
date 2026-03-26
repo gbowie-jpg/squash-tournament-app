@@ -191,14 +191,14 @@ export default function DrawsPage({
     }
   };
 
-  if (tournamentLoading) return <div className="flex items-center justify-center min-h-screen text-zinc-400">Loading...</div>;
-  if (!tournament) return <div className="flex items-center justify-center min-h-screen text-zinc-400">Not found</div>;
+  if (tournamentLoading) return <div className="flex items-center justify-center min-h-screen text-zinc-600">Loading...</div>;
+  if (!tournament) return <div className="flex items-center justify-center min-h-screen text-zinc-600">Not found</div>;
 
   return (
     <div className="min-h-screen bg-zinc-50">
       <header className="bg-white border-b border-zinc-200">
         <div className="max-w-5xl mx-auto px-4 py-6">
-          <Link href={`/t/${slug}/admin`} className="text-sm text-zinc-400 hover:text-zinc-600">
+          <Link href={`/t/${slug}/admin`} className="text-sm text-zinc-600 hover:text-zinc-800">
             &larr; Admin
           </Link>
           <h1 className="text-2xl font-bold tracking-tight mt-1">Draws & Scheduling</h1>
@@ -207,11 +207,11 @@ export default function DrawsPage({
 
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-8">
         {loading ? (
-          <p className="text-zinc-400 text-center py-12">Loading...</p>
+          <p className="text-zinc-600 text-center py-12">Loading...</p>
         ) : draws.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-zinc-400 mb-2">No draws found.</p>
-            <p className="text-sm text-zinc-400">
+            <p className="text-zinc-600 mb-2">No draws found.</p>
+            <p className="text-sm text-zinc-600">
               Add players with a draw assigned first at{' '}
               <Link href={`/t/${slug}/admin/players`} className="text-zinc-900 underline">
                 Player Management
@@ -284,7 +284,7 @@ export default function DrawsPage({
                       </label>
                     </div>
 
-                    <div className="text-xs text-zinc-400">
+                    <div className="text-xs text-zinc-600">
                       {players.length} players · {currentDrawInfo?.seededCount || 0} seeded
                     </div>
                   </div>
@@ -300,7 +300,7 @@ export default function DrawsPage({
                       )}
                     </h2>
                     {players.length < 2 ? (
-                      <p className="text-sm text-zinc-400">Need at least 2 players to preview.</p>
+                      <p className="text-sm text-zinc-600">Need at least 2 players to preview.</p>
                     ) : (
                       <DrawPreview matches={preview} format={format} />
                     )}
@@ -330,7 +330,7 @@ export default function DrawsPage({
                   <div className="bg-white border border-zinc-200 rounded-xl p-6 space-y-4">
                     <h2 className="font-semibold">Scheduling</h2>
                     {matches.length === 0 ? (
-                      <p className="text-sm text-zinc-400">
+                      <p className="text-sm text-zinc-600">
                         Generate matches first, then schedule them to courts and times.
                       </p>
                     ) : (
@@ -423,14 +423,14 @@ export default function DrawsPage({
                               key={m.id}
                               className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm ${
                                 m.status === 'walkover'
-                                  ? 'bg-zinc-50 text-zinc-400'
+                                  ? 'bg-zinc-50 text-zinc-600'
                                   : m.status === 'completed'
                                     ? 'bg-green-50 text-green-700'
                                     : 'bg-white'
                               }`}
                             >
-                              <span className="text-xs text-zinc-400 w-8">M{m.match_number}</span>
-                              <span className="text-xs text-zinc-400 w-8">{m.round}</span>
+                              <span className="text-xs text-zinc-600 w-8">M{m.match_number}</span>
+                              <span className="text-xs text-zinc-600 w-8">{m.round}</span>
                               <span className="flex-1">
                                 {m.status === 'walkover' ? (
                                   <span>{m.notes}</span>
@@ -438,15 +438,15 @@ export default function DrawsPage({
                                   <span className="text-amber-600">{m.notes}</span>
                                 ) : (
                                   <span>
-                                    {p1} <span className="text-zinc-400">vs</span> {p2}
+                                    {p1} <span className="text-zinc-600">vs</span> {p2}
                                   </span>
                                 )}
                               </span>
                               {m.court && (
-                                <span className="text-xs text-zinc-400">{m.court.name}</span>
+                                <span className="text-xs text-zinc-600">{m.court.name}</span>
                               )}
                               {m.scheduled_time && (
-                                <span className="text-xs text-zinc-400">
+                                <span className="text-xs text-zinc-600">
                                   {new Date(m.scheduled_time).toLocaleTimeString([], {
                                     hour: 'numeric',
                                     minute: '2-digit',
