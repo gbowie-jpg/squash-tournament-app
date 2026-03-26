@@ -13,7 +13,7 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
+          cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value),
           );
           supabaseResponse = NextResponse.next({ request });
@@ -32,12 +32,18 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // Public tournament pages that don't need auth
+  const isVolunteerSignup = /^\/t\/[^/]+\/volunteer$/.test(pathname);
+
   // Protect admin routes: /admin/* and /t/*/admin/*
   const isAdminRoute =
     pathname.startsWith('/admin') ||
     /^\/t\/[^/]+\/admin/.test(pathname);
 
-  if (isAdminRoute && !user) {
+  // Protect tournament pages: /t/[slug]/* (except volunteer signup)
+  const isTournamentRoute = /^\/t\/[^/]+/.test(pathname);
+
+  if (!isVolunteerSignup && (isAdminRoute || isTournamentRoute) && !user) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
@@ -45,7 +51,8 @@ export async function middleware(request: NextRequest) {
 
   // Don't let authenticated users see login page
   if (pathname === '/login' && user) {
-    return NextResponse.redirect(new URL('/admin', request.url));
+    const redirect = request.nextUrl.searchParams.get('redirect');
+    return NextResponse.redirect(new URL(redirect || '/admin', request.url));
   }
 
   return supabaseResponse;
@@ -54,7 +61,8 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     '/admin/:path*',
-    '/t/:slug/admin/:path*',
+    '/t/:slug/:path*',
+    '/t/:slug',
     '/login',
   ],
 };

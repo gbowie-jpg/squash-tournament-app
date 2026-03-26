@@ -1,6 +1,9 @@
 'use client';
 
 import { useState, use } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 import { useTournament } from '@/lib/useTournament';
 
 export default function VolunteerSignup({
@@ -9,11 +12,13 @@ export default function VolunteerSignup({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = use(params);
+  const router = useRouter();
   const { tournament, loading } = useTournament(slug);
 
   const [form, setForm] = useState({
     name: '',
     email: '',
+    password: '',
     phone: '',
     role: 'referee',
     notes: '',
@@ -29,6 +34,7 @@ export default function VolunteerSignup({
     setError(null);
 
     try {
+      // Create volunteer record + auth account on the server
       const res = await fetch(`/api/tournaments/${tournament.id}/volunteers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -39,7 +45,26 @@ export default function VolunteerSignup({
         setError(data.error || 'Failed to sign up');
         return;
       }
+
+      // Sign in with the new account
+      const supabase = createClient();
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: form.email,
+        password: form.password,
+      });
+
+      if (signInError) {
+        // Account created but sign-in failed — still show success
+        setSubmitted(true);
+        return;
+      }
+
+      // Redirect to tournament hub
       setSubmitted(true);
+      setTimeout(() => {
+        router.push(`/t/${slug}`);
+        router.refresh();
+      }, 2000);
     } finally {
       setSubmitting(false);
     }
@@ -52,9 +77,9 @@ export default function VolunteerSignup({
     <div className="min-h-screen bg-zinc-50">
       <header className="bg-white border-b border-zinc-200">
         <div className="max-w-2xl mx-auto px-4 py-6">
-          <h1 className="text-2xl font-bold tracking-tight">Volunteer / Referee Signup</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{tournament.name}</h1>
           <p className="text-sm text-zinc-400 mt-1">
-            Help make {tournament.name} a great event
+            Volunteer / Referee Signup
           </p>
         </div>
       </header>
@@ -63,11 +88,17 @@ export default function VolunteerSignup({
         {submitted ? (
           <div className="bg-white border border-zinc-200 rounded-xl p-8 text-center">
             <div className="text-4xl mb-4">🎉</div>
-            <h2 className="text-xl font-bold">Thanks for signing up!</h2>
+            <h2 className="text-xl font-bold">You&apos;re signed up!</h2>
             <p className="text-zinc-400 mt-2">
-              The tournament organizers will be in touch if needed. You may be assigned to referee specific matches.
+              Your account has been created and you&apos;re now signed in.
+              Redirecting to the tournament&hellip;
             </p>
-            <p className="mt-6 text-sm text-zinc-400">You can close this page now.</p>
+            <Link
+              href={`/t/${slug}`}
+              className="inline-block mt-6 bg-zinc-900 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-zinc-800"
+            >
+              Go to Tournament
+            </Link>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="bg-white border border-zinc-200 rounded-xl p-6 space-y-5">
@@ -90,9 +121,10 @@ export default function VolunteerSignup({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">Email</label>
+                <label className="block text-sm font-medium text-zinc-700 mb-1">Email *</label>
                 <input
                   type="email"
+                  required
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   placeholder="you@example.com"
@@ -100,15 +132,28 @@ export default function VolunteerSignup({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">Phone</label>
+                <label className="block text-sm font-medium text-zinc-700 mb-1">Password *</label>
                 <input
-                  type="tel"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  placeholder="(555) 123-4567"
+                  type="password"
+                  required
+                  minLength={6}
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  placeholder="Min 6 characters"
                   className="w-full border border-zinc-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 mb-1">Phone</label>
+              <input
+                type="tel"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                placeholder="(555) 123-4567"
+                className="w-full border border-zinc-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+              />
             </div>
 
             <div>
@@ -159,8 +204,15 @@ export default function VolunteerSignup({
               disabled={submitting}
               className="w-full bg-zinc-900 text-white px-6 py-3 rounded-lg text-sm font-medium hover:bg-zinc-800 disabled:opacity-50 transition-colors"
             >
-              {submitting ? 'Signing up...' : 'Sign Up'}
+              {submitting ? 'Creating account...' : 'Sign Up & Create Account'}
             </button>
+
+            <p className="text-center text-sm text-zinc-400">
+              Already have an account?{' '}
+              <Link href={`/login?redirect=/t/${slug}`} className="text-zinc-900 underline">
+                Sign in
+              </Link>
+            </p>
           </form>
         )}
       </main>
