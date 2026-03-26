@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, use } from 'react';
-import Link from 'next/link';
 import { useTournament } from '@/lib/useTournament';
 
 export default function VolunteerSignup({
@@ -53,10 +52,7 @@ export default function VolunteerSignup({
     <div className="min-h-screen bg-zinc-50">
       <header className="bg-white border-b border-zinc-200">
         <div className="max-w-2xl mx-auto px-4 py-6">
-          <Link href={`/t/${slug}`} className="text-sm text-zinc-400 hover:text-zinc-600">
-            &larr; {tournament.name}
-          </Link>
-          <h1 className="text-2xl font-bold tracking-tight mt-1">Volunteer / Referee Signup</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Volunteer / Referee Signup</h1>
           <p className="text-sm text-zinc-400 mt-1">
             Help make {tournament.name} a great event
           </p>
@@ -71,12 +67,7 @@ export default function VolunteerSignup({
             <p className="text-zinc-400 mt-2">
               The tournament organizers will be in touch if needed. You may be assigned to referee specific matches.
             </p>
-            <Link
-              href={`/t/${slug}`}
-              className="inline-block mt-6 bg-zinc-900 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-zinc-800"
-            >
-              Back to Tournament
-            </Link>
+            <p className="mt-6 text-sm text-zinc-400">You can close this page now.</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="bg-white border border-zinc-200 rounded-xl p-6 space-y-5">
