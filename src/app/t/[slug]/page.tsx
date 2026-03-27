@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import type { Tournament } from '@/lib/supabase/types';
+import SiteNav from '@/components/layout/SiteNav';
 
 export default async function TournamentHub({
   params,
@@ -69,12 +70,10 @@ export default async function TournamentHub({
 
   return (
     <div className="min-h-screen bg-zinc-50">
+      <SiteNav />
       <header className="bg-white border-b border-zinc-200">
         <div className="max-w-2xl mx-auto px-4 py-6">
-          <Link href="/" className="text-sm text-zinc-600 hover:text-zinc-800 transition-colors">
-            &larr; All Tournaments
-          </Link>
-          <h1 className="text-2xl font-bold tracking-tight mt-2">{tournament.name}</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{tournament.name}</h1>
           {tournament.venue && (
             <p className="text-zinc-600 text-sm mt-1">{tournament.venue}</p>
           )}
