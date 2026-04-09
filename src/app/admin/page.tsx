@@ -40,6 +40,13 @@ export default function AdminDashboard() {
       ready: false,
     },
     {
+      href: '/admin/email',
+      label: 'Email Marketing',
+      desc: 'Send newsletters and updates to members and the community',
+      emoji: '📧',
+      ready: true,
+    },
+    {
       href: '#',
       label: 'Misc',
       desc: 'Settings, integrations, and other tools',
