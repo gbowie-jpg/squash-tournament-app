@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -25,19 +25,21 @@ function LoginForm() {
     try {
       if (mode === 'signin') {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) {
-          setError(error.message);
-          return;
-        }
+        if (error) { setError(error.message); return; }
         router.push(redirectTo);
         router.refresh();
-      } else {
+      } else if (mode === 'signup') {
         const { error } = await supabase.auth.signUp({ email, password });
-        if (error) {
-          setError(error.message);
-          return;
-        }
+        if (error) { setError(error.message); return; }
         setMessage('Check your email for a confirmation link, then sign in.');
+        setMode('signin');
+      } else if (mode === 'forgot') {
+        const origin = window.location.origin;
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${origin}/reset-password`,
+        });
+        if (error) { setError(error.message); return; }
+        setMessage('Password reset email sent — check your inbox.');
         setMode('signin');
       }
     } finally {
@@ -55,7 +57,7 @@ function LoginForm() {
 
         <form onSubmit={handleSubmit} className="bg-white border border-zinc-200 rounded-xl p-6 space-y-4">
           <h2 className="font-semibold text-lg">
-            {mode === 'signin' ? 'Sign In' : 'Create Account'}
+            {mode === 'signin' ? 'Sign In' : mode === 'signup' ? 'Create Account' : 'Reset Password'}
           </h2>
 
           {error && (
@@ -81,40 +83,59 @@ function LoginForm() {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 mb-1">Password</label>
-            <input
-              type="password"
-              required
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
-            />
-          </div>
+          {mode !== 'forgot' && (
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 mb-1">Password</label>
+              <input
+                type="password"
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+              />
+            </div>
+          )}
+
+          {mode === 'signin' && (
+            <div className="text-right -mt-2">
+              <button
+                type="button"
+                onClick={() => { setMode('forgot'); setError(null); setMessage(null); }}
+                className="text-xs text-zinc-500 hover:text-zinc-700 underline"
+              >
+                Forgot password?
+              </button>
+            </div>
+          )}
 
           <button
             type="submit"
             disabled={loading}
             className="w-full bg-zinc-900 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-zinc-800 disabled:opacity-50 transition-colors"
           >
-            {loading ? 'Loading...' : mode === 'signin' ? 'Sign In' : 'Create Account'}
+            {loading
+              ? 'Loading...'
+              : mode === 'signin'
+              ? 'Sign In'
+              : mode === 'signup'
+              ? 'Create Account'
+              : 'Send Reset Email'}
           </button>
 
           <p className="text-center text-sm text-zinc-600">
             {mode === 'signin' ? (
               <>
                 Need an account?{' '}
-                <button type="button" onClick={() => setMode('signup')} className="text-zinc-900 underline">
+                <button type="button" onClick={() => { setMode('signup'); setError(null); }} className="text-zinc-900 underline">
                   Sign up
                 </button>
               </>
             ) : (
               <>
-                Already have an account?{' '}
-                <button type="button" onClick={() => setMode('signin')} className="text-zinc-900 underline">
-                  Sign in
+                <button type="button" onClick={() => { setMode('signin'); setError(null); }} className="text-zinc-900 underline">
+                  Back to sign in
                 </button>
               </>
             )}
