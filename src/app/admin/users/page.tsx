@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/useAuth';
+import { startMasquerade } from '@/components/MasqueradeBanner';
 
 type UserProfile = {
   id: string;
@@ -36,6 +37,9 @@ export default function UserManagement() {
   const [showAddOrg, setShowAddOrg] = useState<string | null>(null); // userId
   const [addOrgTournament, setAddOrgTournament] = useState('');
   const [addOrgRole, setAddOrgRole] = useState<'admin' | 'scorer'>('admin');
+
+  // Masquerade state
+  const [masquerading, setMasquerading] = useState<string | null>(null); // userId being masqueraded
 
   useEffect(() => {
     Promise.all([
@@ -125,6 +129,30 @@ export default function UserManagement() {
     }
   };
 
+  const handleMasquerade = async (targetUserId: string) => {
+    setMasquerading(targetUserId);
+    try {
+      const res = await fetch('/api/admin/masquerade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: targetUserId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to start masquerade');
+        return;
+      }
+      // Store masquerade info BEFORE navigating so the banner shows after redirect
+      startMasquerade(data.name, data.email);
+      // Navigate to the magic link — Supabase will sign in as the target user
+      window.location.href = data.magicLink;
+    } catch {
+      alert('Network error');
+    } finally {
+      setMasquerading(null);
+    }
+  };
+
   const roleBadge = (role: string) => {
     const colors: Record<string, string> = {
       superadmin: 'bg-red-100 text-red-700',
@@ -211,6 +239,16 @@ export default function UserManagement() {
                       <option value="admin">Admin</option>
                       <option value="superadmin">Superadmin</option>
                     </select>
+                    {u.id !== user?.id && (
+                      <button
+                        onClick={() => handleMasquerade(u.id)}
+                        disabled={masquerading === u.id}
+                        title="Sign in as this user to see their view"
+                        className="bg-amber-100 text-amber-800 hover:bg-amber-200 disabled:opacity-50 px-2 py-1 rounded-lg text-xs font-medium transition-colors"
+                      >
+                        {masquerading === u.id ? '...' : '🎭'}
+                      </button>
+                    )}
                   </div>
                 </div>
 

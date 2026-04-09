@@ -294,14 +294,16 @@ export default async function TournamentLanding({
                 {tournament.address && (
                   <p className="text-sm text-zinc-500 mt-1">{tournament.address}</p>
                 )}
-                {tournament.address && (
+                {(tournament.address || tournament.venue) && (
                   <a
-                    href={`https://maps.google.com/?q=${encodeURIComponent(tournament.address)}`}
+                    href={`https://maps.google.com/?q=${encodeURIComponent(
+                      [tournament.venue, tournament.address].filter(Boolean).join(', ')
+                    )}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-block mt-2 text-xs text-blue-600 hover:underline"
+                    className="inline-flex items-center gap-1 mt-3 text-xs text-blue-600 hover:underline font-medium"
                   >
-                    View on Google Maps →
+                    📍 Open in Google Maps
                   </a>
                 )}
               </div>
