@@ -59,6 +59,7 @@ export default function ContentAdmin() {
 
   const activeGradient = settings.homepage_hero_gradient || 'navy';
   const activeTextColor = settings.homepage_hero_text_color || 'white';
+  const activeOverlay = settings.homepage_hero_overlay !== 'false';
   const textColors = getTextColors(activeTextColor);
 
   return (
@@ -102,7 +103,7 @@ export default function ContentAdmin() {
           {/* Live preview */}
           <div
             className="relative h-44 flex items-end overflow-hidden"
-            style={{ background: heroBackground(settings.homepage_hero_image, activeGradient) }}
+            style={{ background: heroBackground(settings.homepage_hero_image, activeGradient, activeOverlay) }}
           >
             <div className="px-5 pb-4">
               <p className="text-xs font-medium uppercase tracking-wider mb-1" style={{ color: textColors.accent }}>
@@ -205,6 +206,33 @@ export default function ContentAdmin() {
                 Upload to Supabase Storage → tournament-images bucket, paste public URL here.
               </p>
             </div>
+
+            {/* Overlay toggle — only shown when image is set */}
+            {settings.homepage_hero_image && (
+              <div className="flex items-center justify-between py-3 border-t border-zinc-100">
+                <div>
+                  <p className="text-sm font-medium text-zinc-700">Dark overlay over image</p>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    {activeOverlay
+                      ? 'On — dark tint applied so text stays readable'
+                      : 'Off — image shown as-is'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => set('homepage_hero_overlay', activeOverlay ? 'false' : 'true')}
+                  className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
+                    activeOverlay ? 'bg-zinc-900' : 'bg-zinc-200'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                      activeOverlay ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
 
             {/* Title */}
             <div>

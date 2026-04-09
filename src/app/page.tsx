@@ -27,6 +27,7 @@ export default async function Home() {
 
   const heroImage = s.homepage_hero_image;
   const heroGradient = s.homepage_hero_gradient;
+  const heroOverlay = s.homepage_hero_overlay !== 'false';
   const textColors = getTextColors(s.homepage_hero_text_color);
   const heroTitle = s.homepage_hero_title || 'Unleash your inner athlete and play the ultimate game.';
   const heroSubtitle = s.homepage_hero_subtitle || 'Your home for competitive squash in the Pacific Northwest. Over 70 years of fostering the squash community in Seattle.';
@@ -42,7 +43,7 @@ export default async function Home() {
       {/* Hero */}
       <section
         className="relative text-white"
-        style={{ background: heroBackground(heroImage, heroGradient) }}
+        style={{ background: heroBackground(heroImage, heroGradient, heroOverlay) }}
       >
         <div className="max-w-6xl mx-auto px-4 py-20 md:py-28">
           <div className="max-w-2xl">

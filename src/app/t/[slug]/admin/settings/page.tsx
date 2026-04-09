@@ -27,6 +27,7 @@ export default function TournamentSettings({
     image_url: '',
     hero_gradient: '',
     hero_text_color: '',
+    hero_overlay: 'true',
     contact_name: '',
     contact_email: '',
     contact_phone: '',
@@ -54,6 +55,7 @@ export default function TournamentSettings({
       image_url: tournament.image_url || '',
       hero_gradient: tournament.hero_gradient || '',
       hero_text_color: tournament.hero_text_color || '',
+      hero_overlay: tournament.hero_overlay ?? 'true',
       contact_name: tournament.contact_name || '',
       contact_email: tournament.contact_email || '',
       contact_phone: tournament.contact_phone || '',
@@ -149,7 +151,7 @@ export default function TournamentSettings({
               return (
                 <div
                   className="h-36 flex items-end overflow-hidden"
-                  style={{ background: heroBackground(form.image_url || null, activeGradient) }}
+                  style={{ background: heroBackground(form.image_url || null, activeGradient, form.hero_overlay !== 'false') }}
                 >
                   <div className="px-5 pb-4">
                     <p className="text-xs font-semibold uppercase tracking-wider mb-0.5" style={{ color: textColors.accent }}>
@@ -248,6 +250,33 @@ export default function TournamentSettings({
                   </div>
                 )}
               </div>
+
+              {/* Overlay toggle — only relevant when an image is set */}
+              {form.image_url && (
+                <div className="flex items-center justify-between py-3 border-t border-zinc-100">
+                  <div>
+                    <p className="text-sm font-medium text-zinc-700">Dark overlay over image</p>
+                    <p className="text-xs text-zinc-400 mt-0.5">
+                      {form.hero_overlay !== 'false'
+                        ? 'On — dark tint applied so text stays readable'
+                        : 'Off — image shown as-is (use dark text colors or ensure image has contrast)'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => set('hero_overlay', form.hero_overlay === 'false' ? 'true' : 'false')}
+                    className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
+                      form.hero_overlay !== 'false' ? 'bg-zinc-900' : 'bg-zinc-200'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                        form.hero_overlay !== 'false' ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+              )}
             </div>
           </section>
 

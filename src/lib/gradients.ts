@@ -131,12 +131,23 @@ export function getGradientCss(key: string | null | undefined): string {
   return preset?.css ?? GRADIENT_PRESETS[0].css;
 }
 
-/** Build the full hero background style — image with overlay, or plain gradient */
-export function heroBackground(imageUrl: string | null | undefined, gradientKey: string | null | undefined): string {
+/**
+ * Build the full hero background style.
+ * - No image → plain gradient
+ * - Image + overlay on  → dark rgba tint layered over the photo (text stays readable)
+ * - Image + overlay off → raw image, no tint
+ */
+export function heroBackground(
+  imageUrl: string | null | undefined,
+  gradientKey: string | null | undefined,
+  overlay: boolean = true,
+): string {
   const gradient = getGradientCss(gradientKey);
   if (imageUrl) {
-    // Dark overlay so text stays readable over any photo
-    return `linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.72) 100%), url(${imageUrl}) center/cover no-repeat`;
+    if (overlay) {
+      return `linear-gradient(to bottom, rgba(0,0,0,0.40) 0%, rgba(0,0,0,0.70) 100%), url(${imageUrl}) center/cover no-repeat`;
+    }
+    return `url(${imageUrl}) center/cover no-repeat`;
   }
   return gradient;
 }

@@ -16,6 +16,7 @@ export type Database = {
           image_url: string | null;
           hero_gradient: string | null;
           hero_text_color: string | null;
+          hero_overlay: string | null;
           category: string | null;
           location_city: string | null;
           contact_name: string | null;
@@ -46,6 +47,7 @@ export type Database = {
           image_url?: string | null;
           hero_gradient?: string | null;
           hero_text_color?: string | null;
+          hero_overlay?: string | null;
           category?: string | null;
           location_city?: string | null;
           contact_name?: string | null;
