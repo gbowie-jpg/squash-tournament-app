@@ -190,3 +190,37 @@ export type MatchWithDetails = Match & {
   court: Court | null;
   referee: { id: string; name: string } | null;
 };
+
+// Email marketing
+export type EmailCampaign = {
+  id: string;
+  tournament_id: string;
+  subject: string;
+  body: string;
+  status: 'draft' | 'sending' | 'sent' | 'failed';
+  sent_at: string | null;
+  sent_count: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type EmailRecipient = {
+  id: string;
+  tournament_id: string;
+  name: string;
+  email: string;
+  type: 'invitee' | 'player' | 'volunteer' | 'other';
+  subscribed: boolean;
+  created_at: string;
+};
+
+export type EmailSend = {
+  id: string;
+  campaign_id: string;
+  recipient_id: string;
+  status: 'pending' | 'sent' | 'failed';
+  error: string | null;
+  sent_at: string | null;
+  created_at: string;
+};
