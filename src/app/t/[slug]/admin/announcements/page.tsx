@@ -16,6 +16,8 @@ export default function AnnouncementComposer({
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [priority, setPriority] = useState<'normal' | 'urgent'>('normal');
+  const [sendPush, setSendPush] = useState(false);
+  const [pushStatus, setPushStatus] = useState<string | null>(null);
 
   useEffect(() => {
     if (!tournament) return;
@@ -35,6 +37,28 @@ export default function AnnouncementComposer({
     if (res.ok) {
       const announcement = await res.json();
       setAnnouncements((prev) => [announcement, ...prev]);
+
+      if (sendPush) {
+        setPushStatus('Sending push...');
+        const pushRes = await fetch('/api/push/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: tournament.name,
+            body: message.trim(),
+            url: `/t/${slug}`,
+            urgent: priority === 'urgent',
+          }),
+        });
+        if (pushRes.ok) {
+          const { sent } = await pushRes.json();
+          setPushStatus(`Push sent to ${sent} subscriber${sent !== 1 ? 's' : ''}`);
+        } else {
+          setPushStatus('Push failed — check auth');
+        }
+        setTimeout(() => setPushStatus(null), 4000);
+      }
+
       setMessage('');
       setPriority('normal');
     }
@@ -91,10 +115,22 @@ export default function AnnouncementComposer({
               />
               <span className="text-sm text-red-600 font-medium">Urgent</span>
             </label>
-            <button type="submit" className="bg-zinc-900 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-zinc-800 ml-auto">
+            <label className="flex items-center gap-2 cursor-pointer ml-auto">
+              <input
+                type="checkbox"
+                checked={sendPush}
+                onChange={(e) => setSendPush(e.target.checked)}
+                className="accent-blue-600 w-4 h-4"
+              />
+              <span className="text-sm text-blue-700 font-medium">Send push notification</span>
+            </label>
+            <button type="submit" className="bg-zinc-900 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-zinc-800">
               Publish
             </button>
           </div>
+          {pushStatus && (
+            <p className="text-sm text-blue-700 font-medium">{pushStatus}</p>
+          )}
         </form>
 
         {loading ? (
