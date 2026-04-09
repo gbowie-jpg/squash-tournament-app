@@ -3,7 +3,7 @@ import SiteNav from '@/components/layout/SiteNav';
 import SiteFooter from '@/components/layout/SiteFooter';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import type { Tournament } from '@/lib/supabase/types';
-import { heroBackground } from '@/lib/gradients';
+import { heroBackground, getTextColors } from '@/lib/gradients';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +27,7 @@ export default async function Home() {
 
   const heroImage = s.homepage_hero_image;
   const heroGradient = s.homepage_hero_gradient;
+  const textColors = getTextColors(s.homepage_hero_text_color);
   const heroTitle = s.homepage_hero_title || 'Unleash your inner athlete and play the ultimate game.';
   const heroSubtitle = s.homepage_hero_subtitle || 'Your home for competitive squash in the Pacific Northwest. Over 70 years of fostering the squash community in Seattle.';
   const cta1Label = s.homepage_cta1_label || 'View Tournaments';
@@ -45,13 +46,13 @@ export default async function Home() {
       >
         <div className="max-w-6xl mx-auto px-4 py-20 md:py-28">
           <div className="max-w-2xl">
-            <p className="text-blue-300 font-medium text-sm uppercase tracking-wider mb-3">
+            <p className="font-medium text-sm uppercase tracking-wider mb-3" style={{ color: textColors.accent }}>
               Seattle Squash Racquets Association
             </p>
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight text-white">
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight" style={{ color: textColors.heading }}>
               {heroTitle}
             </h1>
-            <p className="text-blue-100 text-lg mt-4 leading-relaxed">
+            <p className="text-lg mt-4 leading-relaxed" style={{ color: textColors.body }}>
               {heroSubtitle}
             </p>
             <div className="flex flex-wrap gap-3 mt-8">

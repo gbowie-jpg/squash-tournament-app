@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import type { Tournament } from '@/lib/supabase/types';
-import { GRADIENT_PRESETS, heroBackground } from '@/lib/gradients';
+import { GRADIENT_PRESETS, TEXT_COLOR_PRESETS, heroBackground, getTextColors } from '@/lib/gradients';
 
 type Settings = Record<string, string>;
 
@@ -58,6 +58,8 @@ export default function ContentAdmin() {
   const pastTournaments = tournaments.filter((t) => t.status === 'completed');
 
   const activeGradient = settings.homepage_hero_gradient || 'navy';
+  const activeTextColor = settings.homepage_hero_text_color || 'white';
+  const textColors = getTextColors(activeTextColor);
 
   return (
     <div className="min-h-screen bg-zinc-50">
@@ -102,12 +104,15 @@ export default function ContentAdmin() {
             className="relative h-44 flex items-end overflow-hidden"
             style={{ background: heroBackground(settings.homepage_hero_image, activeGradient) }}
           >
-            <div className="px-5 pb-4 text-white">
-              <p className="text-xs text-blue-200 font-medium uppercase tracking-wider mb-1">
+            <div className="px-5 pb-4">
+              <p className="text-xs font-medium uppercase tracking-wider mb-1" style={{ color: textColors.accent }}>
                 Seattle Squash Racquets Association
               </p>
-              <p className="text-sm font-bold leading-snug line-clamp-2">
+              <p className="text-sm font-bold leading-snug line-clamp-2" style={{ color: textColors.heading }}>
                 {settings.homepage_hero_title || 'Your headline here'}
+              </p>
+              <p className="text-xs mt-1 line-clamp-1 opacity-90" style={{ color: textColors.body }}>
+                {settings.homepage_hero_subtitle || 'Subheading text preview'}
               </p>
             </div>
           </div>
@@ -143,6 +148,32 @@ export default function ContentAdmin() {
               </div>
               <div className="mt-1.5 text-xs text-zinc-500">
                 {GRADIENT_PRESETS.find((g) => g.key === activeGradient)?.label ?? 'Navy Blue'} selected
+              </div>
+            </div>
+
+            {/* Text color picker */}
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 mb-2">Text Color</label>
+              <div className="flex flex-wrap gap-2">
+                {TEXT_COLOR_PRESETS.map((t) => (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() => set('homepage_hero_text_color', t.key)}
+                    title={t.label}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                      activeTextColor === t.key
+                        ? 'border-zinc-900 bg-zinc-900 text-white scale-105 shadow'
+                        : 'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400'
+                    }`}
+                  >
+                    <span
+                      className="w-3 h-3 rounded-full border border-black/10 shrink-0"
+                      style={{ background: t.swatch }}
+                    />
+                    {t.label}
+                  </button>
+                ))}
               </div>
             </div>
 

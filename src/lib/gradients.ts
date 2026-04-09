@@ -96,6 +96,36 @@ export const GRADIENT_PRESETS: GradientPreset[] = [
 
 export const DEFAULT_GRADIENT_KEY = 'navy';
 
+// ── Text color presets ──────────────────────────────────────────────────────
+
+export type TextColorPreset = {
+  key: string;
+  label: string;
+  swatch: string;   // color of the swatch pill
+  heading: string;  // h1 / large headline
+  body: string;     // subtitle / paragraph
+  accent: string;   // small eyebrow label
+};
+
+export const TEXT_COLOR_PRESETS: TextColorPreset[] = [
+  { key: 'white',   label: 'White',       swatch: '#ffffff', heading: '#ffffff',   body: 'rgba(255,255,255,0.85)', accent: 'rgba(255,255,255,0.6)' },
+  { key: 'cream',   label: 'Cream',       swatch: '#fef9c3', heading: '#fef9c3',   body: '#fef3c7',               accent: '#fde68a' },
+  { key: 'yellow',  label: 'Yellow',      swatch: '#fef08a', heading: '#fef08a',   body: '#fefce8',               accent: '#fde047' },
+  { key: 'amber',   label: 'Amber',       swatch: '#fbbf24', heading: '#fde68a',   body: '#fef3c7',               accent: '#fbbf24' },
+  { key: 'orange',  label: 'Orange',      swatch: '#fb923c', heading: '#fed7aa',   body: '#ffedd5',               accent: '#fb923c' },
+  { key: 'lime',    label: 'Lime',        swatch: '#a3e635', heading: '#d9f99d',   body: '#ecfccb',               accent: '#a3e635' },
+  { key: 'sky',     label: 'Sky Blue',    swatch: '#7dd3fc', heading: '#bae6fd',   body: '#e0f2fe',               accent: '#7dd3fc' },
+  { key: 'teal',    label: 'Teal',        swatch: '#5eead4', heading: '#99f6e4',   body: '#ccfbf1',               accent: '#5eead4' },
+  { key: 'rose',    label: 'Rose',        swatch: '#fda4af', heading: '#fecdd3',   body: '#ffe4e6',               accent: '#fda4af' },
+  { key: 'purple',  label: 'Purple',      swatch: '#c084fc', heading: '#e9d5ff',   body: '#f3e8ff',               accent: '#c084fc' },
+];
+
+export const DEFAULT_TEXT_COLOR_KEY = 'white';
+
+export function getTextColors(key: string | null | undefined): TextColorPreset {
+  return TEXT_COLOR_PRESETS.find((t) => t.key === key) ?? TEXT_COLOR_PRESETS[0];
+}
+
 export function getGradientCss(key: string | null | undefined): string {
   const preset = GRADIENT_PRESETS.find((g) => g.key === key);
   return preset?.css ?? GRADIENT_PRESETS[0].css;
