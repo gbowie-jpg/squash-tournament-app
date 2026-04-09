@@ -47,11 +47,11 @@ export default function AdminDashboard() {
       ready: true,
     },
     {
-      href: '#',
-      label: 'Misc',
-      desc: 'Settings, integrations, and other tools',
+      href: '/admin/settings',
+      label: 'Settings',
+      desc: 'Integrations, env vars, and URL structure reference',
       emoji: '⚙️',
-      ready: false,
+      ready: true,
     },
   ];
 
