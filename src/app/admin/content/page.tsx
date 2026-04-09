@@ -317,9 +317,9 @@ export default function ContentAdmin() {
                   <p className="font-medium text-zinc-900 truncate">{t.name}</p>
                   <p className="text-xs text-zinc-500 mt-0.5">
                     {new Date(t.start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    {t.image_url
-                      ? <span className="ml-2 text-green-600">✓ Image set</span>
-                      : <span className="ml-2 text-zinc-400">No image</span>}
+                    {t.hero_image_url && <span className="ml-2 text-green-600">✓ Hero bg</span>}
+                    {t.image_url && <span className="ml-2 text-blue-600">✓ Graphic</span>}
+                    {!t.hero_image_url && !t.image_url && <span className="ml-2 text-zinc-400">No images</span>}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">

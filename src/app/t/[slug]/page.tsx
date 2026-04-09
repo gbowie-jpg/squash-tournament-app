@@ -109,7 +109,7 @@ export default async function TournamentLanding({
       <SiteNav />
 
       {/* Hero */}
-      <header style={{ background: heroBackground(tournament.image_url, tournament.hero_gradient, tournament.hero_overlay !== 'false') }}>
+      <header style={{ background: heroBackground(tournament.hero_image_url, tournament.hero_gradient, tournament.hero_overlay !== 'false') }}>
         <div className="max-w-5xl mx-auto px-4 py-10">
           <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
 

@@ -25,6 +25,7 @@ export default function TournamentSettings({
     end_date: '',
     description: '',
     image_url: '',
+    hero_image_url: '',
     hero_gradient: '',
     hero_text_color: '',
     hero_overlay: 'true',
@@ -53,6 +54,7 @@ export default function TournamentSettings({
       end_date: tournament.end_date || '',
       description: tournament.description || '',
       image_url: tournament.image_url || '',
+      hero_image_url: tournament.hero_image_url || '',
       hero_gradient: tournament.hero_gradient || '',
       hero_text_color: tournament.hero_text_color || '',
       hero_overlay: tournament.hero_overlay ?? 'true',
@@ -151,7 +153,7 @@ export default function TournamentSettings({
               return (
                 <div
                   className="h-36 flex items-end overflow-hidden"
-                  style={{ background: heroBackground(form.image_url || null, activeGradient, form.hero_overlay !== 'false') }}
+                  style={{ background: heroBackground(form.hero_image_url || null, activeGradient, form.hero_overlay !== 'false') }}
                 >
                   <div className="px-5 pb-4">
                     <p className="text-xs font-semibold uppercase tracking-wider mb-0.5" style={{ color: textColors.accent }}>
@@ -220,11 +222,41 @@ export default function TournamentSettings({
                 </div>
               </div>
 
-              {/* Image URL */}
+              {/* Hero background image */}
               <div>
                 <label className="block text-sm font-medium text-zinc-700 mb-1">
-                  Tournament Graphic / Hero Image URL
-                  <span className="text-xs font-normal text-zinc-500 ml-2">(optional — overrides gradient)</span>
+                  Hero Background Image
+                  <span className="text-xs font-normal text-zinc-500 ml-2">full-width photo behind the text — overrides gradient</span>
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={form.hero_image_url}
+                    onChange={(e) => set('hero_image_url', e.target.value)}
+                    placeholder="https://... (leave blank to use gradient)"
+                    className="flex-1 border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                  />
+                  {form.hero_image_url && (
+                    <button type="button" onClick={() => set('hero_image_url', '')}
+                      className="px-3 py-2 text-xs text-red-500 hover:text-red-700 border border-zinc-200 rounded-lg hover:bg-red-50 transition-colors">
+                      Clear
+                    </button>
+                  )}
+                </div>
+                {form.hero_image_url && (
+                  <div className="mt-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={form.hero_image_url} alt="Hero background preview"
+                      className="w-full h-24 rounded-lg object-cover border border-zinc-200" />
+                  </div>
+                )}
+              </div>
+
+              {/* Tournament graphic (logo/icon) */}
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 mb-1">
+                  Tournament Graphic
+                  <span className="text-xs font-normal text-zinc-500 ml-2">small logo shown in the hero corner and on cards</span>
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -246,20 +278,20 @@ export default function TournamentSettings({
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={form.image_url} alt="Graphic preview"
                       className="w-14 h-14 rounded-lg object-cover border border-zinc-200" />
-                    <p className="text-xs text-zinc-500">This graphic appears in the hero and on tournament cards.</p>
+                    <p className="text-xs text-zinc-500">Appears as the icon in the top-left of the hero and on tournament listing cards.</p>
                   </div>
                 )}
               </div>
 
-              {/* Overlay toggle — only relevant when an image is set */}
-              {form.image_url && (
+              {/* Overlay toggle — only relevant when a hero background image is set */}
+              {form.hero_image_url && (
                 <div className="flex items-center justify-between py-3 border-t border-zinc-100">
                   <div>
                     <p className="text-sm font-medium text-zinc-700">Dark overlay over image</p>
                     <p className="text-xs text-zinc-400 mt-0.5">
                       {form.hero_overlay !== 'false'
-                        ? 'On — dark tint applied so text stays readable'
-                        : 'Off — image shown as-is (use dark text colors or ensure image has contrast)'}
+                        ? 'On — dark tint over background image keeps text readable'
+                        : 'Off — background image shown as-is (ensure it has enough contrast for your text color)'}
                     </p>
                   </div>
                   <button
