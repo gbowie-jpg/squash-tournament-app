@@ -3,6 +3,7 @@ import SiteNav from '@/components/layout/SiteNav';
 import SiteFooter from '@/components/layout/SiteFooter';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import type { Tournament } from '@/lib/supabase/types';
+import { heroBackground } from '@/lib/gradients';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +26,7 @@ export default async function Home() {
   }
 
   const heroImage = s.homepage_hero_image;
+  const heroGradient = s.homepage_hero_gradient;
   const heroTitle = s.homepage_hero_title || 'Unleash your inner athlete and play the ultimate game.';
   const heroSubtitle = s.homepage_hero_subtitle || 'Your home for competitive squash in the Pacific Northwest. Over 70 years of fostering the squash community in Seattle.';
   const cta1Label = s.homepage_cta1_label || 'View Tournaments';
@@ -39,13 +41,7 @@ export default async function Home() {
       {/* Hero */}
       <section
         className="relative text-white"
-        style={
-          heroImage
-            ? {
-                background: `linear-gradient(to bottom, rgba(26,35,50,0.55) 0%, rgba(26,35,50,0.88) 100%), url(${heroImage}) center/cover no-repeat`,
-              }
-            : { background: 'linear-gradient(to bottom right, #1a2332, #1e3a5f, #2271b1)' }
-        }
+        style={{ background: heroBackground(heroImage, heroGradient) }}
       >
         <div className="max-w-6xl mx-auto px-4 py-20 md:py-28">
           <div className="max-w-2xl">

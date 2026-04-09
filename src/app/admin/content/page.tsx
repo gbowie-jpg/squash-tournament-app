@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import type { Tournament } from '@/lib/supabase/types';
+import { GRADIENT_PRESETS, heroBackground } from '@/lib/gradients';
 
 type Settings = Record<string, string>;
 
@@ -56,6 +57,8 @@ export default function ContentAdmin() {
   const upcomingTournaments = tournaments.filter((t) => t.status !== 'completed');
   const pastTournaments = tournaments.filter((t) => t.status === 'completed');
 
+  const activeGradient = settings.homepage_hero_gradient || 'navy';
+
   return (
     <div className="min-h-screen bg-zinc-50">
       <header className="bg-white border-b border-zinc-200 sticky top-0 z-10">
@@ -66,14 +69,8 @@ export default function ContentAdmin() {
           </div>
           <div className="flex items-center gap-3">
             {saveError && <span className="text-xs text-red-600 font-medium">⚠ {saveError}</span>}
-            <a
-              href="/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-zinc-500 hover:text-zinc-700 underline"
-            >
-              Preview
-            </a>
+            <a href="/" target="_blank" rel="noopener noreferrer"
+              className="text-sm text-zinc-500 hover:text-zinc-700 underline">Preview</a>
             <button
               onClick={handleSave}
               disabled={saving}
@@ -102,33 +99,80 @@ export default function ContentAdmin() {
 
           {/* Live preview */}
           <div
-            className="relative h-40 flex items-end overflow-hidden"
-            style={{
-              background: settings.homepage_hero_image
-                ? `linear-gradient(to bottom, rgba(26,35,50,0.5) 0%, rgba(26,35,50,0.85) 100%), url(${settings.homepage_hero_image}) center/cover no-repeat`
-                : 'linear-gradient(to bottom right, #1a2332, #1e3a5f, #2271b1)',
-            }}
+            className="relative h-44 flex items-end overflow-hidden"
+            style={{ background: heroBackground(settings.homepage_hero_image, activeGradient) }}
           >
             <div className="px-5 pb-4 text-white">
-              <p className="text-xs text-blue-300 font-medium uppercase tracking-wider mb-1">Seattle Squash Racquets Association</p>
+              <p className="text-xs text-blue-200 font-medium uppercase tracking-wider mb-1">
+                Seattle Squash Racquets Association
+              </p>
               <p className="text-sm font-bold leading-snug line-clamp-2">
                 {settings.homepage_hero_title || 'Your headline here'}
               </p>
             </div>
           </div>
 
-          <div className="p-6 space-y-4">
+          <div className="p-6 space-y-5">
+
+            {/* Gradient picker */}
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 mb-2">
+                Background Gradient
+                <span className="text-xs font-normal text-zinc-500 ml-2">(used when no image is set, or as image overlay base)</span>
+              </label>
+              <div className="grid grid-cols-6 gap-2">
+                {GRADIENT_PRESETS.map((g) => (
+                  <button
+                    key={g.key}
+                    type="button"
+                    onClick={() => set('homepage_hero_gradient', g.key)}
+                    title={g.label}
+                    className={`group relative rounded-lg overflow-hidden h-10 transition-all ${
+                      activeGradient === g.key
+                        ? 'ring-2 ring-offset-2 ring-zinc-900 scale-105'
+                        : 'hover:scale-105 hover:shadow-md'
+                    }`}
+                    style={{ background: g.css }}
+                  >
+                    {activeGradient === g.key && (
+                      <span className="absolute inset-0 flex items-center justify-center text-white text-xs font-bold">✓</span>
+                    )}
+                    <span className="sr-only">{g.label}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="mt-1.5 text-xs text-zinc-500">
+                {GRADIENT_PRESETS.find((g) => g.key === activeGradient)?.label ?? 'Navy Blue'} selected
+              </div>
+            </div>
+
             {/* Hero image */}
             <div>
-              <label className="block text-sm font-medium text-zinc-700 mb-1">Hero Background Image URL</label>
-              <input
-                type="url"
-                value={settings.homepage_hero_image || ''}
-                onChange={(e) => set('homepage_hero_image', e.target.value)}
-                placeholder="https://... (leave blank for gradient)"
-                className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
-              />
-              <p className="text-xs text-zinc-400 mt-1">Upload to Supabase Storage → tournament-images bucket, paste URL. Leave blank for the default gradient.</p>
+              <label className="block text-sm font-medium text-zinc-700 mb-1">
+                Hero Background Image URL
+                <span className="text-xs font-normal text-zinc-500 ml-2">(optional — overrides gradient)</span>
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={settings.homepage_hero_image || ''}
+                  onChange={(e) => set('homepage_hero_image', e.target.value)}
+                  placeholder="https://... leave blank to use gradient only"
+                  className="flex-1 border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                />
+                {settings.homepage_hero_image && (
+                  <button
+                    type="button"
+                    onClick={() => set('homepage_hero_image', '')}
+                    className="px-3 py-2 text-xs text-red-500 hover:text-red-700 border border-zinc-200 rounded-lg hover:bg-red-50 transition-colors"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-zinc-400 mt-1">
+                Upload to Supabase Storage → tournament-images bucket, paste public URL here.
+              </p>
             </div>
 
             {/* Title */}
@@ -202,7 +246,6 @@ export default function ContentAdmin() {
           <div className="divide-y divide-zinc-100">
             {[...upcomingTournaments, ...pastTournaments].map((t) => (
               <div key={t.id} className="flex items-center gap-4 px-6 py-4">
-                {/* Thumbnail */}
                 <div className="w-14 h-14 rounded-lg overflow-hidden shrink-0 bg-zinc-100 flex items-center justify-center border border-zinc-200">
                   {t.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -211,21 +254,15 @@ export default function ContentAdmin() {
                     <span className="text-2xl">🏆</span>
                   )}
                 </div>
-
-                {/* Info */}
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-zinc-900 truncate">{t.name}</p>
                   <p className="text-xs text-zinc-500 mt-0.5">
                     {new Date(t.start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    {t.image_url ? (
-                      <span className="ml-2 text-green-600">✓ Image set</span>
-                    ) : (
-                      <span className="ml-2 text-zinc-400">No image</span>
-                    )}
+                    {t.image_url
+                      ? <span className="ml-2 text-green-600">✓ Image set</span>
+                      : <span className="ml-2 text-zinc-400">No image</span>}
                   </p>
                 </div>
-
-                {/* Actions */}
                 <div className="flex items-center gap-2 shrink-0">
                   <Link
                     href={`/t/${t.slug}/admin/settings`}
@@ -233,14 +270,8 @@ export default function ContentAdmin() {
                   >
                     Edit Image
                   </Link>
-                  <a
-                    href={`/t/${t.slug}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-blue-600 hover:underline"
-                  >
-                    View →
-                  </a>
+                  <a href={`/t/${t.slug}`} target="_blank" rel="noopener noreferrer"
+                    className="text-xs text-blue-600 hover:underline">View →</a>
                 </div>
               </div>
             ))}
