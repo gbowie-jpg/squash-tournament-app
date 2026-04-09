@@ -14,6 +14,8 @@ export type Database = {
           court_count: number;
           description: string | null;
           image_url: string | null;
+          hero_gradient: string | null;
+          hero_text_color: string | null;
           category: string | null;
           location_city: string | null;
           contact_name: string | null;
@@ -42,6 +44,8 @@ export type Database = {
           court_count?: number;
           description?: string | null;
           image_url?: string | null;
+          hero_gradient?: string | null;
+          hero_text_color?: string | null;
           category?: string | null;
           location_city?: string | null;
           contact_name?: string | null;

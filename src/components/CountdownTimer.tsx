@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 
-export default function CountdownTimer({ targetDate }: { targetDate: string }) {
+export default function CountdownTimer({ targetDate, textColor }: { targetDate: string; textColor?: string }) {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, started: false });
 
   useEffect(() => {
@@ -38,8 +38,12 @@ export default function CountdownTimer({ targetDate }: { targetDate: string }) {
     <div className="flex items-center gap-6">
       {units.map(({ label, val }) => (
         <div key={label} className="text-center">
-          <div className="text-3xl font-bold tabular-nums leading-none">{String(val).padStart(2, '0')}</div>
-          <div className="text-xs text-zinc-400 mt-1 uppercase tracking-wide">{label}</div>
+          <div className="text-3xl font-bold tabular-nums leading-none" style={textColor ? { color: textColor } : undefined}>
+            {String(val).padStart(2, '0')}
+          </div>
+          <div className="text-xs mt-1 uppercase tracking-wide" style={textColor ? { color: textColor, opacity: 0.6 } : { color: '#a1a1aa' }}>
+            {label}
+          </div>
         </div>
       ))}
     </div>

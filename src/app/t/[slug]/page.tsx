@@ -9,6 +9,7 @@ import SiteNav from '@/components/layout/SiteNav';
 import SiteFooter from '@/components/layout/SiteFooter';
 import CountdownTimer from '@/components/CountdownTimer';
 import InfoAccordion from '@/components/InfoAccordion';
+import { heroBackground, getTextColors } from '@/lib/gradients';
 
 export default async function TournamentLanding({
   params,
@@ -87,6 +88,7 @@ export default async function TournamentLanding({
 
   const isUpcoming = tournament.status === 'upcoming';
   const isActive = tournament.status === 'active';
+  const textColors = getTextColors(tournament.hero_text_color);
 
   const quickLinks = [
     { href: `/t/${slug}/courts`, label: 'Court Board', desc: 'Live view of all courts', emoji: '📋' },
@@ -107,7 +109,7 @@ export default async function TournamentLanding({
       <SiteNav />
 
       {/* Hero */}
-      <header className="bg-[#1a2332] text-white">
+      <header style={{ background: heroBackground(tournament.image_url, tournament.hero_gradient) }}>
         <div className="max-w-5xl mx-auto px-4 py-10">
           <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
 
@@ -121,7 +123,7 @@ export default async function TournamentLanding({
                   className="w-[140px] h-[140px] rounded-2xl object-cover shadow-lg"
                 />
               ) : (
-                <div className="w-[140px] h-[140px] rounded-2xl bg-[#0d1726] flex items-center justify-center text-5xl shadow-lg">
+                <div className="w-[140px] h-[140px] rounded-2xl bg-black/20 flex items-center justify-center text-5xl shadow-lg">
                   🏆
                 </div>
               )}
@@ -138,26 +140,36 @@ export default async function TournamentLanding({
                   <span className="bg-zinc-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">Completed</span>
                 )}
               </div>
-              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">{tournament.name}</h1>
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight" style={{ color: textColors.heading }}>
+                {tournament.name}
+              </h1>
               {(tournament.location_city || tournament.venue) && (
-                <p className="text-blue-200 text-lg mt-1">{tournament.location_city || tournament.venue}</p>
+                <p className="text-lg mt-1" style={{ color: textColors.body }}>
+                  {tournament.location_city || tournament.venue}
+                </p>
               )}
               {tournament.category && (
-                <p className="text-blue-300 text-sm mt-0.5">{tournament.category}</p>
+                <p className="text-sm mt-0.5" style={{ color: textColors.accent }}>
+                  {tournament.category}
+                </p>
               )}
-              <p className="text-blue-300 mt-1 text-sm">
+              <p className="mt-1 text-sm" style={{ color: textColors.accent }}>
                 {startDateStr}{endDateStr ? ` – ${endDateStr}` : ''}
               </p>
               {tournament.venue && tournament.location_city && (
-                <p className="text-blue-400 text-sm mt-0.5">{tournament.venue}</p>
+                <p className="text-sm mt-0.5" style={{ color: textColors.body, opacity: 0.8 }}>
+                  {tournament.venue}
+                </p>
               )}
             </div>
 
             {/* Countdown */}
             {isUpcoming && (
-              <div className="shrink-0 bg-[#0d1726] rounded-2xl px-6 py-5 text-center">
-                <p className="text-xs text-zinc-400 uppercase tracking-widest mb-3 font-semibold">Starts In</p>
-                <CountdownTimer targetDate={tournament.start_date} />
+              <div className="shrink-0 bg-black/30 rounded-2xl px-6 py-5 text-center backdrop-blur-sm">
+                <p className="text-xs uppercase tracking-widest mb-3 font-semibold" style={{ color: textColors.accent }}>
+                  Starts In
+                </p>
+                <CountdownTimer targetDate={tournament.start_date} textColor={textColors.heading} />
               </div>
             )}
           </div>

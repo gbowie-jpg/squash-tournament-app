@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { useTournament } from '@/lib/useTournament';
+import { GRADIENT_PRESETS, TEXT_COLOR_PRESETS, heroBackground, getTextColors } from '@/lib/gradients';
 
 export default function TournamentSettings({
   params,
@@ -24,6 +25,8 @@ export default function TournamentSettings({
     end_date: '',
     description: '',
     image_url: '',
+    hero_gradient: '',
+    hero_text_color: '',
     contact_name: '',
     contact_email: '',
     contact_phone: '',
@@ -49,6 +52,8 @@ export default function TournamentSettings({
       end_date: tournament.end_date || '',
       description: tournament.description || '',
       image_url: tournament.image_url || '',
+      hero_gradient: tournament.hero_gradient || '',
+      hero_text_color: tournament.hero_text_color || '',
       contact_name: tournament.contact_name || '',
       contact_email: tournament.contact_email || '',
       contact_phone: tournament.contact_phone || '',
@@ -130,32 +135,120 @@ export default function TournamentSettings({
       <main className="max-w-3xl mx-auto px-4 py-8">
         <form id="settings-form" onSubmit={handleSave} className="space-y-8">
 
-          {/* Tournament Graphic */}
-          <section className="bg-white border border-zinc-200 rounded-xl p-6 space-y-4">
-            <h2 className="font-semibold text-zinc-900">Tournament Graphic</h2>
-            <div>
-              <label className="block text-sm font-medium text-zinc-700 mb-1">Image URL</label>
-              <input
-                type="url"
-                value={form.image_url}
-                onChange={(e) => set('image_url', e.target.value)}
-                placeholder="https://..."
-                className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
-              />
-              <p className="text-xs text-zinc-500 mt-1">
-                Upload your image to Supabase Storage or any image host, then paste the URL here.
-              </p>
+          {/* Hero Appearance */}
+          <section className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-zinc-100">
+              <h2 className="font-semibold text-zinc-900">Hero Appearance</h2>
+              <p className="text-xs text-zinc-500 mt-0.5">Banner at the top of the tournament page</p>
             </div>
-            {form.image_url && (
-              <div className="mt-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={form.image_url}
-                  alt="Preview"
-                  className="w-[120px] h-[120px] rounded-xl object-cover border border-zinc-200"
-                />
+
+            {/* Live preview */}
+            {(() => {
+              const activeGradient = form.hero_gradient || 'navy';
+              const textColors = getTextColors(form.hero_text_color || 'white');
+              return (
+                <div
+                  className="h-36 flex items-end overflow-hidden"
+                  style={{ background: heroBackground(form.image_url || null, activeGradient) }}
+                >
+                  <div className="px-5 pb-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider mb-0.5" style={{ color: textColors.accent }}>
+                      Upcoming
+                    </p>
+                    <p className="text-base font-bold" style={{ color: textColors.heading }}>
+                      {form.name || 'Tournament Name'}
+                    </p>
+                    <p className="text-xs mt-0.5" style={{ color: textColors.body }}>
+                      {form.venue || 'Venue'} · {form.start_date || 'Date'}
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div className="p-6 space-y-5">
+              {/* Gradient picker */}
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 mb-2">Background Gradient</label>
+                <div className="grid grid-cols-6 gap-2">
+                  {GRADIENT_PRESETS.map((g) => (
+                    <button
+                      key={g.key}
+                      type="button"
+                      onClick={() => set('hero_gradient', g.key)}
+                      title={g.label}
+                      className={`relative rounded-lg overflow-hidden h-10 transition-all ${
+                        (form.hero_gradient || 'navy') === g.key
+                          ? 'ring-2 ring-offset-2 ring-zinc-900 scale-105'
+                          : 'hover:scale-105 hover:shadow-md'
+                      }`}
+                      style={{ background: g.css }}
+                    >
+                      {(form.hero_gradient || 'navy') === g.key && (
+                        <span className="absolute inset-0 flex items-center justify-center text-white text-xs font-bold">✓</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-zinc-500 mt-1.5">
+                  {GRADIENT_PRESETS.find((g) => g.key === (form.hero_gradient || 'navy'))?.label ?? 'Navy Blue'} selected
+                </p>
               </div>
-            )}
+
+              {/* Text color picker */}
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 mb-2">Text Color</label>
+                <div className="flex flex-wrap gap-2">
+                  {TEXT_COLOR_PRESETS.map((t) => (
+                    <button
+                      key={t.key}
+                      type="button"
+                      onClick={() => set('hero_text_color', t.key)}
+                      title={t.label}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                        (form.hero_text_color || 'white') === t.key
+                          ? 'border-zinc-900 bg-zinc-900 text-white scale-105 shadow'
+                          : 'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400'
+                      }`}
+                    >
+                      <span className="w-3 h-3 rounded-full border border-black/10 shrink-0" style={{ background: t.swatch }} />
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Image URL */}
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 mb-1">
+                  Tournament Graphic / Hero Image URL
+                  <span className="text-xs font-normal text-zinc-500 ml-2">(optional — overrides gradient)</span>
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={form.image_url}
+                    onChange={(e) => set('image_url', e.target.value)}
+                    placeholder="https://..."
+                    className="flex-1 border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                  />
+                  {form.image_url && (
+                    <button type="button" onClick={() => set('image_url', '')}
+                      className="px-3 py-2 text-xs text-red-500 hover:text-red-700 border border-zinc-200 rounded-lg hover:bg-red-50 transition-colors">
+                      Clear
+                    </button>
+                  )}
+                </div>
+                {form.image_url && (
+                  <div className="mt-2 flex items-center gap-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={form.image_url} alt="Graphic preview"
+                      className="w-14 h-14 rounded-lg object-cover border border-zinc-200" />
+                    <p className="text-xs text-zinc-500">This graphic appears in the hero and on tournament cards.</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </section>
 
           {/* Basic Info */}
