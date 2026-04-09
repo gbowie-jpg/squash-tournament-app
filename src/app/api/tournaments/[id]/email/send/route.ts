@@ -15,6 +15,10 @@ export async function POST(
   const supabase = createAdminClient();
   const { campaignId } = await req.json();
 
+  // Optional segment filter from query param
+  const segment = req.nextUrl.searchParams.get('segment');
+  const validSegments = ['player', 'volunteer', 'invitee', 'other'];
+
   if (!campaignId) {
     return NextResponse.json({ error: 'campaignId required' }, { status: 400 });
   }
@@ -40,12 +44,18 @@ export async function POST(
     .eq('id', id)
     .single();
 
-  // Get subscribed recipients
-  const { data: recipients } = await supabase
+  // Get subscribed recipients, filtered by segment if provided
+  let query = supabase
     .from('email_recipients')
     .select('*')
     .eq('tournament_id', id)
     .eq('subscribed', true);
+
+  if (segment && validSegments.includes(segment)) {
+    query = query.eq('type', segment);
+  }
+
+  const { data: recipients } = await query;
 
   if (!recipients || recipients.length === 0) {
     return NextResponse.json({ error: 'No subscribed recipients' }, { status: 400 });

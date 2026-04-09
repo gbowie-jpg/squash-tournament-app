@@ -42,6 +42,21 @@ export async function POST(
     .select();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Auto-sync players with emails into email_recipients
+  const withEmail = (data || []).filter((p: { email?: string | null; name: string }) => p.email);
+  if (withEmail.length > 0) {
+    await supabase.from('email_recipients').upsert(
+      withEmail.map((p: { name: string; email: string }) => ({
+        tournament_id: id,
+        name: p.name,
+        email: p.email.trim().toLowerCase(),
+        type: 'player',
+      })),
+      { onConflict: 'tournament_id,email', ignoreDuplicates: true },
+    );
+  }
+
   return NextResponse.json(Array.isArray(body) ? data : data[0], { status: 201 });
 }
 

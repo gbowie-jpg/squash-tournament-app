@@ -94,6 +94,13 @@ export async function POST(
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Auto-sync volunteer into email_recipients
+  await supabase.from('email_recipients').upsert(
+    [{ tournament_id: id, name: name.trim(), email: email.trim().toLowerCase(), type: 'volunteer' }],
+    { onConflict: 'tournament_id,email', ignoreDuplicates: true },
+  );
+
   return NextResponse.json({ ...data, accountCreated: !existing }, { status: 201 });
 }
 

@@ -32,11 +32,13 @@ export async function POST(
 
   const { id } = await params;
   const supabase = createAdminClient();
-  const { subject, body } = await req.json();
+  const { subject, body, segment } = await req.json();
 
   if (!subject || !body) {
     return NextResponse.json({ error: 'Subject and body are required' }, { status: 400 });
   }
+
+  const validSegments = ['player', 'volunteer', 'invitee', 'other'];
 
   const { data, error } = await supabase
     .from('email_campaigns')
@@ -44,6 +46,7 @@ export async function POST(
       tournament_id: id,
       subject: subject.trim(),
       body: body.trim(),
+      segment: segment && validSegments.includes(segment) ? segment : null,
       created_by: auth.user.id,
     })
     .select()
