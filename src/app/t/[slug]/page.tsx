@@ -43,17 +43,28 @@ export default async function TournamentLanding({
     .select('draw')
     .eq('tournament_id', tournament.id)
     .not('draw', 'is', null);
-  const draws = [...new Set((drawRows || []).map((r) => r.draw).filter(Boolean))];
+  const draws = [...new Set((drawRows || []).map((r: { draw: string | null }) => r.draw).filter(Boolean))] as string[];
+
+  type MatchPreview = {
+    id: string;
+    status: string;
+    scheduled_time: string | null;
+    player1: { name: string } | null;
+    player2: { name: string } | null;
+    court: { name: string } | null;
+  };
 
   // Get next few matches
-  const { data: nextMatches } = await supabase
+  const { data: nextMatchesRaw } = await supabase
     .from('matches')
-    .select('*, player1:players!player1_id(name), player2:players!player2_id(name), court:courts!court_id(name)')
+    .select('id, status, scheduled_time, player1:players!player1_id(name), player2:players!player2_id(name), court:courts!court_id(name)')
     .eq('tournament_id', tournament.id)
     .in('status', ['scheduled', 'on_deck', 'in_progress'])
     .order('sort_order')
     .order('scheduled_time', { nullsFirst: false })
     .limit(6);
+
+  const nextMatches = (nextMatchesRaw || []) as unknown as MatchPreview[];
 
   const startDate = new Date(tournament.start_date + 'T00:00:00');
   const dateStr = startDate.toLocaleDateString('en-US', {
@@ -146,17 +157,13 @@ export default async function TournamentLanding({
                   }`}
                 >
                   <div>
-                    <span className="font-medium">
-                      {(m.player1 as { name: string } | null)?.name || 'TBD'}
-                    </span>
+                    <span className="font-medium">{m.player1?.name || 'TBD'}</span>
                     <span className="text-zinc-500 mx-2">vs</span>
-                    <span className="font-medium">
-                      {(m.player2 as { name: string } | null)?.name || 'TBD'}
-                    </span>
+                    <span className="font-medium">{m.player2?.name || 'TBD'}</span>
                   </div>
                   <div className="text-right text-xs text-zinc-600">
-                    {(m.court as { name: string } | null)?.name && (
-                      <span className="mr-2">{(m.court as { name: string }).name}</span>
+                    {m.court?.name && (
+                      <span className="mr-2">{m.court.name}</span>
                     )}
                     {m.status === 'in_progress' && (
                       <span className="text-green-700 font-semibold">LIVE</span>
