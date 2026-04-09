@@ -30,9 +30,9 @@ export default function AdminDashboard({
     <div className="min-h-screen bg-zinc-50">
       <header className="bg-white border-b border-zinc-200">
         <div className="max-w-3xl mx-auto px-4 py-6">
-          <Link href="/admin/tournaments" className="text-sm text-zinc-600 hover:text-zinc-800">&larr; All Tournaments</Link>
+          <Link href="/admin" className="text-sm text-zinc-600 hover:text-zinc-800">&larr; Admin Dashboard</Link>
           <h1 className="text-2xl font-bold tracking-tight mt-2">{tournament.name}</h1>
-          <p className="text-zinc-600 text-sm">Admin Dashboard</p>
+          <p className="text-zinc-600 text-sm">Tournament Admin</p>
         </div>
       </header>
 

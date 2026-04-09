@@ -127,7 +127,11 @@ export default function MatchManagement({
       <header className="bg-white border-b border-zinc-200">
         <div className="max-w-4xl mx-auto px-4 py-6 flex items-center justify-between">
           <div>
-            <Link href={`/t/${slug}/admin`} className="text-sm text-zinc-600 hover:text-zinc-800">&larr; Admin</Link>
+            <div className="flex items-center gap-1.5 text-sm text-zinc-500">
+              <Link href="/admin" className="hover:text-zinc-700">Admin Dashboard</Link>
+              <span>›</span>
+              <Link href={`/t/${slug}/admin`} className="hover:text-zinc-700">{tournament?.name ?? slug}</Link>
+            </div>
             <h1 className="text-2xl font-bold tracking-tight mt-1">Matches</h1>
             <p className="text-zinc-600 text-sm">{matches.length} matches</p>
           </div>

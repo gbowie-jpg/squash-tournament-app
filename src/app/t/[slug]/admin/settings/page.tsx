@@ -112,7 +112,11 @@ export default function TournamentSettings({
       <header className="bg-white border-b border-zinc-200 sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 py-5 flex items-center justify-between">
           <div>
-            <Link href={`/t/${slug}/admin`} className="text-sm text-zinc-500 hover:text-zinc-700">&larr; Admin</Link>
+            <div className="flex items-center gap-1.5 text-sm text-zinc-500">
+              <Link href="/admin" className="hover:text-zinc-700">Admin Dashboard</Link>
+              <span>›</span>
+              <Link href={`/t/${slug}/admin`} className="hover:text-zinc-700">{tournament?.name ?? slug}</Link>
+            </div>
             <h1 className="text-xl font-bold tracking-tight mt-0.5">Tournament Settings</h1>
           </div>
           <div className="flex items-center gap-3">

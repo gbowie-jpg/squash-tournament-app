@@ -223,7 +223,11 @@ export default function EmailMarketing({
     <div className="min-h-screen bg-zinc-50">
       <header className="bg-white border-b border-zinc-200">
         <div className="max-w-4xl mx-auto px-4 py-6">
-          <Link href={`/t/${slug}/admin`} className="text-sm text-zinc-600 hover:text-zinc-800">&larr; {tournament.name}</Link>
+          <div className="flex items-center gap-1.5 text-sm text-zinc-500">
+            <Link href="/admin" className="hover:text-zinc-700">Admin Dashboard</Link>
+            <span>›</span>
+            <Link href={`/t/${slug}/admin`} className="hover:text-zinc-700">{tournament.name}</Link>
+          </div>
           <h1 className="text-2xl font-bold tracking-tight mt-1">Email Marketing</h1>
           <p className="text-sm text-zinc-600 mt-1">{subscribedAll} subscribed recipient{subscribedAll !== 1 ? 's' : ''}</p>
         </div>
