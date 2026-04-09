@@ -13,6 +13,7 @@ export default function TournamentSettings({
   const { tournament, loading } = useTournament(slug);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: '',
     venue: '',
@@ -66,15 +67,29 @@ export default function TournamentSettings({
     e.preventDefault();
     if (!tournament) return;
     setSaving(true);
-    const res = await fetch(`/api/tournaments/${tournament.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    });
-    setSaving(false);
-    if (res.ok) {
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+    setSaveError(null);
+    try {
+      // Convert empty strings to null so Supabase stores null, not ""
+      const payload = Object.fromEntries(
+        Object.entries(form).map(([k, v]) => [k, v === '' ? null : v])
+      );
+      const res = await fetch(`/api/tournaments/${tournament.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setSaveError(err.error || `Save failed (${res.status})`);
+      }
+    } catch (err) {
+      setSaveError('Network error — check your connection');
+      console.error(err);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -92,6 +107,9 @@ export default function TournamentSettings({
             <h1 className="text-xl font-bold tracking-tight mt-0.5">Tournament Settings</h1>
           </div>
           <div className="flex items-center gap-3">
+            {saveError && (
+              <span className="text-xs text-red-600 font-medium">⚠ {saveError}</span>
+            )}
             <Link href={`/t/${slug}`} target="_blank" className="text-sm text-zinc-500 hover:text-zinc-700 underline">
               Preview
             </Link>
@@ -99,7 +117,9 @@ export default function TournamentSettings({
               form="settings-form"
               type="submit"
               disabled={saving}
-              className="bg-zinc-900 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-zinc-800 disabled:opacity-50 transition-colors"
+              className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
+                saved ? 'bg-green-600 text-white' : 'bg-zinc-900 text-white hover:bg-zinc-800'
+              }`}
             >
               {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save Changes'}
             </button>

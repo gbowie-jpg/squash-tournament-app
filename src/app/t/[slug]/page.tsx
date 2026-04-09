@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+
+// Always fetch fresh data — tournament details change frequently
+export const dynamic = 'force-dynamic';
 import type { Tournament } from '@/lib/supabase/types';
 import SiteNav from '@/components/layout/SiteNav';
 import SiteFooter from '@/components/layout/SiteFooter';
