@@ -23,6 +23,7 @@ export default function AdminDashboard({
     { href: `/t/${slug}/admin/announcements`, label: 'Announcements', desc: 'Push messages to everyone', emoji: '📢' },
     { href: `/t/${slug}/admin/volunteers`, label: 'Volunteers & Refs', desc: 'Manage signups, assign referees to matches', emoji: '🙋' },
     { href: `/t/${slug}/admin/email`, label: 'Email Marketing', desc: 'Send invitations and updates to participants', emoji: '📧' },
+    { href: `/t/${slug}/admin/settings`, label: 'Tournament Settings', desc: 'Edit details, graphic, schedule & contact info', emoji: '⚙️' },
   ];
 
   return (
