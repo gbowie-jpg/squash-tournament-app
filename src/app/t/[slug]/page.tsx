@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
@@ -112,13 +111,11 @@ export default async function TournamentLanding({
             {/* Tournament graphic */}
             <div className="shrink-0">
               {tournament.image_url ? (
-                <Image
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
                   src={tournament.image_url}
                   alt={tournament.name}
-                  width={140}
-                  height={140}
-                  className="rounded-2xl object-cover shadow-lg"
-                  unoptimized
+                  className="w-[140px] h-[140px] rounded-2xl object-cover shadow-lg"
                 />
               ) : (
                 <div className="w-[140px] h-[140px] rounded-2xl bg-[#0d1726] flex items-center justify-center text-5xl shadow-lg">

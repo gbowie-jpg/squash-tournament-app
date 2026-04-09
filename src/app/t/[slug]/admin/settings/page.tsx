@@ -2,7 +2,6 @@
 
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useTournament } from '@/lib/useTournament';
 
 export default function TournamentSettings({
@@ -129,13 +128,11 @@ export default function TournamentSettings({
             </div>
             {form.image_url && (
               <div className="mt-3">
-                <Image
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
                   src={form.image_url}
                   alt="Preview"
-                  width={120}
-                  height={120}
-                  className="rounded-xl object-cover border border-zinc-200"
-                  unoptimized
+                  className="w-[120px] h-[120px] rounded-xl object-cover border border-zinc-200"
                 />
               </div>
             )}
