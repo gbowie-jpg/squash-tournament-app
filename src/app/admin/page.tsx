@@ -26,6 +26,13 @@ export default function AdminDashboard() {
       ready: true,
     },
     {
+      href: '/admin/content',
+      label: 'Site Content',
+      desc: 'Homepage hero image, headline, and tournament graphics',
+      emoji: '🖼️',
+      ready: true,
+    },
+    {
       href: '#',
       label: 'Recordings',
       desc: 'Match recordings and video management',
