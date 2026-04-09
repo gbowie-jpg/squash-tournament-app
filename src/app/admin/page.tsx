@@ -60,6 +60,13 @@ export default function AdminDashboard() {
       emoji: '⚙️',
       ready: true,
     },
+    ...(isSuperadmin ? [{
+      href: '/admin/users',
+      label: 'Users',
+      desc: 'Manage user accounts, roles, and tournament access',
+      emoji: '👤',
+      ready: true,
+    }] : []),
   ];
 
   return (
@@ -70,22 +77,12 @@ export default function AdminDashboard() {
             <h1 className="text-2xl font-bold tracking-tight">Seattle Squash</h1>
             <p className="text-sm text-zinc-600">Admin Dashboard</p>
           </div>
-          <div className="flex items-center gap-3">
-            {isSuperadmin && (
-              <Link
-                href="/admin/users"
-                className="text-zinc-600 hover:text-zinc-700 text-sm font-medium transition-colors"
-              >
-                Users
-              </Link>
-            )}
-            <button
-              onClick={signOut}
-              className="text-zinc-600 hover:text-zinc-800 text-sm transition-colors"
-            >
-              Sign Out
-            </button>
-          </div>
+          <button
+            onClick={signOut}
+            className="text-zinc-600 hover:text-zinc-800 text-sm transition-colors"
+          >
+            Sign Out
+          </button>
         </div>
       </header>
 
