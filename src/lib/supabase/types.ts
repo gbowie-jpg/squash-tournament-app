@@ -248,6 +248,7 @@ export type EmailRecipient = {
   email: string;
   type: 'invitee' | 'player' | 'volunteer' | 'other';
   subscribed: boolean;
+  tags: string[];
   created_at: string;
 };
 

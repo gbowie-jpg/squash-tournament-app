@@ -34,7 +34,6 @@ export async function POST(
   const supabase = createAdminClient();
   const body = await req.json();
 
-  // Accept single object or array
   const items = Array.isArray(body) ? body : [body];
 
   const rows = items
@@ -59,6 +58,40 @@ export async function POST(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data, { status: 201 });
+}
+
+/** PATCH: Update a recipient's name, type, and/or tags. */
+export async function PATCH(req: NextRequest) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
+  const supabase = createAdminClient();
+  const { recipientId, name, type, tags } = await req.json();
+
+  if (!recipientId) return NextResponse.json({ error: 'recipientId required' }, { status: 400 });
+
+  const updates: Record<string, unknown> = {};
+  if (name !== undefined) updates.name = name.trim();
+  if (type !== undefined && ['invitee', 'player', 'volunteer', 'other'].includes(type)) {
+    updates.type = type;
+  }
+  if (tags !== undefined && Array.isArray(tags)) {
+    updates.tags = tags.map((t: string) => t.trim().toLowerCase()).filter(Boolean);
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
+  }
+
+  const { data, error } = await supabase
+    .from('email_recipients')
+    .update(updates)
+    .eq('id', recipientId)
+    .select()
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data);
 }
 
 /** DELETE: Remove a recipient. */

@@ -13,10 +13,11 @@ export async function POST(
 
   const { id } = await params;
   const supabase = createAdminClient();
-  const { campaignId } = await req.json();
+  const reqBody = await req.json();
+  const { campaignId, tags: filterTags, segment: bodySegment } = reqBody;
 
-  // Optional segment filter from query param
-  const segment = req.nextUrl.searchParams.get('segment');
+  // Optional filters passed from compose form
+  const segment = req.nextUrl.searchParams.get('segment') || bodySegment;
   const validSegments = ['player', 'volunteer', 'invitee', 'other'];
 
   if (!campaignId) {
@@ -53,6 +54,9 @@ export async function POST(
 
   if (segment && validSegments.includes(segment)) {
     query = query.eq('type', segment);
+  }
+  if (filterTags && Array.isArray(filterTags) && filterTags.length > 0) {
+    query = query.overlaps('tags', filterTags);
   }
 
   const { data: recipients } = await query;
