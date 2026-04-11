@@ -13,7 +13,7 @@ function LoginForm() {
   const [message, setMessage] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirect') || '/admin';
+  const redirectParam = searchParams.get('redirect');
   const supabase = createClient();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -26,7 +26,23 @@ function LoginForm() {
       if (mode === 'signin') {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) { setError(error.message); return; }
-        router.push(redirectTo);
+
+        // Determine redirect: use explicit param, else check role
+        let dest = redirectParam || '/';
+        if (!redirectParam) {
+          try {
+            const res = await fetch('/api/account/profile');
+            if (res.ok) {
+              const profile = await res.json();
+              if (profile?.role === 'admin' || profile?.role === 'superadmin') {
+                dest = '/admin';
+              }
+            }
+          } catch {
+            // ignore — just go to '/'
+          }
+        }
+        router.push(dest);
         router.refresh();
       } else if (mode === 'signup') {
         const { error } = await supabase.auth.signUp({ email, password });
@@ -37,7 +53,7 @@ function LoginForm() {
         const origin = window.location.origin;
         const { error } = await supabase.auth.signInWithOtp({
           email,
-          options: { emailRedirectTo: `${origin}${redirectTo}` },
+          options: { emailRedirectTo: `${origin}${redirectParam || '/'}` },
         });
         if (error) { setError(error.message); return; }
         setMessage('Magic link sent — check your inbox and click the link to sign in.');

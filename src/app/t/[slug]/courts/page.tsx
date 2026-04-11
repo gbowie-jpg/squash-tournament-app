@@ -91,7 +91,7 @@ export default function CourtBoard({ params }: { params: Promise<{ slug: string 
                   {current ? (
                     <div className="mb-3">
                       <p className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wider mb-1.5">Now Playing</p>
-                      <MatchDisplay match={current} />
+                      <MatchDisplay match={current} slug={slug} />
                     </div>
                   ) : court.status === 'maintenance' ? (
                     <p className="text-sm text-[var(--text-secondary)] mb-3">Under maintenance</p>
@@ -104,7 +104,7 @@ export default function CourtBoard({ params }: { params: Promise<{ slug: string 
                       <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1.5">
                         {next.status === 'on_deck' ? 'On Deck' : 'Up Next'}
                       </p>
-                      <MatchDisplay match={next} compact />
+                      <MatchDisplay match={next} compact slug={slug} />
                     </div>
                   )}
                 </div>
@@ -120,10 +120,10 @@ export default function CourtBoard({ params }: { params: Promise<{ slug: string 
   );
 }
 
-function MatchDisplay({ match: m, compact }: { match: MatchWithDetails; compact?: boolean }) {
+function MatchDisplay({ match: m, compact, slug }: { match: MatchWithDetails; compact?: boolean; slug: string }) {
   return (
-    <div>
-      <p className={`font-semibold text-[var(--text-primary)] ${compact ? 'text-sm' : ''}`}>
+    <Link href={`/t/${slug}/match/${m.id}`} className="block group">
+      <p className={`font-semibold text-[var(--text-primary)] group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors ${compact ? 'text-sm' : ''}`}>
         {m.player1?.name || 'TBD'} <span className="text-[var(--text-muted)] font-normal">vs</span> {m.player2?.name || 'TBD'}
       </p>
       <div className="flex items-center gap-2 mt-0.5">
@@ -138,6 +138,6 @@ function MatchDisplay({ match: m, compact }: { match: MatchWithDetails; compact?
           {new Date(m.scheduled_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
         </p>
       )}
-    </div>
+    </Link>
   );
 }

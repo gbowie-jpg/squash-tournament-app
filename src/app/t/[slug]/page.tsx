@@ -220,9 +220,10 @@ export default async function TournamentLanding({
                 </h2>
                 <div className="space-y-2">
                   {nextMatches.map((m) => (
-                    <div
+                    <Link
                       key={m.id}
-                      className={`flex items-center justify-between p-3 rounded-lg text-sm ${
+                      href={`/t/${slug}/match/${m.id}`}
+                      className={`flex items-center justify-between p-3 rounded-lg text-sm transition-colors hover:opacity-80 ${
                         m.status === 'in_progress'
                           ? 'bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800'
                           : 'bg-zinc-50 dark:bg-zinc-800/50'
@@ -240,7 +241,7 @@ export default async function TournamentLanding({
                           <span>{new Date(m.scheduled_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span>
                         )}
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
                 <Link href={`/t/${slug}/courts`} className="block text-center text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] mt-3 underline underline-offset-2">
