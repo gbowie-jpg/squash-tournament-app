@@ -31,7 +31,9 @@ export async function sendEmail({
 
   if (!res.ok) {
     const err = await res.json();
-    return { success: false, error: err.message || 'Send failed' };
+    console.error('[email] Resend error:', JSON.stringify(err));
+    console.error('[email] from:', FROM_EMAIL, '| status:', res.status);
+    return { success: false, error: err.message || err.name || JSON.stringify(err) };
   }
 
   return { success: true };
