@@ -62,6 +62,7 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
   const [editTags, setEditTags] = useState<string[]>([]);
   const [editTagInput, setEditTagInput] = useState('');
   const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   // Add single
   const [addName, setAddName] = useState('');
@@ -136,7 +137,7 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
     setEditTagInput('');
   };
 
-  const cancelEdit = () => { setEditingId(null); setEditTagInput(''); };
+  const cancelEdit = () => { setEditingId(null); setEditTagInput(''); setEditError(null); };
 
   const addEditTag = () => {
     const t = editTagInput.trim().toLowerCase();
@@ -149,17 +150,26 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
   const saveEdit = async () => {
     if (!editingId) return;
     setSaving(true);
-    const res = await fetch(`/api/tournaments/${tournament!.id}/email/recipients`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ recipientId: editingId, name: editName, type: editType, tags: editTags }),
-    });
-    if (res.ok) {
-      const updated = await res.json();
-      setRecipients((prev) => prev.map((r) => r.id === editingId ? updated : r));
-      setEditingId(null);
+    setEditError(null);
+    try {
+      const res = await fetch(`/api/tournaments/${tournament!.id}/email/recipients`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipientId: editingId, name: editName, type: editType, tags: editTags }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setRecipients((prev) => prev.map((r) => r.id === editingId ? data : r));
+        setEditingId(null);
+        setEditError(null);
+      } else {
+        setEditError(data.error || `Save failed (${res.status})`);
+      }
+    } catch (e) {
+      setEditError('Network error');
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   const addRecipient = async () => {
@@ -442,6 +452,9 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
                                   </button>
                                 ))}
                               </div>
+                              {editError && (
+                                <p className="text-xs text-red-600 bg-red-50 rounded px-2 py-1">{editError}</p>
+                              )}
                               <div className="flex gap-2 mt-1">
                                 <button onClick={saveEdit} disabled={saving}
                                   className="bg-zinc-900 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-zinc-800 disabled:opacity-50">
