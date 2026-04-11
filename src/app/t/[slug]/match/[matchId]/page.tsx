@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client';
 import { ChevronLeft, Clock, MapPin, Trophy, Swords } from 'lucide-react';
 import PullToRefresh from '@/components/PullToRefresh';
 import RefreshButton from '@/components/RefreshButton';
+import ThemeToggle from '@/components/ThemeToggle';
 import type { MatchWithDetails } from '@/lib/supabase/types';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; dot?: string }> = {
@@ -88,6 +89,7 @@ export default function MatchDetail({
               </Link>
               <h1 className="text-lg font-bold tracking-tight text-[var(--text-primary)]">Match</h1>
             </div>
+            <ThemeToggle />
             <RefreshButton />
           </div>
         </header>

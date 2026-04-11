@@ -9,6 +9,7 @@ import TournamentBottomNav from '@/components/layout/TournamentBottomNav';
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import PullToRefresh from '@/components/PullToRefresh';
 import RefreshButton from '@/components/RefreshButton';
+import ThemeToggle from '@/components/ThemeToggle';
 
 export default function PlayerLookup({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
@@ -52,6 +53,7 @@ export default function PlayerLookup({ params }: { params: Promise<{ slug: strin
             <Link href={`/t/${slug}`} className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-1">
               <ChevronLeft className="w-3.5 h-3.5" /> {tournament.name}
             </Link>
+            <ThemeToggle />
             <RefreshButton />
           </div>
           <h1 className="text-lg font-bold tracking-tight mb-3 text-[var(--text-primary)]">Find My Matches</h1>

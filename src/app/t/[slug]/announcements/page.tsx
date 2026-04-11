@@ -8,6 +8,7 @@ import TournamentBottomNav from '@/components/layout/TournamentBottomNav';
 import { ChevronLeft, AlertTriangle, Radio } from 'lucide-react';
 import PullToRefresh from '@/components/PullToRefresh';
 import RefreshButton from '@/components/RefreshButton';
+import ThemeToggle from '@/components/ThemeToggle';
 
 export default function Announcements({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
@@ -29,6 +30,7 @@ export default function Announcements({ params }: { params: Promise<{ slug: stri
             </Link>
             <h1 className="text-lg font-bold tracking-tight text-[var(--text-primary)]">Announcements</h1>
           </div>
+          <ThemeToggle />
           <RefreshButton />
         </div>
       </header>

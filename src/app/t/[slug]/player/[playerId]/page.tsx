@@ -11,6 +11,7 @@ import type { Player, MatchWithDetails, Profile } from '@/lib/supabase/types';
 import { ChevronLeft } from 'lucide-react';
 import PullToRefresh from '@/components/PullToRefresh';
 import RefreshButton from '@/components/RefreshButton';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const STATUS_LABELS: Record<string, { text: string; color: string }> = {
   in_progress: { text: 'Playing NOW', color: 'bg-green-600 text-white' },
@@ -85,6 +86,7 @@ export default function MyMatches({
               <ChevronLeft className="w-4 h-4" />
               All Players
             </Link>
+            <ThemeToggle />
             <RefreshButton />
           </div>
 
@@ -93,10 +95,10 @@ export default function MyMatches({
               <img
                 src={photo}
                 alt={displayName}
-                className="w-14 h-14 rounded-full object-cover border-2 border-zinc-200 flex-shrink-0"
+                className="w-14 h-14 rounded-full object-cover border-2 border-[var(--border)] flex-shrink-0"
               />
             ) : (
-              <div className="w-14 h-14 rounded-full bg-zinc-200 flex items-center justify-center text-xl font-bold text-zinc-500 flex-shrink-0 select-none">
+              <div className="w-14 h-14 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-xl font-bold text-zinc-500 dark:text-zinc-300 flex-shrink-0 select-none">
                 {displayName[0]?.toUpperCase() ?? '?'}
               </div>
             )}
@@ -106,7 +108,7 @@ export default function MyMatches({
               <div className="flex flex-wrap items-center gap-2 mt-0.5">
                 {displayClub && <span className="text-sm text-zinc-500">{displayClub}</span>}
                 {playerProfile?.squash_ranking && (
-                  <span className="text-xs font-medium bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                  <span className="text-xs font-medium bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
                     Rating: {playerProfile.squash_ranking}
                   </span>
                 )}

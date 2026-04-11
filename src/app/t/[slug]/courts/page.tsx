@@ -10,6 +10,7 @@ import TournamentBottomNav from '@/components/layout/TournamentBottomNav';
 import { ChevronLeft } from 'lucide-react';
 import PullToRefresh from '@/components/PullToRefresh';
 import RefreshButton from '@/components/RefreshButton';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const COURT_STATUS_COLORS: Record<string, string> = {
   available: 'border-green-400 dark:border-green-700 bg-green-50 dark:bg-green-950/30',
@@ -54,11 +55,12 @@ export default function CourtBoard({ params }: { params: Promise<{ slug: string 
             </Link>
             <h1 className="text-lg font-bold tracking-tight text-[var(--text-primary)]">Court Board</h1>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
+            <span className="flex items-center gap-1.5 mr-1">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               <span className="text-xs text-[var(--text-secondary)] font-medium">Live</span>
             </span>
+            <ThemeToggle />
             <RefreshButton />
           </div>
         </div>
