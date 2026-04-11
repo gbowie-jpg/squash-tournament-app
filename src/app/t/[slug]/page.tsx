@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { ClipboardList, Search, Megaphone, HandHelping, MapPin, Phone, Mail } from 'lucide-react';
 
 // Always fetch fresh data — tournament details change frequently
 export const dynamic = 'force-dynamic';
@@ -92,10 +93,10 @@ export default async function TournamentLanding({
   const textColors = getTextColors(tournament.hero_text_color);
 
   const quickLinks = [
-    { href: `/t/${slug}/courts`, label: 'Court Board', desc: 'Live view of all courts', emoji: '📋' },
-    { href: `/t/${slug}/players`, label: 'Find My Matches', desc: 'Search by player name', emoji: '🔍' },
-    { href: `/t/${slug}/announcements`, label: 'Announcements', desc: 'Updates from the organizer', emoji: '📢' },
-    { href: `/t/${slug}/volunteer`, label: 'Volunteer / Referee', desc: 'Sign up to help or officiate', emoji: '🙋' },
+    { href: `/t/${slug}/courts`, label: 'Court Board', desc: 'Live view of all courts', Icon: ClipboardList },
+    { href: `/t/${slug}/players`, label: 'Find My Matches', desc: 'Search by player name', Icon: Search },
+    { href: `/t/${slug}/announcements`, label: 'Announcements', desc: 'Updates from the organizer', Icon: Megaphone },
+    { href: `/t/${slug}/volunteer`, label: 'Volunteer / Referee', desc: 'Sign up to help or officiate', Icon: HandHelping },
   ];
 
   const infoSections = [
@@ -106,7 +107,7 @@ export default async function TournamentLanding({
   ];
 
   return (
-    <div className="min-h-screen bg-zinc-50 flex flex-col pb-16 md:pb-0">
+    <div className="min-h-screen bg-[var(--surface)] flex flex-col pb-16 md:pb-0">
       <SiteNav />
 
       {/* Hero */}
@@ -185,26 +186,26 @@ export default async function TournamentLanding({
 
             {/* Stats row */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <StatCard label="Players" value={playerCount ?? 0} color="text-zinc-900" />
-              <StatCard label="Matches" value={matchCount ?? 0} color="text-zinc-900" />
+              <StatCard label="Players" value={playerCount ?? 0} color="text-[var(--text-primary)]" />
+              <StatCard label="Matches" value={matchCount ?? 0} color="text-[var(--text-primary)]" />
               <StatCard label="In Progress" value={inProgress ?? 0} color="text-green-600" />
-              <StatCard label="Completed" value={completed ?? 0} color="text-blue-600" />
+              <StatCard label="Completed" value={completed ?? 0} color="text-blue-600 dark:text-blue-400" />
             </div>
 
             {/* Description */}
             {tournament.description && (
-              <div className="bg-white border border-zinc-200 rounded-xl p-5">
-                <p className="text-sm leading-relaxed whitespace-pre-wrap text-zinc-700">{tournament.description}</p>
+              <div className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-5">
+                <p className="text-sm leading-relaxed whitespace-pre-wrap text-[var(--text-secondary)]">{tournament.description}</p>
               </div>
             )}
 
             {/* Draws */}
             {draws.length > 0 && (
-              <div className="bg-white border border-zinc-200 rounded-xl p-5">
-                <h2 className="font-semibold mb-3 text-zinc-900">Draws</h2>
+              <div className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-5">
+                <h2 className="font-semibold mb-3 text-[var(--text-primary)]">Draws</h2>
                 <div className="flex flex-wrap gap-2">
                   {draws.map((d) => (
-                    <span key={d} className="bg-zinc-100 text-zinc-800 text-sm font-medium px-3 py-1.5 rounded-lg">{d}</span>
+                    <span key={d} className="bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-sm font-medium px-3 py-1.5 rounded-lg">{d}</span>
                   ))}
                 </div>
               </div>
@@ -212,8 +213,8 @@ export default async function TournamentLanding({
 
             {/* Live/upcoming matches */}
             {nextMatches.length > 0 && (
-              <div className="bg-white border border-zinc-200 rounded-xl p-5">
-                <h2 className="font-semibold mb-3 text-zinc-900">
+              <div className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-5">
+                <h2 className="font-semibold mb-3 text-[var(--text-primary)]">
                   {(inProgress ?? 0) > 0 ? 'Live & Upcoming Matches' : 'Upcoming Matches'}
                 </h2>
                 <div className="space-y-2">
@@ -221,17 +222,19 @@ export default async function TournamentLanding({
                     <div
                       key={m.id}
                       className={`flex items-center justify-between p-3 rounded-lg text-sm ${
-                        m.status === 'in_progress' ? 'bg-green-50 border border-green-200' : 'bg-zinc-50'
+                        m.status === 'in_progress'
+                          ? 'bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800'
+                          : 'bg-zinc-50 dark:bg-zinc-800/50'
                       }`}
                     >
                       <div>
-                        <span className="font-medium text-zinc-900">{m.player1?.name || 'TBD'}</span>
-                        <span className="text-zinc-400 mx-2">vs</span>
-                        <span className="font-medium text-zinc-900">{m.player2?.name || 'TBD'}</span>
+                        <span className="font-medium text-[var(--text-primary)]">{m.player1?.name || 'TBD'}</span>
+                        <span className="text-[var(--text-muted)] mx-2">vs</span>
+                        <span className="font-medium text-[var(--text-primary)]">{m.player2?.name || 'TBD'}</span>
                       </div>
-                      <div className="text-right text-xs text-zinc-600">
+                      <div className="text-right text-xs text-[var(--text-secondary)]">
                         {m.court?.name && <span className="mr-2">{m.court.name}</span>}
-                        {m.status === 'in_progress' && <span className="text-green-700 font-semibold">LIVE</span>}
+                        {m.status === 'in_progress' && <span className="text-green-600 dark:text-green-400 font-semibold">LIVE</span>}
                         {m.scheduled_time && m.status !== 'in_progress' && (
                           <span>{new Date(m.scheduled_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span>
                         )}
@@ -239,7 +242,7 @@ export default async function TournamentLanding({
                     </div>
                   ))}
                 </div>
-                <Link href={`/t/${slug}/courts`} className="block text-center text-sm text-zinc-500 hover:text-zinc-700 mt-3 underline">
+                <Link href={`/t/${slug}/courts`} className="block text-center text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] mt-3 underline underline-offset-2">
                   View full court board
                 </Link>
               </div>
@@ -254,12 +257,12 @@ export default async function TournamentLanding({
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="flex items-center gap-4 bg-white rounded-xl border border-zinc-200 p-5 hover:border-zinc-300 hover:shadow-sm transition-all"
+                  className="flex items-center gap-4 bg-[var(--surface-card)] rounded-xl border border-[var(--border)] p-5 hover:border-zinc-300 dark:hover:border-zinc-600 hover:shadow-sm transition-all group"
                 >
-                  <span className="text-2xl">{link.emoji}</span>
+                  <link.Icon className="w-5 h-5 text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors flex-shrink-0" strokeWidth={1.5} />
                   <div>
-                    <p className="font-semibold text-zinc-900">{link.label}</p>
-                    <p className="text-sm text-zinc-500">{link.desc}</p>
+                    <p className="font-semibold text-[var(--text-primary)]">{link.label}</p>
+                    <p className="text-sm text-[var(--text-secondary)]">{link.desc}</p>
                   </div>
                 </Link>
               ))}
@@ -271,15 +274,15 @@ export default async function TournamentLanding({
 
             {/* Schedule */}
             {scheduleItems.length > 0 && (
-              <div className="bg-white border border-zinc-200 rounded-xl p-5">
-                <h2 className="font-semibold text-sm uppercase tracking-wide text-zinc-500 mb-4">Schedule</h2>
+              <div className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-5">
+                <h2 className="font-semibold text-xs uppercase tracking-wide text-[var(--text-muted)] mb-4">Schedule</h2>
                 <div className="space-y-3">
                   {scheduleItems.map((item, i) => (
                     <div key={i} className="flex items-start gap-3">
-                      <div className="w-2 h-2 rounded-full bg-zinc-300 mt-1.5 shrink-0" />
+                      <div className="w-2 h-2 rounded-full bg-zinc-300 dark:bg-zinc-600 mt-1.5 shrink-0" />
                       <div>
-                        <p className="text-xs text-zinc-500">{item.date}</p>
-                        <p className="text-sm font-medium text-zinc-800">{item.label}</p>
+                        <p className="text-xs text-[var(--text-muted)]">{item.date}</p>
+                        <p className="text-sm font-medium text-[var(--text-primary)]">{item.label}</p>
                       </div>
                     </div>
                   ))}
@@ -289,11 +292,11 @@ export default async function TournamentLanding({
 
             {/* Venue */}
             {tournament.venue && (
-              <div className="bg-white border border-zinc-200 rounded-xl p-5">
-                <h2 className="font-semibold text-sm uppercase tracking-wide text-zinc-500 mb-3">Venue</h2>
-                <p className="font-semibold text-zinc-900">{tournament.venue}</p>
+              <div className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-5">
+                <h2 className="font-semibold text-xs uppercase tracking-wide text-[var(--text-muted)] mb-3">Venue</h2>
+                <p className="font-semibold text-[var(--text-primary)]">{tournament.venue}</p>
                 {tournament.address && (
-                  <p className="text-sm text-zinc-500 mt-1">{tournament.address}</p>
+                  <p className="text-sm text-[var(--text-secondary)] mt-1">{tournament.address}</p>
                 )}
                 {(tournament.address || tournament.venue) && (
                   <a
@@ -302,9 +305,9 @@ export default async function TournamentLanding({
                     )}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 mt-3 text-xs text-blue-600 hover:underline font-medium"
+                    className="inline-flex items-center gap-1.5 mt-3 text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
                   >
-                    📍 Open in Google Maps
+                    <MapPin className="w-3.5 h-3.5" /> Open in Maps
                   </a>
                 )}
               </div>
@@ -312,19 +315,19 @@ export default async function TournamentLanding({
 
             {/* Contact */}
             {(tournament.contact_name || tournament.contact_email || tournament.contact_phone) && (
-              <div className="bg-white border border-zinc-200 rounded-xl p-5">
-                <h2 className="font-semibold text-sm uppercase tracking-wide text-zinc-500 mb-3">Contact</h2>
+              <div className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-5">
+                <h2 className="font-semibold text-xs uppercase tracking-wide text-[var(--text-muted)] mb-3">Contact</h2>
                 {tournament.contact_name && (
-                  <p className="font-semibold text-zinc-900 mb-2">{tournament.contact_name}</p>
+                  <p className="font-semibold text-[var(--text-primary)] mb-2">{tournament.contact_name}</p>
                 )}
                 {tournament.contact_email && (
-                  <a href={`mailto:${tournament.contact_email}`} className="flex items-center gap-2 text-sm text-blue-600 hover:underline mb-1">
-                    <span>✉</span> {tournament.contact_email}
+                  <a href={`mailto:${tournament.contact_email}`} className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:underline mb-1.5">
+                    <Mail className="w-3.5 h-3.5" /> {tournament.contact_email}
                   </a>
                 )}
                 {tournament.contact_phone && (
-                  <a href={`tel:${tournament.contact_phone}`} className="flex items-center gap-2 text-sm text-blue-600 hover:underline">
-                    <span>📞</span> {tournament.contact_phone}
+                  <a href={`tel:${tournament.contact_phone}`} className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                    <Phone className="w-3.5 h-3.5" /> {tournament.contact_phone}
                   </a>
                 )}
               </div>
@@ -342,9 +345,9 @@ export default async function TournamentLanding({
 
 function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div className="bg-white rounded-xl border border-zinc-200 p-4 text-center">
+    <div className="bg-[var(--surface-card)] rounded-xl border border-[var(--border)] p-4 text-center">
       <p className={`text-2xl font-bold ${color}`}>{value}</p>
-      <p className="text-xs text-zinc-500 mt-1">{label}</p>
+      <p className="text-xs text-[var(--text-muted)] mt-1">{label}</p>
     </div>
   );
 }

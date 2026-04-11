@@ -1,9 +1,36 @@
 @import "tailwindcss";
 
+/* Dark mode via .dark class on <html> */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Light theme tokens */
 :root {
   color-scheme: light;
   --background: #ffffff;
   --foreground: #171717;
+
+  --surface: #f4f4f5;       /* zinc-100 — page bg */
+  --surface-card: #ffffff;
+  --border: #e4e4e7;        /* zinc-200 */
+  --text-primary: #18181b;  /* zinc-900 */
+  --text-secondary: #52525b; /* zinc-600 */
+  --text-muted: #a1a1aa;    /* zinc-400 */
+  --nav-bg: #1a2332;
+}
+
+/* Dark theme tokens */
+.dark {
+  color-scheme: dark;
+  --background: #09090b;    /* zinc-950 */
+  --foreground: #fafafa;
+
+  --surface: #09090b;       /* zinc-950 — page bg */
+  --surface-card: #18181b;  /* zinc-900 */
+  --border: #27272a;        /* zinc-800 */
+  --text-primary: #fafafa;  /* zinc-50 */
+  --text-secondary: #a1a1aa; /* zinc-400 */
+  --text-muted: #52525b;    /* zinc-600 */
+  --nav-bg: #0f1621;
 }
 
 @theme inline {
@@ -14,20 +41,25 @@
 }
 
 body {
-  background: var(--background);
-  color: #27272a; /* zinc-800 — strong default for all text */
+  background: var(--surface);
+  color: var(--text-primary);
   font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 h1, h2, h3, h4, h5, h6 {
-  color: #18181b; /* zinc-900 — bold headings always dark */
+  color: var(--text-primary);
 }
 
-label, th, select, input, textarea {
-  color: #27272a; /* zinc-800 */
+label, th {
+  color: var(--text-secondary);
+}
+
+select, input, textarea {
+  color: var(--text-primary);
 }
 
 ::placeholder {
-  color: #52525b; /* zinc-600 */
+  color: var(--text-muted);
   opacity: 1;
 }

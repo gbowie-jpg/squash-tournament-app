@@ -6,12 +6,9 @@ import { useTournament } from '@/lib/useTournament';
 import { createClient } from '@/lib/supabase/client';
 import type { Player } from '@/lib/supabase/types';
 import TournamentBottomNav from '@/components/layout/TournamentBottomNav';
+import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 
-export default function PlayerLookup({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+export default function PlayerLookup({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
   const { tournament, loading: tLoading } = useTournament(slug);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -35,7 +32,7 @@ export default function PlayerLookup({
   }, [tournament]);
 
   if (tLoading || !tournament) {
-    return <div className="flex items-center justify-center min-h-screen text-zinc-600">Loading…</div>;
+    return <div className="flex items-center justify-center min-h-screen text-[var(--text-secondary)]">Loading…</div>;
   }
 
   const filtered = search
@@ -45,76 +42,74 @@ export default function PlayerLookup({
   const draws = [...new Set(filtered.map((p) => p.draw || 'Unassigned'))].sort();
 
   return (
-    <div className="min-h-screen bg-zinc-50 pb-20 md:pb-0">
-      <header className="bg-white border-b border-zinc-200 sticky top-0 z-10">
+    <div className="min-h-screen bg-[var(--surface)] pb-20 md:pb-0">
+      <header className="bg-[var(--surface-card)] border-b border-[var(--border)] sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 pt-3 pb-4">
-          <Link href={`/t/${slug}`} className="text-xs text-zinc-500 hover:text-zinc-800 flex items-center gap-1 mb-0.5">
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            {tournament.name}
+          <Link href={`/t/${slug}`} className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-1 mb-0.5">
+            <ChevronLeft className="w-3.5 h-3.5" /> {tournament.name}
           </Link>
-          <h1 className="text-lg font-bold tracking-tight mb-3">Find My Matches</h1>
-          <input
-            type="search"
-            placeholder="Search by name…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full border border-zinc-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-zinc-50"
-            autoFocus
-          />
+          <h1 className="text-lg font-bold tracking-tight mb-3 text-[var(--text-primary)]">Find My Matches</h1>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.5} />
+            <input
+              type="search"
+              placeholder="Search by name…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full border border-[var(--border)] rounded-xl pl-9 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-[var(--surface)] text-[var(--text-primary)]"
+              autoFocus
+            />
+          </div>
         </div>
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-4">
         {loading ? (
-          <div className="bg-white border border-zinc-200 rounded-2xl overflow-hidden">
+          <div className="bg-[var(--surface-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className={`flex items-center gap-3 px-4 py-3.5 animate-pulse ${i > 1 ? 'border-t border-zinc-100' : ''}`}>
-                <div className="w-7 h-7 rounded-full bg-zinc-100" />
+              <div key={i} className={`flex items-center gap-3 px-4 py-3.5 animate-pulse ${i > 1 ? 'border-t border-[var(--border)]' : ''}`}>
+                <div className="w-7 h-7 rounded-full bg-zinc-100 dark:bg-zinc-800" />
                 <div className="flex-1">
-                  <div className="h-4 bg-zinc-100 rounded w-32 mb-1" />
-                  <div className="h-3 bg-zinc-100 rounded w-20" />
+                  <div className="h-4 bg-zinc-100 dark:bg-zinc-800 rounded w-32 mb-1" />
+                  <div className="h-3 bg-zinc-100 dark:bg-zinc-800 rounded w-20" />
                 </div>
               </div>
             ))}
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-4xl mb-3">🔍</p>
-            <p className="text-zinc-500">
+            <Search className="w-8 h-8 text-zinc-300 dark:text-zinc-700 mx-auto mb-3" strokeWidth={1.5} />
+            <p className="text-[var(--text-secondary)]">
               {search ? 'No players match your search.' : 'No players registered yet.'}
             </p>
           </div>
         ) : (
           draws.map((draw) => (
             <div key={draw} className="mb-5">
-              <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2 px-1">{draw}</h2>
-              <div className="bg-white border border-zinc-200 rounded-2xl overflow-hidden">
+              <h2 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2 px-1">{draw}</h2>
+              <div className="bg-[var(--surface-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
                 {filtered
                   .filter((p) => (p.draw || 'Unassigned') === draw)
                   .map((p, i) => (
                     <Link
                       key={p.id}
                       href={`/t/${slug}/player/${p.id}`}
-                      className={`flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-50 active:bg-zinc-100 transition-colors ${
-                        i > 0 ? 'border-t border-zinc-100' : ''
+                      className={`flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors ${
+                        i > 0 ? 'border-t border-[var(--border)]' : ''
                       }`}
                     >
                       {p.seed ? (
-                        <span className="w-7 h-7 rounded-full bg-zinc-100 text-zinc-600 text-xs font-bold flex items-center justify-center flex-shrink-0">
+                        <span className="w-7 h-7 rounded-full bg-zinc-100 dark:bg-zinc-800 text-[var(--text-secondary)] text-xs font-bold flex items-center justify-center flex-shrink-0">
                           {p.seed}
                         </span>
                       ) : (
-                        <span className="w-7 h-7 rounded-full bg-zinc-50 flex-shrink-0" />
+                        <span className="w-7 h-7 rounded-full bg-zinc-50 dark:bg-zinc-800/50 flex-shrink-0" />
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate">{p.name}</p>
-                        {p.club && <p className="text-xs text-zinc-500 truncate">{p.club}</p>}
+                        <p className="text-sm font-semibold truncate text-[var(--text-primary)]">{p.name}</p>
+                        {p.club && <p className="text-xs text-[var(--text-secondary)] truncate">{p.club}</p>}
                       </div>
-                      <svg className="w-4 h-4 text-zinc-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
+                      <ChevronRight className="w-4 h-4 text-zinc-300 dark:text-zinc-600 flex-shrink-0" />
                     </Link>
                   ))}
               </div>

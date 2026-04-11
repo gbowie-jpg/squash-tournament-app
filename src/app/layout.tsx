@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 import MasqueradeBanner from "@/components/MasqueradeBanner";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -41,10 +42,20 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
-        <ServiceWorkerRegistrar />
-        <MasqueradeBanner />
-        {children}
+      {/* Prevent flash of wrong theme: apply class before first paint */}
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('theme')||((window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.classList.toggle('dark',t==='dark')}catch(e){}})()`,
+          }}
+        />
+      </head>
+      <body className="min-h-full flex flex-col bg-[var(--surface)]">
+        <ThemeProvider>
+          <ServiceWorkerRegistrar />
+          <MasqueradeBanner />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

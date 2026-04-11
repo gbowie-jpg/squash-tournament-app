@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { UserCircle } from 'lucide-react';
 
 export default function AuthButton() {
   const [email, setEmail] = useState<string | null>(null);
@@ -30,17 +31,21 @@ export default function AuthButton() {
         className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
         title={email}
       >
-        <span className="w-6 h-6 rounded-full bg-blue-400 text-white text-xs font-bold flex items-center justify-center">
+        <span className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs font-bold flex items-center justify-center">
           {email[0].toUpperCase()}
         </span>
-        <span className="hidden sm:inline">My Account</span>
+        <span className="hidden sm:inline text-white/90">My Account</span>
       </Link>
     );
   }
 
   return (
-    <Link href="/login" className="bg-blue-600 hover:bg-blue-700 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors">
-      Sign In
+    <Link
+      href="/login"
+      className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors text-white/90"
+    >
+      <UserCircle className="w-4 h-4" />
+      <span>Sign In</span>
     </Link>
   );
 }

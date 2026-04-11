@@ -8,14 +8,15 @@ import { formatScore } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import { useState, useEffect } from 'react';
 import type { Player, MatchWithDetails, Profile } from '@/lib/supabase/types';
+import { ChevronLeft } from 'lucide-react';
 
 const STATUS_LABELS: Record<string, { text: string; color: string }> = {
   in_progress: { text: 'Playing NOW', color: 'bg-green-600 text-white' },
   on_deck: { text: 'ON DECK', color: 'bg-amber-500 text-white' },
-  scheduled: { text: 'Upcoming', color: 'bg-blue-100 text-blue-700' },
-  completed: { text: 'Completed', color: 'bg-zinc-100 text-zinc-600' },
-  walkover: { text: 'Walkover', color: 'bg-purple-100 text-purple-600' },
-  cancelled: { text: 'Cancelled', color: 'bg-red-100 text-red-500' },
+  scheduled: { text: 'Upcoming', color: 'bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300' },
+  completed: { text: 'Completed', color: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400' },
+  walkover: { text: 'Walkover', color: 'bg-purple-100 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400' },
+  cancelled: { text: 'Cancelled', color: 'bg-red-100 dark:bg-red-950/50 text-red-500 dark:text-red-400' },
 };
 
 export default function MyMatches({
@@ -72,14 +73,12 @@ export default function MyMatches({
   const photo = playerProfile?.photo_url;
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-[var(--surface)]">
       {/* Header */}
-      <header className="bg-white border-b border-zinc-200">
+      <header className="bg-[var(--surface-card)] border-b border-[var(--border)]">
         <div className="max-w-2xl mx-auto px-4 pt-4 pb-5">
-          <Link href={`/t/${slug}/players`} className="text-sm text-zinc-500 hover:text-zinc-800 flex items-center gap-1 mb-3">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
+          <Link href={`/t/${slug}/players`} className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-1 mb-3">
+            <ChevronLeft className="w-4 h-4" />
             All Players
           </Link>
 
@@ -114,7 +113,7 @@ export default function MyMatches({
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-5">
+      <main className="max-w-2xl mx-auto px-4 py-5 pb-24">
         {/* Active status banner */}
         {activeMatch && (
           <div className={`rounded-2xl p-4 mb-5 ${activeMatch.status === 'in_progress' ? 'bg-green-600' : 'bg-amber-500'}`}>
@@ -160,12 +159,12 @@ export default function MyMatches({
               const canScore = currentUserId && (m.status === 'in_progress' || m.status === 'on_deck');
 
               return (
-                <div key={m.id} className="bg-white border border-zinc-200 rounded-2xl p-4">
+                <div key={m.id} className="bg-[var(--surface-card)] border border-[var(--border)] rounded-2xl p-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${statusInfo.color}`}>
                       {statusInfo.text}
                     </span>
-                    <div className="flex items-center gap-2 text-xs text-zinc-500">
+                    <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
                       {m.draw && <span>{m.draw}</span>}
                       {m.round && <span>· {m.round}</span>}
                     </div>
@@ -173,21 +172,21 @@ export default function MyMatches({
 
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate">
+                      <p className="font-semibold truncate text-[var(--text-primary)]">
                         vs {opponent?.name || 'TBD'}
                         {didWin && <span className="text-green-600 ml-2 text-sm font-bold">W</span>}
                         {didLose && <span className="text-red-500 ml-2 text-sm font-bold">L</span>}
                       </p>
-                      <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-zinc-500">
-                        {m.court && <span>📍 {m.court.name}</span>}
+                      <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-[var(--text-secondary)]">
+                        {m.court && <span>{m.court.name}</span>}
                         {m.scheduled_time && (
                           <span>
-                            🕐 {new Date(m.scheduled_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                            {new Date(m.scheduled_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                           </span>
                         )}
                       </div>
                       {m.scores && m.scores.length > 0 && (
-                        <p className="text-sm font-mono text-zinc-600 mt-1">{formatScore(m.scores)}</p>
+                        <p className="text-sm font-mono text-[var(--text-secondary)] mt-1">{formatScore(m.scores)}</p>
                       )}
                     </div>
 
