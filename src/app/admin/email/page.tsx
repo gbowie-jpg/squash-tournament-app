@@ -23,7 +23,7 @@ type Campaign = {
   created_at: string;
 };
 
-type Tab = 'recipients' | 'compose' | 'history';
+type Tab = 'recipients' | 'compose' | 'history' | 'template';
 
 function parseCSV(text: string): { name: string; email: string; tags?: string[] }[] {
   const lines = text.split(/\r?\n/).filter((l) => l.trim());
@@ -86,6 +86,29 @@ export default function GlobalEmail() {
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
+  const BG_PRESETS = [
+    { label: 'Navy',     color: '#1a2332' },
+    { label: 'Midnight', color: '#0f172a' },
+    { label: 'Forest',   color: '#14532d' },
+    { label: 'Crimson',  color: '#7f1d1d' },
+    { label: 'Purple',   color: '#3b0764' },
+    { label: 'Slate',    color: '#1e293b' },
+    { label: 'Teal',     color: '#134e4a' },
+    { label: 'Charcoal', color: '#27272a' },
+  ];
+
+  // Template settings
+  const [tmpl, setTmpl] = useState({
+    email_heading: '',
+    email_subheading: '',
+    email_header_bg: '#1a2332',
+    email_header_image_url: '',
+    email_footer_text: '',
+  });
+  const [tmplSaving, setTmplSaving] = useState(false);
+  const [tmplSaved, setTmplSaved] = useState(false);
+  const previewBg = tmpl.email_header_bg || '#1a2332';
+
   // CSV
   const csvRef = useRef<HTMLInputElement>(null);
   const [csvPreview, setCsvPreview] = useState<{ name: string; email: string; tags?: string[] }[]>([]);
@@ -101,7 +124,18 @@ export default function GlobalEmail() {
     setLoading(false);
   };
 
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => {
+    refresh();
+    fetch('/api/site-settings').then((r) => r.ok ? r.json() : {}).then((s: Record<string, string | null>) => {
+      setTmpl({
+        email_heading: s.email_heading || '',
+        email_subheading: s.email_subheading || '',
+        email_header_bg: s.email_header_bg || '#1a2332',
+        email_header_image_url: s.email_header_image_url || '',
+        email_footer_text: s.email_footer_text || '',
+      });
+    });
+  }, []);
 
   // All unique tags across recipients
   const allTags = [...new Set(recipients.flatMap((r) => r.tags || []))].sort();
@@ -117,6 +151,17 @@ export default function GlobalEmail() {
     if (sendTags.length === 0) return eligible.length;
     return eligible.filter((r) => sendTags.some((t) => (r.tags || []).includes(t))).length;
   })();
+
+  const saveTmpl = async () => {
+    setTmplSaving(true); setTmplSaved(false);
+    await fetch('/api/site-settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(tmpl),
+    });
+    setTmplSaving(false); setTmplSaved(true);
+    setTimeout(() => setTmplSaved(false), 2500);
+  };
 
   const startEdit = (r: Recipient) => {
     setEditingId(r.id); setEditName(r.name); setEditEmail(r.email);
@@ -242,10 +287,10 @@ export default function GlobalEmail() {
       <main className="max-w-4xl mx-auto px-4 py-8">
         {/* Tabs */}
         <div className="flex gap-1 bg-white border border-zinc-200 rounded-xl p-1 mb-6">
-          {(['recipients', 'compose', 'history'] as Tab[]).map((t) => (
+          {(['recipients', 'compose', 'history', 'template'] as Tab[]).map((t) => (
             <button key={t} onClick={() => setTab(t)}
-              className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${tab === t ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-zinc-100'}`}>
-              {t === 'recipients' ? `Recipients (${recipients.length})` : t === 'compose' ? 'Compose' : 'History'}
+              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${tab === t ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-zinc-100'}`}>
+              {t === 'recipients' ? `Recipients (${recipients.length})` : t === 'compose' ? 'Compose' : t === 'history' ? 'History' : '🎨 Template'}
             </button>
           ))}
         </div>
@@ -461,7 +506,7 @@ export default function GlobalEmail() {
               {sending ? 'Sending...' : `Send to ${sendTargetCount} Recipient${sendTargetCount !== 1 ? 's' : ''}`}
             </button>
           </div>
-        ) : (
+        ) : tab === 'history' ? (
           <div className="space-y-4">
             {campaigns.length === 0 ? (
               <div className="bg-white border border-zinc-200 rounded-xl p-8 text-center">
@@ -492,7 +537,120 @@ export default function GlobalEmail() {
               </div>
             ))}
           </div>
-        )}
+        ) : tab === 'template' ? (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Controls */}
+                <div className="space-y-5">
+                  <div className="bg-white border border-zinc-200 rounded-xl p-5 space-y-4">
+                    <h3 className="font-semibold">Header Text</h3>
+                    <div>
+                      <label className="block text-xs font-medium text-zinc-600 mb-1">Heading</label>
+                      <input value={tmpl.email_heading}
+                        onChange={(e) => setTmpl({ ...tmpl, email_heading: e.target.value })}
+                        placeholder="Seattle Squash (default)"
+                        className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-zinc-600 mb-1">Subheading</label>
+                      <input value={tmpl.email_subheading}
+                        onChange={(e) => setTmpl({ ...tmpl, email_subheading: e.target.value })}
+                        placeholder="Seattle Squash (default)"
+                        className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm" />
+                    </div>
+                  </div>
+
+                  <div className="bg-white border border-zinc-200 rounded-xl p-5 space-y-3">
+                    <h3 className="font-semibold">Header Background</h3>
+                    <div className="grid grid-cols-4 gap-2">
+                      {BG_PRESETS.map((p) => (
+                        <button key={p.color} onClick={() => setTmpl({ ...tmpl, email_header_bg: p.color })}
+                          title={p.label}
+                          className="relative h-10 rounded-lg border-2 transition-all"
+                          style={{ background: p.color, borderColor: tmpl.email_header_bg === p.color ? 'white' : 'transparent', outline: tmpl.email_header_bg === p.color ? `2px solid ${p.color}` : 'none' }}>
+                          {tmpl.email_header_bg === p.color && (
+                            <span className="absolute inset-0 flex items-center justify-center text-white text-sm">✓</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-zinc-600">Custom hex:</label>
+                      <input type="color" value={tmpl.email_header_bg || '#1a2332'}
+                        onChange={(e) => setTmpl({ ...tmpl, email_header_bg: e.target.value })}
+                        className="h-8 w-12 rounded border border-zinc-300 cursor-pointer" />
+                      <input value={tmpl.email_header_bg}
+                        onChange={(e) => setTmpl({ ...tmpl, email_header_bg: e.target.value })}
+                        placeholder="#1a2332"
+                        className="w-28 border border-zinc-300 rounded-lg px-2 py-1.5 text-xs font-mono" />
+                    </div>
+                  </div>
+
+                  <div className="bg-white border border-zinc-200 rounded-xl p-5 space-y-3">
+                    <h3 className="font-semibold">Header Image</h3>
+                    <p className="text-xs text-zinc-500">Logo or banner shown above the heading. Use a URL from Supabase Storage or any hosted image.</p>
+                    <input value={tmpl.email_header_image_url}
+                      onChange={(e) => setTmpl({ ...tmpl, email_header_image_url: e.target.value })}
+                      placeholder="https://… (leave blank for none)"
+                      className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm" />
+                    {tmpl.email_header_image_url && (
+                      <img src={tmpl.email_header_image_url} alt="preview"
+                        className="h-16 object-contain rounded border border-zinc-200" />
+                    )}
+                  </div>
+
+                  <div className="bg-white border border-zinc-200 rounded-xl p-5 space-y-3">
+                    <h3 className="font-semibold">Footer Text</h3>
+                    <textarea value={tmpl.email_footer_text}
+                      onChange={(e) => setTmpl({ ...tmpl, email_footer_text: e.target.value })}
+                      rows={2}
+                      placeholder="Seattle Squash Racquets Association&#10;P.O. Box 665, Seattle, WA 98111"
+                      className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm" />
+                  </div>
+
+                  <div className="bg-white border border-zinc-200 rounded-xl p-5">
+                    <h3 className="font-semibold mb-2">Insert Images in Messages</h3>
+                    <p className="text-xs text-zinc-600">In the Compose body, paste an image URL on its own line wrapped like this and it will render full-width in the email:</p>
+                    <code className="block mt-2 bg-zinc-50 border border-zinc-200 rounded px-3 py-2 text-xs font-mono text-zinc-700">
+                      {'[[image:https://your-image-url.com/photo.jpg]]'}
+                    </code>
+                  </div>
+
+                  <button onClick={saveTmpl} disabled={tmplSaving}
+                    className={`w-full py-2.5 rounded-lg text-sm font-medium transition-colors ${tmplSaved ? 'bg-green-600 text-white' : 'bg-zinc-900 text-white hover:bg-zinc-800'} disabled:opacity-50`}>
+                    {tmplSaving ? 'Saving…' : tmplSaved ? '✓ Saved' : 'Save Template'}
+                  </button>
+                </div>
+
+                {/* Live preview */}
+                <div className="sticky top-4">
+                  <p className="text-xs font-medium text-zinc-500 uppercase tracking-wide mb-2">Preview</p>
+                  <div className="border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
+                    <div style={{ background: previewBg, padding: '20px 24px', textAlign: 'center' }}>
+                      {tmpl.email_header_image_url && (
+                        <img src={tmpl.email_header_image_url} alt=""
+                          style={{ display: 'block', maxWidth: 80, height: 'auto', margin: '0 auto 10px', borderRadius: 4 }} />
+                      )}
+                      <div style={{ color: 'white', fontWeight: 700, fontSize: 18 }}>
+                        {tmpl.email_heading || 'Seattle Squash'}
+                      </div>
+                      <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12, marginTop: 4 }}>
+                        {tmpl.email_subheading || 'Seattle Squash'}
+                      </div>
+                    </div>
+                    <div style={{ background: 'white', padding: '20px 24px' }}>
+                      <div style={{ height: 10, background: '#e4e4e7', borderRadius: 4, marginBottom: 8 }} />
+                      <div style={{ height: 10, background: '#e4e4e7', borderRadius: 4, width: '80%', marginBottom: 8 }} />
+                      <div style={{ height: 10, background: '#e4e4e7', borderRadius: 4, width: '60%' }} />
+                    </div>
+                    <div style={{ background: '#f4f4f5', padding: '12px 24px', textAlign: 'center', fontSize: 11, color: '#71717a' }}>
+                      {tmpl.email_footer_text || 'Seattle Squash Racquets Association · P.O. Box 665, Seattle, WA 98111'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+        ) : null}
       </main>
     </div>
   );

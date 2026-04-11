@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireAuth } from '@/lib/supabase/auth-check';
-import { sendEmail, buildCampaignHtml } from '@/lib/email';
+import { sendEmail, buildCampaignHtml, getEmailTemplateSettings } from '@/lib/email';
 
 /** POST: Send a campaign to all subscribed recipients. */
 export async function POST(
@@ -71,9 +71,11 @@ export async function POST(
     .update({ status: 'sending', updated_at: new Date().toISOString() })
     .eq('id', campaignId);
 
+  const template = await getEmailTemplateSettings(supabase);
   const html = buildCampaignHtml({
     body: campaign.body,
     tournamentName: tournament?.name || 'Tournament',
+    template,
   });
 
   let sentCount = 0;
