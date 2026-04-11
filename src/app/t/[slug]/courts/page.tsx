@@ -8,6 +8,8 @@ import { formatScore } from '@/lib/utils';
 import type { Court, MatchWithDetails } from '@/lib/supabase/types';
 import TournamentBottomNav from '@/components/layout/TournamentBottomNav';
 import { ChevronLeft } from 'lucide-react';
+import PullToRefresh from '@/components/PullToRefresh';
+import RefreshButton from '@/components/RefreshButton';
 
 const COURT_STATUS_COLORS: Record<string, string> = {
   available: 'border-green-400 dark:border-green-700 bg-green-50 dark:bg-green-950/30',
@@ -42,6 +44,7 @@ export default function CourtBoard({ params }: { params: Promise<{ slug: string 
   };
 
   return (
+    <PullToRefresh>
     <div className="min-h-screen bg-[var(--surface)] pb-20 md:pb-0">
       <header className="bg-[var(--surface-card)] border-b border-[var(--border)] sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
@@ -51,9 +54,12 @@ export default function CourtBoard({ params }: { params: Promise<{ slug: string 
             </Link>
             <h1 className="text-lg font-bold tracking-tight text-[var(--text-primary)]">Court Board</h1>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-xs text-[var(--text-secondary)] font-medium">Live</span>
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-xs text-[var(--text-secondary)] font-medium">Live</span>
+            </span>
+            <RefreshButton />
           </div>
         </div>
       </header>
@@ -110,6 +116,7 @@ export default function CourtBoard({ params }: { params: Promise<{ slug: string 
 
       <TournamentBottomNav slug={slug} />
     </div>
+    </PullToRefresh>
   );
 }
 

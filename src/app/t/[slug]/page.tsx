@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { ClipboardList, Search, Megaphone, HandHelping, MapPin, Phone, Mail } from 'lucide-react';
+import RefreshButton from '@/components/RefreshButton';
 
 // Always fetch fresh data — tournament details change frequently
 export const dynamic = 'force-dynamic';
@@ -338,6 +339,12 @@ export default async function TournamentLanding({
       </main>
 
       <SiteFooter />
+      {/* Mobile refresh FAB — visible above bottom nav */}
+      <div className="md:hidden fixed bottom-20 right-4 z-30">
+        <div className="bg-[var(--surface-card)] border border-[var(--border)] rounded-full shadow-md">
+          <RefreshButton />
+        </div>
+      </div>
       <TournamentBottomNav slug={slug} />
     </div>
   );

@@ -7,6 +7,8 @@ import { createClient } from '@/lib/supabase/client';
 import type { Player } from '@/lib/supabase/types';
 import TournamentBottomNav from '@/components/layout/TournamentBottomNav';
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import PullToRefresh from '@/components/PullToRefresh';
+import RefreshButton from '@/components/RefreshButton';
 
 export default function PlayerLookup({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
@@ -42,12 +44,16 @@ export default function PlayerLookup({ params }: { params: Promise<{ slug: strin
   const draws = [...new Set(filtered.map((p) => p.draw || 'Unassigned'))].sort();
 
   return (
+    <PullToRefresh>
     <div className="min-h-screen bg-[var(--surface)] pb-20 md:pb-0">
       <header className="bg-[var(--surface-card)] border-b border-[var(--border)] sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 pt-3 pb-4">
-          <Link href={`/t/${slug}`} className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-1 mb-0.5">
-            <ChevronLeft className="w-3.5 h-3.5" /> {tournament.name}
-          </Link>
+          <div className="flex items-center justify-between mb-0.5">
+            <Link href={`/t/${slug}`} className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-1">
+              <ChevronLeft className="w-3.5 h-3.5" /> {tournament.name}
+            </Link>
+            <RefreshButton />
+          </div>
           <h1 className="text-lg font-bold tracking-tight mb-3 text-[var(--text-primary)]">Find My Matches</h1>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.5} />
@@ -120,5 +126,6 @@ export default function PlayerLookup({ params }: { params: Promise<{ slug: strin
 
       <TournamentBottomNav slug={slug} />
     </div>
+    </PullToRefresh>
   );
 }

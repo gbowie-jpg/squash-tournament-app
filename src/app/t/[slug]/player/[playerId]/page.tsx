@@ -9,6 +9,8 @@ import { createClient } from '@/lib/supabase/client';
 import { useState, useEffect } from 'react';
 import type { Player, MatchWithDetails, Profile } from '@/lib/supabase/types';
 import { ChevronLeft } from 'lucide-react';
+import PullToRefresh from '@/components/PullToRefresh';
+import RefreshButton from '@/components/RefreshButton';
 
 const STATUS_LABELS: Record<string, { text: string; color: string }> = {
   in_progress: { text: 'Playing NOW', color: 'bg-green-600 text-white' },
@@ -73,14 +75,18 @@ export default function MyMatches({
   const photo = playerProfile?.photo_url;
 
   return (
+    <PullToRefresh>
     <div className="min-h-screen bg-[var(--surface)]">
       {/* Header */}
       <header className="bg-[var(--surface-card)] border-b border-[var(--border)]">
         <div className="max-w-2xl mx-auto px-4 pt-4 pb-5">
-          <Link href={`/t/${slug}/players`} className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-1 mb-3">
-            <ChevronLeft className="w-4 h-4" />
-            All Players
-          </Link>
+          <div className="flex items-center justify-between mb-3">
+            <Link href={`/t/${slug}/players`} className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-1">
+              <ChevronLeft className="w-4 h-4" />
+              All Players
+            </Link>
+            <RefreshButton />
+          </div>
 
           <div className="flex items-center gap-4">
             {photo ? (
@@ -211,5 +217,6 @@ export default function MyMatches({
         </div>
       </main>
     </div>
+    </PullToRefresh>
   );
 }

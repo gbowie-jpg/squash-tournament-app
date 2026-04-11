@@ -6,6 +6,8 @@ import { useTournament } from '@/lib/useTournament';
 import { useRealtimeAnnouncements } from '@/lib/realtime/hooks';
 import TournamentBottomNav from '@/components/layout/TournamentBottomNav';
 import { ChevronLeft, AlertTriangle, Radio } from 'lucide-react';
+import PullToRefresh from '@/components/PullToRefresh';
+import RefreshButton from '@/components/RefreshButton';
 
 export default function Announcements({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
@@ -17,13 +19,17 @@ export default function Announcements({ params }: { params: Promise<{ slug: stri
   }
 
   return (
+    <PullToRefresh>
     <div className="min-h-screen bg-[var(--surface)] pb-20 md:pb-0">
       <header className="bg-[var(--surface-card)] border-b border-[var(--border)] sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 py-3">
-          <Link href={`/t/${slug}`} className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-1 mb-0.5">
-            <ChevronLeft className="w-3.5 h-3.5" /> {tournament.name}
-          </Link>
-          <h1 className="text-lg font-bold tracking-tight text-[var(--text-primary)]">Announcements</h1>
+        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div>
+            <Link href={`/t/${slug}`} className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-1 mb-0.5">
+              <ChevronLeft className="w-3.5 h-3.5" /> {tournament.name}
+            </Link>
+            <h1 className="text-lg font-bold tracking-tight text-[var(--text-primary)]">Announcements</h1>
+          </div>
+          <RefreshButton />
         </div>
       </header>
 
@@ -75,5 +81,6 @@ export default function Announcements({ params }: { params: Promise<{ slug: stri
 
       <TournamentBottomNav slug={slug} />
     </div>
+    </PullToRefresh>
   );
 }
