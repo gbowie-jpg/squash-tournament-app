@@ -77,12 +77,20 @@ export default function AdminDashboard() {
             <h1 className="text-2xl font-bold tracking-tight">Seattle Squash</h1>
             <p className="text-sm text-zinc-600">Admin Dashboard</p>
           </div>
-          <button
-            onClick={signOut}
-            className="text-zinc-600 hover:text-zinc-800 text-sm transition-colors"
-          >
-            Sign Out
-          </button>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/account"
+              className="text-sm text-zinc-600 hover:text-zinc-800 transition-colors"
+            >
+              My Profile
+            </Link>
+            <button
+              onClick={signOut}
+              className="text-zinc-600 hover:text-zinc-800 text-sm transition-colors"
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
       </header>
 
