@@ -211,6 +211,21 @@ export type Database = {
 
 export type GameScore = { p1: number; p2: number };
 
+// User profile (extends auth.users)
+export type Profile = {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  role: 'user' | 'admin' | 'superadmin';
+  photo_url: string | null;
+  squash_ranking: string | null;
+  bio: string | null;
+  club: string | null;
+  phone: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 // Convenience aliases
 export type Tournament = Database['public']['Tables']['tournaments']['Row'];
 export type Court = Database['public']['Tables']['courts']['Row'];

@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 import type { Tournament } from '@/lib/supabase/types';
 import SiteNav from '@/components/layout/SiteNav';
 import SiteFooter from '@/components/layout/SiteFooter';
+import TournamentBottomNav from '@/components/layout/TournamentBottomNav';
 import CountdownTimer from '@/components/CountdownTimer';
 import InfoAccordion from '@/components/InfoAccordion';
 import { heroBackground, getTextColors } from '@/lib/gradients';
@@ -105,7 +106,7 @@ export default async function TournamentLanding({
   ];
 
   return (
-    <div className="min-h-screen bg-zinc-50 flex flex-col">
+    <div className="min-h-screen bg-zinc-50 flex flex-col pb-16 md:pb-0">
       <SiteNav />
 
       {/* Hero */}
@@ -334,6 +335,7 @@ export default async function TournamentLanding({
       </main>
 
       <SiteFooter />
+      <TournamentBottomNav slug={slug} />
     </div>
   );
 }
