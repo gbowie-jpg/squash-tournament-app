@@ -77,6 +77,15 @@ export default function GlobalEmail() {
   const [addEmail, setAddEmail] = useState('');
   const [addTagInput, setAddTagInput] = useState('');
 
+  // Inline edit
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editTags, setEditTags] = useState<string[]>([]);
+  const [editTagInput, setEditTagInput] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
   // CSV
   const csvRef = useRef<HTMLInputElement>(null);
   const [csvPreview, setCsvPreview] = useState<{ name: string; email: string; tags?: string[] }[]>([]);
@@ -108,6 +117,36 @@ export default function GlobalEmail() {
     if (sendTags.length === 0) return eligible.length;
     return eligible.filter((r) => sendTags.some((t) => (r.tags || []).includes(t))).length;
   })();
+
+  const startEdit = (r: Recipient) => {
+    setEditingId(r.id); setEditName(r.name); setEditEmail(r.email);
+    setEditTags(r.tags || []); setEditTagInput(''); setEditError(null);
+  };
+  const cancelEdit = () => { setEditingId(null); setEditTagInput(''); setEditError(null); };
+  const addEditTag = () => {
+    const t = editTagInput.trim().toLowerCase();
+    if (t && !editTags.includes(t)) setEditTags([...editTags, t]);
+    setEditTagInput('');
+  };
+  const saveEdit = async () => {
+    if (!editingId) return;
+    setEditSaving(true); setEditError(null);
+    try {
+      const res = await fetch('/api/admin/email/recipients', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipientId: editingId, name: editName, email: editEmail, tags: editTags }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setRecipients((prev) => prev.map((r) => r.id === editingId ? data : r));
+        setEditingId(null);
+      } else {
+        setEditError(data.error || `Save failed (${res.status})`);
+      }
+    } catch { setEditError('Network error'); }
+    finally { setEditSaving(false); }
+  };
 
   const addRecipient = async () => {
     if (!addName || !addEmail) return;
@@ -290,27 +329,78 @@ export default function GlobalEmail() {
               ) : (
                 <table className="w-full text-sm">
                   <thead><tr className="bg-zinc-50 border-b border-zinc-100">
-                    <th className="text-left px-4 py-3 font-medium">Name</th>
-                    <th className="text-left px-4 py-3 font-medium">Email</th>
-                    <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">Tags</th>
-                    <th className="px-4 py-3 w-16"></th>
+                    <th className="text-left px-4 py-3 font-medium">Name / Tags</th>
+                    <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">Email</th>
+                    <th className="px-4 py-3 w-28"></th>
                   </tr></thead>
                   <tbody>
                     {filteredRecipients.map((r) => (
-                      <tr key={r.id} className="border-b border-zinc-50">
-                        <td className="px-4 py-2.5 font-medium">{r.name}</td>
-                        <td className="px-4 py-2.5 text-zinc-600">{r.email}</td>
-                        <td className="px-4 py-2.5 hidden sm:table-cell">
-                          <div className="flex flex-wrap gap-1">
-                            {(r.tags || []).map((tag) => (
-                              <span key={tag} className="text-xs bg-zinc-100 text-zinc-700 px-2 py-0.5 rounded-full">{tag}</span>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="px-4 py-2.5 text-right">
-                          <button onClick={() => removeRecipient(r.id)} className="text-xs text-red-500 hover:text-red-700">Remove</button>
-                        </td>
-                      </tr>
+                      editingId === r.id ? (
+                        <tr key={r.id} className="border-b border-zinc-100 bg-amber-50">
+                          <td colSpan={3} className="px-4 py-3">
+                            <div className="flex flex-col gap-2">
+                              <div className="flex flex-wrap gap-2">
+                                <input value={editName} onChange={(e) => setEditName(e.target.value)}
+                                  placeholder="Name"
+                                  className="border border-zinc-300 rounded-lg px-2 py-1.5 text-sm flex-1 min-w-32" />
+                                <input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)}
+                                  placeholder="Email"
+                                  className="border border-zinc-300 rounded-lg px-2 py-1.5 text-sm flex-1 min-w-40" />
+                              </div>
+                              <div className="flex flex-wrap gap-1.5 items-center">
+                                {editTags.map((t) => (
+                                  <span key={t} className="inline-flex items-center gap-1 bg-zinc-200 text-zinc-700 text-xs px-2 py-0.5 rounded-full">
+                                    {t}
+                                    <button onClick={() => setEditTags(editTags.filter((x) => x !== t))} className="text-zinc-500 hover:text-zinc-900">×</button>
+                                  </span>
+                                ))}
+                                <input
+                                  value={editTagInput}
+                                  onChange={(e) => setEditTagInput(e.target.value)}
+                                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addEditTag(); } }}
+                                  placeholder="Add tag, press Enter…"
+                                  className="border border-zinc-300 rounded-lg px-2 py-1 text-xs w-40"
+                                />
+                                {allTags.filter((t) => !editTags.includes(t)).map((t) => (
+                                  <button key={t} onClick={() => setEditTags([...editTags, t])}
+                                    className="text-xs text-zinc-500 hover:text-zinc-700 border border-dashed border-zinc-300 px-1.5 py-0.5 rounded-full">
+                                    + {t}
+                                  </button>
+                                ))}
+                              </div>
+                              {editError && <p className="text-xs text-red-600 bg-red-50 rounded px-2 py-1">{editError}</p>}
+                              <div className="flex gap-2">
+                                <button onClick={saveEdit} disabled={editSaving}
+                                  className="bg-zinc-900 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-zinc-800 disabled:opacity-50">
+                                  {editSaving ? 'Saving…' : 'Save'}
+                                </button>
+                                <button onClick={cancelEdit} className="text-xs text-zinc-500 hover:text-zinc-700">Cancel</button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        <tr key={r.id} className="border-b border-zinc-50 hover:bg-zinc-50">
+                          <td className="px-4 py-2.5">
+                            <div className="font-medium">{r.name}</div>
+                            <div className="text-xs text-zinc-500 sm:hidden">{r.email}</div>
+                            {(r.tags || []).length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {(r.tags || []).map((tag) => (
+                                  <span key={tag} className="text-xs bg-zinc-100 text-zinc-700 px-1.5 py-0.5 rounded-full">{tag}</span>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-4 py-2.5 text-zinc-600 hidden sm:table-cell">{r.email}</td>
+                          <td className="px-4 py-2.5 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button onClick={() => startEdit(r)} className="text-xs text-zinc-500 hover:text-zinc-700">Edit</button>
+                              <button onClick={() => removeRecipient(r.id)} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
                     ))}
                   </tbody>
                 </table>

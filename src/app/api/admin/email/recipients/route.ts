@@ -43,6 +43,34 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(data, { status: 201 });
 }
 
+export async function PATCH(req: NextRequest) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
+  const supabase = createAdminClient();
+  const { recipientId, name, email, tags } = await req.json();
+  if (!recipientId) return NextResponse.json({ error: 'recipientId required' }, { status: 400 });
+
+  const updates: Record<string, unknown> = {};
+  if (name !== undefined) updates.name = name.trim();
+  if (email !== undefined) updates.email = email.trim().toLowerCase();
+  if (tags !== undefined && Array.isArray(tags)) {
+    updates.tags = tags.map((t: string) => t.trim().toLowerCase()).filter(Boolean);
+  }
+
+  if (Object.keys(updates).length === 0) return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
+
+  const { data, error } = await supabase
+    .from('global_email_recipients')
+    .update(updates)
+    .eq('id', recipientId)
+    .select()
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data);
+}
+
 export async function DELETE(req: NextRequest) {
   const auth = await requireAuth();
   if (auth.error) return auth.error;
