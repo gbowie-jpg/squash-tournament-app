@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import type { Profile } from '@/lib/supabase/types';
 import { ChevronLeft, Camera, Check } from 'lucide-react';
+import Link from 'next/link';
 import ThemeToggle from '@/components/ThemeToggle';
 
 export default function AccountPage() {
@@ -23,6 +24,7 @@ export default function AccountPage() {
   const [phone, setPhone] = useState('');
   const [ranking, setRanking] = useState('');
   const [bio, setBio] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -37,6 +39,7 @@ export default function AccountPage() {
           setPhone(p.phone ?? '');
           setRanking(p.squash_ranking ?? '');
           setBio(p.bio ?? '');
+          setIsAdmin(p.role === 'admin' || p.role === 'superadmin');
           setLoading(false);
         })
         .catch(() => setLoading(false));
@@ -103,9 +106,13 @@ export default function AccountPage() {
       {/* Header */}
       <header className="bg-[var(--surface-card)] border-b border-[var(--border)] sticky top-0 z-10">
         <div className="max-w-lg mx-auto px-4 py-4 flex items-center gap-3">
-          <button onClick={() => router.back()} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1 -ml-1">
+          <Link
+            href={isAdmin ? '/admin' : '/'}
+            className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1 -ml-1 flex items-center gap-1 text-sm"
+          >
             <ChevronLeft className="w-5 h-5" />
-          </button>
+            <span className="hidden sm:inline">{isAdmin ? 'Admin' : 'Home'}</span>
+          </Link>
           <h1 className="text-lg font-bold flex-1 text-[var(--text-primary)]">My Profile</h1>
           {saved && (
             <span className="text-sm text-green-600 font-medium flex items-center gap-1">
