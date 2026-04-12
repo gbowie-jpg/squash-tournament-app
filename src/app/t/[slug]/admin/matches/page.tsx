@@ -4,16 +4,18 @@ import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { useTournament } from '@/lib/useTournament';
 import { formatScore } from '@/lib/utils';
+import ThemeToggle from '@/components/ThemeToggle';
+import RefreshButton from '@/components/RefreshButton';
 import type { Player, Court, MatchWithDetails } from '@/lib/supabase/types';
 
 const STATUS_OPTIONS = ['scheduled', 'on_deck', 'in_progress', 'completed', 'walkover', 'cancelled'] as const;
 const STATUS_COLORS: Record<string, string> = {
-  scheduled: 'bg-zinc-100 text-zinc-600',
-  on_deck: 'bg-amber-100 text-amber-700',
-  in_progress: 'bg-green-100 text-green-700',
-  completed: 'bg-blue-100 text-blue-600',
-  walkover: 'bg-purple-100 text-purple-600',
-  cancelled: 'bg-red-100 text-red-600',
+  scheduled: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400',
+  on_deck: 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400',
+  in_progress: 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400',
+  completed: 'bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400',
+  walkover: 'bg-purple-100 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400',
+  cancelled: 'bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400',
 };
 
 export default function MatchManagement({
@@ -117,43 +119,47 @@ export default function MatchManagement({
   };
 
   if (!tournament || loading) {
-    return <div className="flex items-center justify-center min-h-screen text-zinc-600">Loading...</div>;
+    return <div className="flex items-center justify-center min-h-screen text-[var(--text-secondary)]">Loading...</div>;
   }
 
   const filtered = filter === 'all' ? matches : matches.filter((m) => m.status === filter);
 
   return (
-    <div className="min-h-screen bg-zinc-50">
-      <header className="bg-white border-b border-zinc-200">
+    <div className="min-h-screen bg-[var(--surface)]">
+      <header className="bg-[var(--surface-card)] border-b border-[var(--border)]">
         <div className="max-w-4xl mx-auto px-4 py-6 flex items-center justify-between">
           <div>
-            <div className="flex items-center gap-1.5 text-sm text-zinc-500">
-              <Link href="/admin" className="hover:text-zinc-700">Admin Dashboard</Link>
+            <div className="flex items-center gap-1.5 text-sm text-[var(--text-muted)]">
+              <Link href="/admin" className="hover:text-[var(--text-secondary)]">Admin Dashboard</Link>
               <span>›</span>
-              <Link href={`/t/${slug}/admin`} className="hover:text-zinc-700">{tournament?.name ?? slug}</Link>
+              <Link href={`/t/${slug}/admin`} className="hover:text-[var(--text-secondary)]">{tournament?.name ?? slug}</Link>
             </div>
             <h1 className="text-2xl font-bold tracking-tight mt-1">Matches</h1>
-            <p className="text-zinc-600 text-sm">{matches.length} matches</p>
+            <p className="text-[var(--text-secondary)] text-sm">{matches.length} matches</p>
           </div>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-800"
-          >
-            {showForm ? 'Cancel' : '+ New Match'}
-          </button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <RefreshButton />
+            <button
+              onClick={() => setShowForm(!showForm)}
+              className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90"
+            >
+              {showForm ? 'Cancel' : '+ New Match'}
+            </button>
+          </div>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8">
         {showForm && (
-          <form onSubmit={handleCreate} className="bg-white border border-zinc-200 rounded-xl p-6 mb-8 space-y-4">
+          <form onSubmit={handleCreate} className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-6 mb-8 space-y-4">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">Player 1</label>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Player 1</label>
                 <select
                   value={form.player1_id}
                   onChange={(e) => setForm({ ...form, player1_id: e.target.value })}
-                  className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm"
+                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)]"
                 >
                   <option value="">Select player...</option>
                   {players.map((p) => (
@@ -162,11 +168,11 @@ export default function MatchManagement({
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">Player 2</label>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Player 2</label>
                 <select
                   value={form.player2_id}
                   onChange={(e) => setForm({ ...form, player2_id: e.target.value })}
-                  className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm"
+                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)]"
                 >
                   <option value="">Select player...</option>
                   {players.map((p) => (
@@ -175,11 +181,11 @@ export default function MatchManagement({
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">Court</label>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Court</label>
                 <select
                   value={form.court_id}
                   onChange={(e) => setForm({ ...form, court_id: e.target.value })}
-                  className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm"
+                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)]"
                 >
                   <option value="">Unassigned</option>
                   {courts.map((c) => (
@@ -188,34 +194,34 @@ export default function MatchManagement({
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">Draw</label>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Draw</label>
                 <input
                   value={form.draw}
                   onChange={(e) => setForm({ ...form, draw: e.target.value })}
                   placeholder="Open, B..."
-                  className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm"
+                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)]"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">Round</label>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Round</label>
                 <input
                   value={form.round}
                   onChange={(e) => setForm({ ...form, round: e.target.value })}
                   placeholder="QF, SF, F..."
-                  className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm"
+                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)]"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">Scheduled Time</label>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Scheduled Time</label>
                 <input
                   type="datetime-local"
                   value={form.scheduled_time}
                   onChange={(e) => setForm({ ...form, scheduled_time: e.target.value })}
-                  className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm"
+                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)]"
                 />
               </div>
             </div>
-            <button type="submit" className="bg-zinc-900 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-zinc-800">
+            <button type="submit" className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-6 py-2 rounded-lg text-sm font-medium hover:opacity-90">
               Create Match
             </button>
           </form>
@@ -228,7 +234,7 @@ export default function MatchManagement({
               key={s}
               onClick={() => setFilter(s)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                filter === s ? 'bg-zinc-900 text-white' : 'bg-white border border-zinc-200 text-zinc-600 hover:bg-zinc-50'
+                filter === s ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'bg-[var(--surface-card)] border border-[var(--border)] text-[var(--text-secondary)] hover:opacity-80'
               }`}
             >
               {s === 'all' ? `All (${matches.length})` : `${s.replace('_', ' ')} (${matches.filter((m) => m.status === s).length})`}
@@ -238,24 +244,24 @@ export default function MatchManagement({
 
         {/* Match list */}
         {filtered.length === 0 ? (
-          <p className="text-zinc-600 text-center py-12">No matches found.</p>
+          <p className="text-[var(--text-secondary)] text-center py-12">No matches found.</p>
         ) : (
           <div className="space-y-3">
             {filtered.map((m) => (
-              <div key={m.id} className="bg-white border border-zinc-200 rounded-xl p-4">
+              <div key={m.id} className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_COLORS[m.status]}`}>
                         {m.status.replace('_', ' ')}
                       </span>
-                      {m.draw && <span className="text-xs text-zinc-600">{m.draw}</span>}
-                      {m.round && <span className="text-xs text-zinc-600">&middot; {m.round}</span>}
+                      {m.draw && <span className="text-xs text-[var(--text-secondary)]">{m.draw}</span>}
+                      {m.round && <span className="text-xs text-[var(--text-secondary)]">&middot; {m.round}</span>}
                     </div>
-                    <p className="font-semibold">
+                    <p className="font-semibold text-[var(--text-primary)]">
                       {m.player1?.name || 'TBD'} vs {m.player2?.name || 'TBD'}
                     </p>
-                    <div className="flex items-center gap-3 mt-1 text-xs text-zinc-600">
+                    <div className="flex items-center gap-3 mt-1 text-xs text-[var(--text-secondary)]">
                       {m.court && <span>📍 {m.court.name}</span>}
                       {m.scheduled_time && (
                         <span>🕐 {new Date(m.scheduled_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
@@ -264,7 +270,7 @@ export default function MatchManagement({
                         <span>🏁 {m.referee.name}</span>
                       )}
                       {m.scores && m.scores.length > 0 && (
-                        <span className="font-medium text-zinc-600">{formatScore(m.scores)}</span>
+                        <span className="font-medium text-[var(--text-secondary)]">{formatScore(m.scores)}</span>
                       )}
                     </div>
                   </div>
@@ -272,7 +278,7 @@ export default function MatchManagement({
                     <select
                       value={m.court_id || ''}
                       onChange={(e) => handleUpdate(m.id, { court_id: e.target.value || null })}
-                      className="border border-zinc-200 rounded px-2 py-1 text-xs"
+                      className="border border-[var(--border)] rounded px-2 py-1 text-xs bg-[var(--surface)] text-[var(--text-primary)]"
                     >
                       <option value="">No court</option>
                       {courts.map((c) => (
@@ -335,7 +341,7 @@ export default function MatchManagement({
 
                 {/* Scoring panel */}
                 {scoringMatch === m.id && (
-                  <div className="mt-3 pt-3 border-t border-zinc-100">
+                  <div className="mt-3 pt-3 border-t border-[var(--border)]">
                     <div className="flex items-center gap-2">
                       <input
                         type="number"
@@ -343,26 +349,26 @@ export default function MatchManagement({
                         placeholder={m.player1?.name?.split(' ')[0] || 'P1'}
                         value={scoreInput.p1}
                         onChange={(e) => setScoreInput({ ...scoreInput, p1: e.target.value })}
-                        className="w-20 border border-zinc-300 rounded px-2 py-1.5 text-sm text-center"
+                        className="w-20 border border-[var(--border)] rounded px-2 py-1.5 text-sm text-center bg-[var(--surface)] text-[var(--text-primary)]"
                       />
-                      <span className="text-zinc-600 text-sm">—</span>
+                      <span className="text-[var(--text-secondary)] text-sm">—</span>
                       <input
                         type="number"
                         min={0}
                         placeholder={m.player2?.name?.split(' ')[0] || 'P2'}
                         value={scoreInput.p2}
                         onChange={(e) => setScoreInput({ ...scoreInput, p2: e.target.value })}
-                        className="w-20 border border-zinc-300 rounded px-2 py-1.5 text-sm text-center"
+                        className="w-20 border border-[var(--border)] rounded px-2 py-1.5 text-sm text-center bg-[var(--surface)] text-[var(--text-primary)]"
                       />
                       <button
                         onClick={() => handleAddGame(m.id)}
-                        className="bg-zinc-900 text-white px-3 py-1.5 rounded text-xs font-medium hover:bg-zinc-800"
+                        className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-3 py-1.5 rounded text-xs font-medium hover:opacity-90"
                       >
                         Add Game
                       </button>
                     </div>
                     {m.scores && m.scores.length > 0 && (
-                      <p className="text-xs text-zinc-600 mt-2">Games: {formatScore(m.scores)}</p>
+                      <p className="text-xs text-[var(--text-secondary)] mt-2">Games: {formatScore(m.scores)}</p>
                     )}
                   </div>
                 )}

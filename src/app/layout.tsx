@@ -4,6 +4,7 @@ import "./globals.css";
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 import MasqueradeBanner from "@/components/MasqueradeBanner";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import NavigationLoadingBar from "@/components/NavigationLoadingBar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -52,6 +53,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col bg-[var(--surface)]">
         <ThemeProvider>
+          <NavigationLoadingBar />
           <ServiceWorkerRegistrar />
           <MasqueradeBanner />
           {children}

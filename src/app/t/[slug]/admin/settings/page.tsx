@@ -3,6 +3,8 @@
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { useTournament } from '@/lib/useTournament';
+import ThemeToggle from '@/components/ThemeToggle';
+import RefreshButton from '@/components/RefreshButton';
 import { GRADIENT_PRESETS, TEXT_COLOR_PRESETS, heroBackground, getTextColors } from '@/lib/gradients';
 
 export default function TournamentSettings({
@@ -104,26 +106,28 @@ export default function TournamentSettings({
 
   const set = (key: string, val: string) => setForm((f) => ({ ...f, [key]: val }));
 
-  if (loading) return <div className="flex items-center justify-center min-h-screen text-zinc-600">Loading...</div>;
-  if (!tournament) return <div className="flex items-center justify-center min-h-screen text-zinc-600">Tournament not found</div>;
+  if (loading) return <div className="flex items-center justify-center min-h-screen text-[var(--text-secondary)]">Loading...</div>;
+  if (!tournament) return <div className="flex items-center justify-center min-h-screen text-[var(--text-secondary)]">Tournament not found</div>;
 
   return (
-    <div className="min-h-screen bg-zinc-50">
-      <header className="bg-white border-b border-zinc-200 sticky top-0 z-10">
+    <div className="min-h-screen bg-[var(--surface)]">
+      <header className="bg-[var(--surface-card)] border-b border-[var(--border)] sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 py-5 flex items-center justify-between">
           <div>
-            <div className="flex items-center gap-1.5 text-sm text-zinc-500">
-              <Link href="/admin" className="hover:text-zinc-700">Admin Dashboard</Link>
+            <div className="flex items-center gap-1.5 text-sm text-[var(--text-muted)]">
+              <Link href="/admin" className="hover:text-[var(--text-secondary)]">Admin Dashboard</Link>
               <span>›</span>
-              <Link href={`/t/${slug}/admin`} className="hover:text-zinc-700">{tournament?.name ?? slug}</Link>
+              <Link href={`/t/${slug}/admin`} className="hover:text-[var(--text-secondary)]">{tournament?.name ?? slug}</Link>
             </div>
             <h1 className="text-xl font-bold tracking-tight mt-0.5">Tournament Settings</h1>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {saveError && (
-              <span className="text-xs text-red-600 font-medium">⚠ {saveError}</span>
+              <span className="text-xs text-red-600 dark:text-red-400 font-medium">⚠ {saveError}</span>
             )}
-            <Link href={`/t/${slug}`} target="_blank" className="text-sm text-zinc-500 hover:text-zinc-700 underline">
+            <ThemeToggle />
+            <RefreshButton />
+            <Link href={`/t/${slug}`} target="_blank" className="text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] underline">
               Preview
             </Link>
             <button
@@ -131,7 +135,7 @@ export default function TournamentSettings({
               type="submit"
               disabled={saving}
               className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
-                saved ? 'bg-green-600 text-white' : 'bg-zinc-900 text-white hover:bg-zinc-800'
+                saved ? 'bg-green-600 text-white' : 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:opacity-90'
               }`}
             >
               {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save Changes'}
@@ -144,10 +148,10 @@ export default function TournamentSettings({
         <form id="settings-form" onSubmit={handleSave} className="space-y-8">
 
           {/* Hero Appearance */}
-          <section className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-zinc-100">
-              <h2 className="font-semibold text-zinc-900">Hero Appearance</h2>
-              <p className="text-xs text-zinc-500 mt-0.5">Banner at the top of the tournament page</p>
+          <section className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-[var(--border)]">
+              <h2 className="font-semibold text-[var(--text-primary)]">Hero Appearance</h2>
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">Banner at the top of the tournament page</p>
             </div>
 
             {/* Live preview */}
@@ -177,7 +181,7 @@ export default function TournamentSettings({
             <div className="p-6 space-y-5">
               {/* Gradient picker */}
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-2">Background Gradient</label>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Background Gradient</label>
                 <div className="grid grid-cols-6 gap-2">
                   {GRADIENT_PRESETS.map((g) => (
                     <button
@@ -198,14 +202,14 @@ export default function TournamentSettings({
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-zinc-500 mt-1.5">
+                <p className="text-xs text-[var(--text-muted)] mt-1.5">
                   {GRADIENT_PRESETS.find((g) => g.key === (form.hero_gradient || 'navy'))?.label ?? 'Navy Blue'} selected
                 </p>
               </div>
 
               {/* Text color picker */}
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-2">Text Color</label>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Text Color</label>
                 <div className="flex flex-wrap gap-2">
                   {TEXT_COLOR_PRESETS.map((t) => (
                     <button
@@ -216,7 +220,7 @@ export default function TournamentSettings({
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
                         (form.hero_text_color || 'white') === t.key
                           ? 'border-zinc-900 bg-zinc-900 text-white scale-105 shadow'
-                          : 'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400'
+                          : 'border-[var(--border)] bg-[var(--surface-card)] text-[var(--text-primary)] hover:opacity-80'
                       }`}
                     >
                       <span className="w-3 h-3 rounded-full border border-black/10 shrink-0" style={{ background: t.swatch }} />
@@ -228,7 +232,7 @@ export default function TournamentSettings({
 
               {/* Hero background image */}
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
                   Hero Background Image
                   <span className="text-xs font-normal text-zinc-500 ml-2">full-width photo behind the text — overrides gradient</span>
                 </label>
@@ -238,11 +242,11 @@ export default function TournamentSettings({
                     value={form.hero_image_url}
                     onChange={(e) => set('hero_image_url', e.target.value)}
                     placeholder="https://... (leave blank to use gradient)"
-                    className="flex-1 border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                    className="flex-1 border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
                   />
                   {form.hero_image_url && (
                     <button type="button" onClick={() => set('hero_image_url', '')}
-                      className="px-3 py-2 text-xs text-red-500 hover:text-red-700 border border-zinc-200 rounded-lg hover:bg-red-50 transition-colors">
+                      className="px-3 py-2 text-xs text-red-500 hover:text-red-700 border border-[var(--border)] rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
                       Clear
                     </button>
                   )}
@@ -251,14 +255,14 @@ export default function TournamentSettings({
                   <div className="mt-2">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={form.hero_image_url} alt="Hero background preview"
-                      className="w-full h-24 rounded-lg object-cover border border-zinc-200" />
+                      className="w-full h-24 rounded-lg object-cover border border-[var(--border)]" />
                   </div>
                 )}
               </div>
 
               {/* Tournament graphic (logo/icon) */}
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
                   Tournament Graphic
                   <span className="text-xs font-normal text-zinc-500 ml-2">small logo shown in the hero corner and on cards</span>
                 </label>
@@ -268,11 +272,11 @@ export default function TournamentSettings({
                     value={form.image_url}
                     onChange={(e) => set('image_url', e.target.value)}
                     placeholder="https://..."
-                    className="flex-1 border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                    className="flex-1 border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
                   />
                   {form.image_url && (
                     <button type="button" onClick={() => set('image_url', '')}
-                      className="px-3 py-2 text-xs text-red-500 hover:text-red-700 border border-zinc-200 rounded-lg hover:bg-red-50 transition-colors">
+                      className="px-3 py-2 text-xs text-red-500 hover:text-red-700 border border-[var(--border)] rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
                       Clear
                     </button>
                   )}
@@ -281,18 +285,18 @@ export default function TournamentSettings({
                   <div className="mt-2 flex items-center gap-3">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={form.image_url} alt="Graphic preview"
-                      className="w-14 h-14 rounded-lg object-cover border border-zinc-200" />
-                    <p className="text-xs text-zinc-500">Appears as the icon in the top-left of the hero and on tournament listing cards.</p>
+                      className="w-14 h-14 rounded-lg object-cover border border-[var(--border)]" />
+                    <p className="text-xs text-[var(--text-muted)]">Appears as the icon in the top-left of the hero and on tournament listing cards.</p>
                   </div>
                 )}
               </div>
 
               {/* Overlay toggle — only relevant when a hero background image is set */}
               {form.hero_image_url && (
-                <div className="flex items-center justify-between py-3 border-t border-zinc-100">
+                <div className="flex items-center justify-between py-3 border-t border-[var(--border)]">
                   <div>
-                    <p className="text-sm font-medium text-zinc-700">Dark overlay over image</p>
-                    <p className="text-xs text-zinc-400 mt-0.5">
+                    <p className="text-sm font-medium text-[var(--text-primary)]">Dark overlay over image</p>
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5">
                       {form.hero_overlay !== 'false'
                         ? 'On — dark tint over background image keeps text readable'
                         : 'Off — background image shown as-is (ensure it has enough contrast for your text color)'}
@@ -317,88 +321,88 @@ export default function TournamentSettings({
           </section>
 
           {/* Basic Info */}
-          <section className="bg-white border border-zinc-200 rounded-xl p-6 space-y-4">
-            <h2 className="font-semibold text-zinc-900">Basic Info</h2>
+          <section className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-6 space-y-4">
+            <h2 className="font-semibold text-[var(--text-primary)]">Basic Info</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-zinc-700 mb-1">Tournament Name *</label>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Tournament Name *</label>
                 <input
                   required
                   value={form.name}
                   onChange={(e) => set('name', e.target.value)}
-                  className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">Category</label>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Category</label>
                 <input
                   value={form.category}
                   onChange={(e) => set('category', e.target.value)}
                   placeholder="Open/Adult, Junior, etc."
-                  className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">Location City</label>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Location City</label>
                 <input
                   value={form.location_city}
                   onChange={(e) => set('location_city', e.target.value)}
                   placeholder="Seattle, Washington"
-                  className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">Venue</label>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Venue</label>
                 <input
                   value={form.venue}
                   onChange={(e) => set('venue', e.target.value)}
                   placeholder="Seattle Athletic Club"
-                  className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">Address</label>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Address</label>
                 <input
                   value={form.address}
                   onChange={(e) => set('address', e.target.value)}
                   placeholder="123 Main St, Seattle WA"
-                  className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">Start Date *</label>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Start Date *</label>
                 <input
                   required
                   type="date"
                   value={form.start_date}
                   onChange={(e) => set('start_date', e.target.value)}
-                  className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">End Date</label>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">End Date</label>
                 <input
                   type="date"
                   value={form.end_date}
                   onChange={(e) => set('end_date', e.target.value)}
-                  className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-zinc-700 mb-1">Description</label>
+              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Description</label>
               <textarea
                 value={form.description}
                 onChange={(e) => set('description', e.target.value)}
                 rows={3}
-                className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
               />
             </div>
           </section>
 
           {/* Schedule */}
-          <section className="bg-white border border-zinc-200 rounded-xl p-6 space-y-4">
-            <h2 className="font-semibold text-zinc-900">Schedule Dates</h2>
+          <section className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-6 space-y-4">
+            <h2 className="font-semibold text-[var(--text-primary)]">Schedule Dates</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[
                 { key: 'registration_opens', label: 'Entry Open' },
@@ -407,12 +411,12 @@ export default function TournamentSettings({
                 { key: 'entry_close_date', label: 'Entry Closed' },
               ].map(({ key, label }) => (
                 <div key={key}>
-                  <label className="block text-sm font-medium text-zinc-700 mb-1">{label}</label>
+                  <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{label}</label>
                   <input
                     type="date"
                     value={form[key as keyof typeof form]}
                     onChange={(e) => set(key, e.target.value)}
-                    className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                    className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
                   />
                 </div>
               ))}
@@ -420,45 +424,45 @@ export default function TournamentSettings({
           </section>
 
           {/* Contact */}
-          <section className="bg-white border border-zinc-200 rounded-xl p-6 space-y-4">
-            <h2 className="font-semibold text-zinc-900">Contact</h2>
+          <section className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-6 space-y-4">
+            <h2 className="font-semibold text-[var(--text-primary)]">Contact</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">Contact Name</label>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Contact Name</label>
                 <input
                   value={form.contact_name}
                   onChange={(e) => set('contact_name', e.target.value)}
                   placeholder="Peter Gregory"
-                  className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">Contact Email</label>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Contact Email</label>
                 <input
                   type="email"
                   value={form.contact_email}
                   onChange={(e) => set('contact_email', e.target.value)}
                   placeholder="info@seattlesquash.com"
-                  className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">Contact Phone</label>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Contact Phone</label>
                 <input
                   type="tel"
                   value={form.contact_phone}
                   onChange={(e) => set('contact_phone', e.target.value)}
                   placeholder="206-555-0100"
-                  className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
                 />
               </div>
             </div>
           </section>
 
           {/* Info Sections */}
-          <section className="bg-white border border-zinc-200 rounded-xl p-6 space-y-4">
-            <h2 className="font-semibold text-zinc-900">Info Sections</h2>
-            <p className="text-xs text-zinc-500">These appear as expandable accordions on the public page.</p>
+          <section className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-6 space-y-4">
+            <h2 className="font-semibold text-[var(--text-primary)]">Info Sections</h2>
+            <p className="text-xs text-[var(--text-muted)]">These appear as expandable accordions on the public page.</p>
             {[
               { key: 'info_latest', label: 'Latest Information' },
               { key: 'info_accommodations', label: 'Accommodations' },
@@ -466,13 +470,13 @@ export default function TournamentSettings({
               { key: 'info_rules', label: 'Rules' },
             ].map(({ key, label }) => (
               <div key={key}>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">{label}</label>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{label}</label>
                 <textarea
                   value={form[key as keyof typeof form]}
                   onChange={(e) => set(key, e.target.value)}
                   rows={3}
                   placeholder={`${label} text...`}
-                  className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
                 />
               </div>
             ))}

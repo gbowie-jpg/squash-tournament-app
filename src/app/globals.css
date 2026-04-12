@@ -63,3 +63,28 @@ select, input, textarea {
   color: var(--text-muted);
   opacity: 1;
 }
+
+/* ── Interaction feedback ────────────────────────────────────────── */
+/* Immediate visual response so taps/clicks don't feel dead */
+button:not(:disabled),
+[role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+
+button:not(:disabled):active,
+[role="button"]:active {
+  opacity: 0.7;
+  transform: scale(0.96);
+  transition: opacity 0.05s ease, transform 0.05s ease;
+}
+
+a:active {
+  opacity: 0.65;
+  transition: opacity 0.05s ease;
+}
+
+/* Smooth transitions on interactive cards */
+.group:active {
+  opacity: 0.85;
+}
