@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
+import { ChevronLeft } from 'lucide-react';
 import { useTournament } from '@/lib/useTournament';
 import type { Announcement } from '@/lib/supabase/types';
 
@@ -74,31 +75,36 @@ export default function AnnouncementComposer({
     setAnnouncements((prev) => prev.filter((a) => a.id !== announcementId));
   };
 
-  if (!tournament) return <div className="flex items-center justify-center min-h-screen text-zinc-600">Loading...</div>;
+  if (!tournament) return <div className="flex items-center justify-center min-h-screen text-[var(--text-secondary)]">Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-zinc-50">
-      <header className="bg-white border-b border-zinc-200">
-        <div className="max-w-3xl mx-auto px-4 py-6">
-          <div className="flex items-center gap-1.5 text-sm text-zinc-500">
-            <Link href="/admin" className="hover:text-zinc-700">Admin Dashboard</Link>
+    <div className="min-h-screen bg-[var(--surface)]">
+      <header className="bg-[var(--surface-card)] border-b border-[var(--border)] sticky top-0 z-10">
+        <div className="max-w-3xl mx-auto px-4 py-4">
+          <div className="flex items-center gap-1.5 text-sm text-[var(--text-secondary)]">
+            <Link href="/admin" className="hover:text-[var(--text-primary)]">Admin Dashboard</Link>
             <span>›</span>
-            <Link href={`/t/${slug}/admin`} className="hover:text-zinc-700">{tournament?.name ?? slug}</Link>
+            <Link href={`/t/${slug}/admin`} className="hover:text-[var(--text-primary)]">{tournament?.name ?? slug}</Link>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight mt-1">Announcements</h1>
+          <div className="flex items-center gap-2 mt-1">
+            <Link href={`/t/${slug}/admin`} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1 -ml-1">
+              <ChevronLeft className="w-5 h-5" />
+            </Link>
+            <h1 className="text-xl font-bold text-[var(--text-primary)]">Announcements</h1>
+          </div>
         </div>
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-8">
-        <form onSubmit={handlePublish} className="bg-white border border-zinc-200 rounded-xl p-6 mb-8 space-y-4">
+        <form onSubmit={handlePublish} className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-6 mb-8 space-y-4">
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Type your announcement..."
             rows={3}
-            className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+            className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-400"
           />
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="radio"
@@ -107,7 +113,7 @@ export default function AnnouncementComposer({
                 onChange={() => setPriority('normal')}
                 className="accent-zinc-900"
               />
-              <span className="text-sm">Normal</span>
+              <span className="text-sm text-[var(--text-primary)]">Normal</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -126,28 +132,33 @@ export default function AnnouncementComposer({
                 onChange={(e) => setSendPush(e.target.checked)}
                 className="accent-blue-600 w-4 h-4"
               />
-              <span className="text-sm text-blue-700 font-medium">Send push notification</span>
+              <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">Send push notification</span>
             </label>
-            <button type="submit" className="bg-zinc-900 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-zinc-800">
+            <button
+              type="submit"
+              className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-6 py-2 rounded-lg text-sm font-medium hover:opacity-90"
+            >
               Publish
             </button>
           </div>
           {pushStatus && (
-            <p className="text-sm text-blue-700 font-medium">{pushStatus}</p>
+            <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">{pushStatus}</p>
           )}
         </form>
 
         {loading ? (
-          <p className="text-zinc-600 text-center py-12">Loading...</p>
+          <p className="text-[var(--text-secondary)] text-center py-12">Loading...</p>
         ) : announcements.length === 0 ? (
-          <p className="text-zinc-600 text-center py-12">No announcements yet.</p>
+          <p className="text-[var(--text-secondary)] text-center py-12">No announcements yet.</p>
         ) : (
           <div className="space-y-3">
             {announcements.map((a) => (
               <div
                 key={a.id}
-                className={`bg-white border rounded-xl p-4 ${
-                  a.priority === 'urgent' ? 'border-red-200 bg-red-50' : 'border-zinc-200'
+                className={`border rounded-xl p-4 ${
+                  a.priority === 'urgent'
+                    ? 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20'
+                    : 'bg-[var(--surface-card)] border-[var(--border)]'
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -155,12 +166,12 @@ export default function AnnouncementComposer({
                     {a.priority === 'urgent' && (
                       <span className="text-xs font-medium text-red-600 uppercase">⚠ Urgent</span>
                     )}
-                    <p className="text-sm mt-1">{a.message}</p>
-                    <p className="text-xs text-zinc-600 mt-2">
+                    <p className="text-sm text-[var(--text-primary)] mt-1">{a.message}</p>
+                    <p className="text-xs text-[var(--text-secondary)] mt-2">
                       {new Date(a.created_at).toLocaleString()}
                     </p>
                   </div>
-                  <button onClick={() => handleDelete(a.id)} className="text-xs text-red-400 hover:text-red-600 shrink-0">
+                  <button onClick={() => handleDelete(a.id)} className="text-xs text-red-400 hover:text-red-500 shrink-0">
                     Delete
                   </button>
                 </div>

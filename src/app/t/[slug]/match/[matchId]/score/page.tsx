@@ -4,6 +4,7 @@ import { use, useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+import { ChevronLeft } from 'lucide-react';
 import type { MatchWithDetails, GameScore } from '@/lib/supabase/types';
 
 type Params = { slug: string; matchId: string };
@@ -19,75 +20,57 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  // Derived from match.scores
   const [scores, setScores] = useState<GameScore[]>([]);
   const [currentGame, setCurrentGame] = useState(0);
-
-  // Confirm-win modal
   const [confirmWinner, setConfirmWinner] = useState<'p1' | 'p2' | null>(null);
 
-  // Load match + check auth
+  // Serve/side state
+  const [server, setServer] = useState<'p1' | 'p2' | null>(null);
+  const [leftPlayer, setLeftPlayer] = useState<'p1' | 'p2'>('p1');
+  const [setupDone, setSetupDone] = useState(false);
+
   useEffect(() => {
     const supabase = createClient();
-    let tournamentId: string;
 
     async function load() {
-      // Get tournament id from slug
-      const { data: tRow } = await supabase
-        .from('tournaments')
-        .select('id')
-        .eq('slug', slug)
-        .single();
+      const { data: tRow } = await supabase.from('tournaments').select('id').eq('slug', slug).single();
       const t = tRow as { id: string } | null;
-
       if (!t) { router.push(`/t/${slug}`); return; }
-      tournamentId = t.id;
 
-      // Fetch match
-      const res = await fetch(`/api/tournaments/${tournamentId}/matches/${matchId}/score`);
+      const res = await fetch(`/api/tournaments/${t.id}/matches/${matchId}/score`);
       if (!res.ok) { router.push(`/t/${slug}`); return; }
       const data: MatchWithDetails = await res.json();
       setMatch(data);
 
-      const existingScores: GameScore[] = Array.isArray(data.scores) && data.scores.length > 0
-        ? data.scores
-        : [{ p1: 0, p2: 0 }];
-      setScores(existingScores);
-      // Current game = last incomplete game or last game
-      const lastIncomplete = existingScores.findIndex((g) => g.p1 < 11 && g.p2 < 11);
-      setCurrentGame(lastIncomplete >= 0 ? lastIncomplete : existingScores.length - 1);
+      const existing: GameScore[] = Array.isArray(data.scores) && data.scores.length > 0
+        ? data.scores : [{ p1: 0, p2: 0 }];
+      setScores(existing);
+      const lastIncomplete = existing.findIndex(g => g.p1 < 11 && g.p2 < 11);
+      setCurrentGame(lastIncomplete >= 0 ? lastIncomplete : existing.length - 1);
 
-      // Auth check
+      // If match already in progress, mark setup done
+      if (data.status === 'in_progress') setSetupDone(true);
+
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setAuthChecked(true);
-        setLoading(false);
-        return;
-      }
+      if (!user) { setAuthChecked(true); setLoading(false); return; }
 
-      // Check permissions via the scoring API endpoint
-      const patchTest = await fetch(`/api/tournaments/${tournamentId}/matches/${matchId}/score`, {
+      const patchTest = await fetch(`/api/tournaments/${t.id}/matches/${matchId}/score`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ _check: true }), // no actual fields — will 200 if allowed
+        body: JSON.stringify({ _check: true }),
       });
-      // 403 = not authorized; 200/other = allowed
       setCanScore(patchTest.status !== 403 && patchTest.status !== 401);
       setAuthChecked(true);
       setLoading(false);
     }
-
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchId, slug]);
 
-  // Persist scores to DB
   const saveScores = useCallback(async (newScores: GameScore[], newStatus?: string, winnerId?: string) => {
     if (!match) return;
     setSaving(true);
     setError('');
-
-    // Get tournament id from slug
     const supabase = createClient();
     const { data: tRow2 } = await supabase.from('tournaments').select('id').eq('slug', slug).single();
     const t = tRow2 as { id: string } | null;
@@ -102,7 +85,6 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-
     setSaving(false);
     if (!res.ok) {
       const d = await res.json();
@@ -117,11 +99,12 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
     if (!canScore) return;
     const updated = scores.map((g, i) => {
       if (i !== currentGame) return g;
-      const val = Math.max(0, g[player] + delta);
-      return { ...g, [player]: val };
+      return { ...g, [player]: Math.max(0, g[player] + delta) };
     });
     setScores(updated);
     saveScores(updated);
+    // PAR scoring: winner of rally becomes server
+    if (delta === 1) setServer(player);
   }
 
   function addGame() {
@@ -130,6 +113,8 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
     setScores(newScores);
     setCurrentGame(newScores.length - 1);
     saveScores(newScores);
+    // Loser of previous game serves next (switch server on new game)
+    setServer(prev => prev === 'p1' ? 'p2' : 'p1');
   }
 
   function startMatch() {
@@ -141,10 +126,11 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'in_progress', scores: [{ p1: 0, p2: 0 }] }),
-      }).then((r) => r.json()).then((updated) => {
+      }).then(r => r.json()).then(updated => {
         setMatch(updated);
         setScores([{ p1: 0, p2: 0 }]);
         setCurrentGame(0);
+        setSetupDone(true);
       });
     });
   }
@@ -156,12 +142,17 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
     setConfirmWinner(null);
   }
 
-  // Game score summary
   function countGamesWon(player: 'p1' | 'p2') {
-    return scores.filter((g) => {
+    return scores.filter(g => {
       const other: 'p1' | 'p2' = player === 'p1' ? 'p2' : 'p1';
       return g[player] > g[other] && (g[player] >= 11 || g[other] >= 10);
     }).length;
+  }
+
+  function serviceBox(srv: 'p1' | 'p2') {
+    const gs = scores[currentGame] ?? { p1: 0, p2: 0 };
+    const srvScore = gs[srv];
+    return srvScore % 2 === 0 ? 'Right box' : 'Left box';
   }
 
   if (loading) {
@@ -184,18 +175,19 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
   if (authChecked && !canScore) {
     return (
       <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center gap-4 px-4 text-center">
-        <div className="text-5xl mb-2">🔒</div>
+        <div className="w-14 h-14 bg-zinc-800 rounded-full flex items-center justify-center mb-2">
+          <svg className="w-7 h-7 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+        </div>
         <h1 className="text-white text-xl font-bold">Sign in to score</h1>
         <p className="text-zinc-400 text-sm max-w-xs">
-          You must be logged in as a player in this match, an assigned referee, or a tournament organizer to use the scoring app.
+          You must be a player in this match, an assigned referee, or a tournament organizer.
         </p>
-        <Link
-          href={`/login?redirectTo=/t/${slug}/match/${matchId}/score`}
-          className="bg-white text-zinc-900 font-semibold px-6 py-3 rounded-xl text-sm"
-        >
+        <Link href={`/login?redirect=/t/${slug}/match/${matchId}/score`} className="bg-white text-zinc-900 font-semibold px-6 py-3 rounded-xl text-sm">
           Sign In
         </Link>
-        <Link href={`/t/${slug}`} className="text-sm text-zinc-500 mt-1">Back to tournament</Link>
+        <Link href={`/t/${slug}/match/${matchId}`} className="text-sm text-zinc-500 mt-1">Back to match</Link>
       </div>
     );
   }
@@ -208,25 +200,126 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
   const isCompleted = match.status === 'completed' || match.status === 'walkover';
   const isNotStarted = match.status === 'scheduled' || match.status === 'on_deck';
 
+  // Show setup screen before starting
+  if (isNotStarted && canScore && !setupDone) {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-white flex flex-col select-none">
+        {/* Header */}
+        <div className="flex items-center px-4 pt-safe pt-4 pb-3">
+          <Link href={`/t/${slug}/match/${matchId}`} className="text-zinc-400 hover:text-white p-1 -ml-1">
+            <ChevronLeft className="w-5 h-5" />
+          </Link>
+          <div className="flex-1 text-center">
+            <p className="text-xs text-zinc-500 font-semibold uppercase tracking-wider">Match Setup</p>
+            {match.draw && <p className="text-xs text-zinc-600 mt-0.5">{match.draw}{match.round ? ` · ${match.round}` : ''}</p>}
+          </div>
+          <div className="w-7" />
+        </div>
+
+        <div className="flex-1 px-4 pb-8 space-y-8 overflow-y-auto pt-4">
+          {/* Who serves first */}
+          <div>
+            <p className="text-sm font-semibold text-zinc-300 uppercase tracking-wider text-center mb-4">Who serves first?</p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setServer('p1')}
+                className={`p-5 rounded-2xl font-bold text-lg transition-colors ${
+                  server === 'p1' ? 'bg-blue-600 text-white ring-2 ring-blue-400' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                }`}
+              >
+                {p1?.name ?? 'Player 1'}
+                {server === 'p1' && <div className="text-xs font-normal mt-1 text-blue-200">● Serves first</div>}
+              </button>
+              <button
+                onClick={() => setServer('p2')}
+                className={`p-5 rounded-2xl font-bold text-lg transition-colors ${
+                  server === 'p2' ? 'bg-blue-600 text-white ring-2 ring-blue-400' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                }`}
+              >
+                {p2?.name ?? 'Player 2'}
+                {server === 'p2' && <div className="text-xs font-normal mt-1 text-blue-200">● Serves first</div>}
+              </button>
+            </div>
+          </div>
+
+          {/* Court positions */}
+          <div>
+            <p className="text-sm font-semibold text-zinc-300 uppercase tracking-wider text-center mb-4">Starting positions</p>
+            {/* Court diagram */}
+            <div className="border-2 border-zinc-600 rounded-lg overflow-hidden mb-4">
+              <div className="grid grid-cols-2 divide-x-2 divide-zinc-600">
+                <button
+                  onClick={() => setLeftPlayer('p1')}
+                  className={`p-4 text-center transition-colors ${leftPlayer === 'p1' ? 'bg-blue-900/60' : 'bg-zinc-800/40 hover:bg-zinc-700/40'}`}
+                >
+                  <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Left</p>
+                  <p className={`font-semibold text-sm ${leftPlayer === 'p1' ? 'text-blue-300' : 'text-zinc-400'}`}>
+                    {leftPlayer === 'p1' ? p1?.name ?? 'P1' : p2?.name ?? 'P2'}
+                  </p>
+                </button>
+                <button
+                  onClick={() => setLeftPlayer('p2')}
+                  className={`p-4 text-center transition-colors ${leftPlayer === 'p2' ? 'bg-amber-900/40' : 'bg-zinc-800/40 hover:bg-zinc-700/40'}`}
+                >
+                  <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Right</p>
+                  <p className={`font-semibold text-sm ${leftPlayer === 'p2' ? 'text-amber-300' : 'text-zinc-400'}`}>
+                    {leftPlayer === 'p2' ? p1?.name ?? 'P1' : p2?.name ?? 'P2'}
+                  </p>
+                </button>
+              </div>
+              <div className="bg-zinc-900 border-t-2 border-zinc-600 py-1.5 text-center">
+                <p className="text-xs text-zinc-600 font-medium">↑ T-line / Front wall ↑</p>
+              </div>
+            </div>
+            <p className="text-xs text-zinc-600 text-center">Tap to swap sides. Players switch sides each game.</p>
+          </div>
+        </div>
+
+        {/* Start button */}
+        <div className="px-4 pb-safe pb-8">
+          <button
+            onClick={startMatch}
+            disabled={!server}
+            className="w-full bg-green-600 active:bg-green-500 text-white font-bold py-5 rounded-2xl text-xl disabled:opacity-40 transition-colors"
+          >
+            Start Match
+          </button>
+          {!server && <p className="text-center text-xs text-zinc-600 mt-2">Select who serves first</p>}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white flex flex-col select-none">
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 pt-safe pt-4 pb-3">
-        <Link href={`/t/${slug}/player/${match.player1_id}`} className="text-zinc-400 hover:text-white p-1 -ml-1">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
+        <Link href={`/t/${slug}/match/${matchId}`} className="text-zinc-400 hover:text-white p-1 -ml-1">
+          <ChevronLeft className="w-5 h-5" />
         </Link>
         <div className="text-center">
           <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">
-            {match.draw} · {match.round}
+            {match.draw}{match.round ? ` · ${match.round}` : ''}
           </p>
           {match.court && (
-            <p className="text-xs text-zinc-400 mt-0.5">📍 {match.court.name}</p>
+            <p className="text-xs text-zinc-400 mt-0.5">{match.court.name}</p>
           )}
         </div>
         <div className="w-7" />
       </div>
+
+      {/* Serve indicator bar (shows during play) */}
+      {server && !isCompleted && !isNotStarted && (
+        <div className="mx-4 mb-2 bg-zinc-800/60 rounded-xl px-3 py-1.5 flex items-center justify-between text-xs">
+          <span className={`font-semibold ${server === 'p1' ? 'text-blue-400' : 'text-zinc-500'}`}>
+            {server === 'p1' ? '● Serving' : ''}
+          </span>
+          <span className="text-zinc-500 font-medium">{serviceBox(server)}</span>
+          <span className={`font-semibold ${server === 'p2' ? 'text-blue-400' : 'text-zinc-500'}`}>
+            {server === 'p2' ? 'Serving ●' : ''}
+          </span>
+        </div>
+      )}
 
       {/* Completed banner */}
       {isCompleted && (
@@ -243,7 +336,12 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
         {/* Players + game scores */}
         <div className="grid grid-cols-2 gap-3 px-4 mb-4">
           {/* Player 1 */}
-          <div className={`rounded-2xl p-4 flex flex-col items-center gap-1 ${match.winner_id === match.player1_id ? 'bg-yellow-500/20 border border-yellow-500/40' : 'bg-zinc-800'}`}>
+          <div className={`rounded-2xl p-4 flex flex-col items-center gap-1 relative ${
+            match.winner_id === match.player1_id ? 'bg-yellow-500/20 border border-yellow-500/40' : 'bg-zinc-800'
+          }`}>
+            {server === 'p1' && !isCompleted && (
+              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-blue-400" title="Serving" />
+            )}
             <p className="text-xs text-zinc-400 font-medium truncate w-full text-center">{p1?.name ?? 'Player 1'}</p>
             {p1?.club && <p className="text-xs text-zinc-500 truncate">{p1.club}</p>}
             <div className="text-6xl font-black tabular-nums mt-1">{p1Games}</div>
@@ -252,7 +350,12 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
           </div>
 
           {/* Player 2 */}
-          <div className={`rounded-2xl p-4 flex flex-col items-center gap-1 ${match.winner_id === match.player2_id ? 'bg-yellow-500/20 border border-yellow-500/40' : 'bg-zinc-800'}`}>
+          <div className={`rounded-2xl p-4 flex flex-col items-center gap-1 relative ${
+            match.winner_id === match.player2_id ? 'bg-yellow-500/20 border border-yellow-500/40' : 'bg-zinc-800'
+          }`}>
+            {server === 'p2' && !isCompleted && (
+              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-blue-400" title="Serving" />
+            )}
             <p className="text-xs text-zinc-400 font-medium truncate w-full text-center">{p2?.name ?? 'Player 2'}</p>
             {p2?.club && <p className="text-xs text-zinc-500 truncate">{p2.club}</p>}
             <div className="text-6xl font-black tabular-nums mt-1">{p2Games}</div>
@@ -270,7 +373,9 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
                 <button
                   key={i}
                   onClick={() => setCurrentGame(i)}
-                  className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${currentGame === i ? 'bg-white text-zinc-900' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    currentGame === i ? 'bg-white text-zinc-900' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                  }`}
                 >
                   G{i + 1}: {g.p1}–{g.p2}
                 </button>
@@ -288,8 +393,11 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
             {/* Live score + +/- buttons */}
             <div className="grid grid-cols-2 gap-3 px-4 mb-4">
               {/* P1 score */}
-              <div className="bg-zinc-800 rounded-2xl p-4 flex flex-col items-center gap-3">
+              <div className={`rounded-2xl p-4 flex flex-col items-center gap-3 transition-colors ${
+                server === 'p1' ? 'bg-zinc-700 ring-1 ring-blue-500/50' : 'bg-zinc-800'
+              }`}>
                 <p className="text-xs text-zinc-400 truncate w-full text-center">{p1?.name ?? 'P1'}</p>
+                {server === 'p1' && <p className="text-[10px] text-blue-400 font-semibold -mt-2">● SERVING</p>}
                 <div className="text-7xl font-black tabular-nums">{gs.p1}</div>
                 <div className="flex gap-2 w-full">
                   <button
@@ -308,8 +416,11 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
               </div>
 
               {/* P2 score */}
-              <div className="bg-zinc-800 rounded-2xl p-4 flex flex-col items-center gap-3">
+              <div className={`rounded-2xl p-4 flex flex-col items-center gap-3 transition-colors ${
+                server === 'p2' ? 'bg-zinc-700 ring-1 ring-blue-500/50' : 'bg-zinc-800'
+              }`}>
                 <p className="text-xs text-zinc-400 truncate w-full text-center">{p2?.name ?? 'P2'}</p>
+                {server === 'p2' && <p className="text-[10px] text-blue-400 font-semibold -mt-2">● SERVING</p>}
                 <div className="text-7xl font-black tabular-nums">{gs.p2}</div>
                 <div className="flex gap-2 w-full">
                   <button
@@ -330,8 +441,8 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
           </>
         )}
 
-        {/* All game scores summary (always visible when scores exist) */}
-        {scores.some((g) => g.p1 > 0 || g.p2 > 0) && isCompleted && (
+        {/* Final scores summary */}
+        {scores.some(g => g.p1 > 0 || g.p2 > 0) && isCompleted && (
           <div className="px-4 mb-4">
             <div className="bg-zinc-800 rounded-2xl p-4">
               <p className="text-xs text-zinc-500 mb-2 font-medium uppercase tracking-wider">Final Scores</p>
@@ -354,14 +465,11 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
               {error}
             </div>
           )}
-
-          {saving && (
-            <p className="text-center text-xs text-zinc-500">Saving…</p>
-          )}
+          {saving && <p className="text-center text-xs text-zinc-500">Saving…</p>}
 
           {isNotStarted && canScore && (
             <button
-              onClick={startMatch}
+              onClick={() => setSetupDone(false)}
               className="w-full bg-green-600 active:bg-green-500 text-white font-bold py-4 rounded-2xl text-lg transition-colors"
             >
               Start Match
@@ -379,10 +487,10 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
 
           {isCompleted && (
             <Link
-              href={`/t/${slug}`}
+              href={`/t/${slug}/match/${matchId}`}
               className="block w-full bg-zinc-800 text-white text-center font-semibold py-4 rounded-2xl"
             >
-              Back to Tournament
+              Back to Match
             </Link>
           )}
         </div>
@@ -395,23 +503,14 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
             <p className="text-white font-bold text-lg mb-1 text-center">Who won?</p>
             <p className="text-zinc-400 text-sm text-center mb-5">This will complete the match</p>
             <div className="grid grid-cols-2 gap-3 mb-3">
-              <button
-                onClick={() => declareWinner('p1')}
-                className="bg-blue-600 active:bg-blue-500 text-white font-bold py-4 rounded-xl text-sm"
-              >
+              <button onClick={() => declareWinner('p1')} className="bg-blue-600 active:bg-blue-500 text-white font-bold py-4 rounded-xl text-sm">
                 {p1?.name ?? 'Player 1'}
               </button>
-              <button
-                onClick={() => declareWinner('p2')}
-                className="bg-blue-600 active:bg-blue-500 text-white font-bold py-4 rounded-xl text-sm"
-              >
+              <button onClick={() => declareWinner('p2')} className="bg-blue-600 active:bg-blue-500 text-white font-bold py-4 rounded-xl text-sm">
                 {p2?.name ?? 'Player 2'}
               </button>
             </div>
-            <button
-              onClick={() => setConfirmWinner(null)}
-              className="w-full bg-zinc-800 text-zinc-400 py-3 rounded-xl text-sm"
-            >
+            <button onClick={() => setConfirmWinner(null)} className="w-full bg-zinc-800 text-zinc-400 py-3 rounded-xl text-sm">
               Cancel
             </button>
           </div>

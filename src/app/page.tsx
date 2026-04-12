@@ -37,7 +37,7 @@ export default async function Home() {
   const cta2Href = s.homepage_cta2_href || '/donate';
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex flex-col bg-[var(--surface)]">
       <SiteNav />
 
       {/* Hero */}
@@ -75,9 +75,9 @@ export default async function Home() {
       </section>
 
       {/* What We Do */}
-      <section className="bg-zinc-50 border-b border-zinc-200">
+      <section className="bg-[var(--surface-card)] border-b border-[var(--border)]">
         <div className="max-w-6xl mx-auto px-4 py-16">
-          <h2 className="text-2xl font-bold text-center mb-10">What We Do</h2>
+          <h2 className="text-2xl font-bold text-center mb-10 text-[var(--text-secondary)]">What We Do</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <FeatureCard emoji="📣" color="blue" title="Communication"
               desc="Keeping the community informed on local squash activity, events, and league updates across the Pacific Northwest." />
@@ -92,19 +92,19 @@ export default async function Home() {
       {/* Tournaments */}
       <section id="tournaments" className="scroll-mt-4 flex-1">
         <div className="max-w-6xl mx-auto px-4 py-16">
-          <h2 className="text-2xl font-bold mb-2">Tournaments</h2>
-          <p className="text-zinc-600 mb-8">Live draws, real-time scores, and match schedules.</p>
+          <h2 className="text-2xl font-bold mb-2 text-[var(--text-primary)]">Tournaments</h2>
+          <p className="text-[var(--text-secondary)] mb-8">Live draws, real-time scores, and match schedules.</p>
 
           {allTournaments.length === 0 && (
-            <div className="text-center py-12 bg-zinc-50 rounded-xl border border-zinc-200">
-              <p className="text-zinc-600 text-lg">No tournaments yet.</p>
-              <p className="text-zinc-500 text-sm mt-2">Check back soon or contact the organizer.</p>
+            <div className="text-center py-12 bg-[var(--surface-card)] rounded-xl border border-[var(--border)]">
+              <p className="text-[var(--text-secondary)] text-lg">No tournaments yet.</p>
+              <p className="text-[var(--text-muted)] text-sm mt-2">Check back soon or contact the organizer.</p>
             </div>
           )}
 
           {upcoming.length > 0 && (
             <div className="mb-10">
-              <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">
+              <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4">
                 {upcoming.some((t) => t.status === 'active') ? 'Active & Upcoming' : 'Upcoming'}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -115,7 +115,7 @@ export default async function Home() {
 
           {past.length > 0 && (
             <div>
-              <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">Past</h3>
+              <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4">Past</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {past.map((t) => <TournamentCard key={t.id} tournament={t} />)}
               </div>
@@ -130,14 +130,18 @@ export default async function Home() {
 }
 
 function FeatureCard({ emoji, color, title, desc }: { emoji: string; color: string; title: string; desc: string }) {
-  const bg: Record<string, string> = { blue: 'bg-blue-100', green: 'bg-green-100', amber: 'bg-amber-100' };
+  const bg: Record<string, string> = {
+    blue: 'bg-blue-100 dark:bg-blue-950/40',
+    green: 'bg-green-100 dark:bg-green-950/40',
+    amber: 'bg-amber-100 dark:bg-amber-950/40',
+  };
   return (
-    <div className="bg-white rounded-xl border border-zinc-200 p-6 text-center">
+    <div className="bg-[var(--surface-card)] rounded-xl border border-[var(--border)] p-6 text-center">
       <div className={`w-14 h-14 ${bg[color]} rounded-full flex items-center justify-center mx-auto mb-4`}>
         <span className="text-2xl">{emoji}</span>
       </div>
-      <h3 className="font-semibold text-lg mb-2">{title}</h3>
-      <p className="text-zinc-600 text-sm leading-relaxed">{desc}</p>
+      <h3 className="font-semibold text-lg mb-2 text-[var(--text-primary)]">{title}</h3>
+      <p className="text-[var(--text-secondary)] text-sm leading-relaxed">{desc}</p>
     </div>
   );
 }
@@ -151,15 +155,15 @@ function TournamentCard({ tournament: t }: { tournament: Tournament }) {
     : null;
 
   const statusColors: Record<string, string> = {
-    active: 'bg-green-100 text-green-700',
-    upcoming: 'bg-blue-100 text-blue-700',
-    completed: 'bg-zinc-100 text-zinc-600',
+    active: 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400',
+    upcoming: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300',
+    completed: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400',
   };
 
   return (
     <Link
       href={`/t/${t.slug}`}
-      className="flex items-center gap-4 bg-white rounded-xl border border-zinc-200 p-5 hover:border-blue-300 hover:shadow-md transition-all group"
+      className="flex items-center gap-4 bg-[var(--surface-card)] rounded-xl border border-[var(--border)] p-5 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all group"
     >
       {/* Tournament image / placeholder */}
       <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-[#1a2332] flex items-center justify-center border border-zinc-100">
@@ -173,13 +177,13 @@ function TournamentCard({ tournament: t }: { tournament: Tournament }) {
 
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-semibold text-lg group-hover:text-blue-700 transition-colors leading-tight">{t.name}</h3>
+          <h3 className="font-semibold text-lg group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors leading-tight text-[var(--text-primary)]">{t.name}</h3>
           <span className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 ${statusColors[t.status] || statusColors.upcoming}`}>
             {t.status === 'active' ? 'Live' : t.status.charAt(0).toUpperCase() + t.status.slice(1)}
           </span>
         </div>
-        {t.venue && <p className="text-zinc-600 text-sm mt-1 truncate">{t.venue}</p>}
-        <p className="text-zinc-500 text-sm mt-0.5">
+        {t.venue && <p className="text-[var(--text-secondary)] text-sm mt-1 truncate">{t.venue}</p>}
+        <p className="text-[var(--text-muted)] text-sm mt-0.5">
           {dateStr}{endDateStr ? ` – ${endDateStr}` : ''}
         </p>
       </div>
