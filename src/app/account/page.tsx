@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import type { Profile } from '@/lib/supabase/types';
-import { ChevronLeft, Camera, Check } from 'lucide-react';
+import { ChevronLeft, Camera, Check, KeyRound, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import ThemeToggle from '@/components/ThemeToggle';
 
@@ -25,6 +25,14 @@ export default function AccountPage() {
   const [ranking, setRanking] = useState('');
   const [bio, setBio] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
+
+  // Change password
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwSaved, setPwSaved] = useState(false);
+  const [pwError, setPwError] = useState('');
 
   useEffect(() => {
     const supabase = createClient();
@@ -93,6 +101,22 @@ export default function AccountPage() {
     if (fileRef.current) fileRef.current.value = '';
   }
 
+  async function handlePasswordChange(e: React.FormEvent) {
+    e.preventDefault();
+    setPwError('');
+    if (newPassword.length < 6) { setPwError('Password must be at least 6 characters.'); return; }
+    if (newPassword !== confirmPassword) { setPwError('Passwords do not match.'); return; }
+    setPwSaving(true);
+    const supabase = createClient();
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setPwSaving(false);
+    if (error) { setPwError(error.message); return; }
+    setPwSaved(true);
+    setNewPassword('');
+    setConfirmPassword('');
+    setTimeout(() => setPwSaved(false), 3000);
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[var(--surface)] flex items-center justify-center">
@@ -145,7 +169,7 @@ export default function AccountPage() {
             )}
           </div>
           <div className="flex-1">
-            <p className="font-semibold text-zinc-800">{fullName || profile?.email || 'Your Profile'}</p>
+            <p className="font-semibold text-[var(--text-primary)]">{fullName || profile?.email || 'Your Profile'}</p>
             <p className="text-sm text-zinc-500">{profile?.email}</p>
             <button
               onClick={() => fileRef.current?.click()}
@@ -238,6 +262,69 @@ export default function AccountPage() {
             className="w-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold py-3 rounded-xl hover:bg-zinc-700 dark:hover:bg-zinc-200 disabled:opacity-60 transition-colors"
           >
             {saving ? 'Saving…' : 'Save Profile'}
+          </button>
+        </form>
+
+        {/* Change password */}
+        <form onSubmit={handlePasswordChange} className="bg-[var(--surface-card)] border border-[var(--border)] rounded-2xl p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <KeyRound className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.5} />
+            <h2 className="font-semibold text-[var(--text-primary)]">Password</h2>
+            {pwSaved && (
+              <span className="text-sm text-green-600 font-medium flex items-center gap-1 ml-auto">
+                <Check className="w-4 h-4" /> Updated
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-[var(--text-secondary)]">
+            Set or change your password. Useful if you signed in via a magic link and want to add a password.
+          </p>
+
+          {pwError && (
+            <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2 text-sm text-red-700 dark:text-red-400">
+              {pwError}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">New Password</label>
+            <div className="relative">
+              <input
+                type={showNewPw ? 'text' : 'password'}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="At least 6 characters"
+                minLength={6}
+                className="w-full border border-[var(--border)] bg-[var(--surface)] rounded-xl px-3 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-[var(--text-primary)]"
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPw(!showNewPw)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+              >
+                {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Confirm New Password</label>
+            <input
+              type={showNewPw ? 'text' : 'password'}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Same password again"
+              minLength={6}
+              className="w-full border border-[var(--border)] bg-[var(--surface)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-[var(--text-primary)]"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={pwSaving || !newPassword}
+            className="w-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold py-2.5 rounded-xl hover:opacity-90 disabled:opacity-50 transition-opacity text-sm"
+          >
+            {pwSaving ? 'Saving…' : 'Update Password'}
           </button>
         </form>
 

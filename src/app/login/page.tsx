@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [mode, setMode] = useState<'signin' | 'signup' | 'magic'>('signin');
+  const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>('signin');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -49,14 +49,13 @@ function LoginForm() {
         if (error) { setError(error.message); return; }
         setMessage('Check your email for a confirmation link, then sign in.');
         setMode('signin');
-      } else if (mode === 'magic') {
+      } else if (mode === 'reset') {
         const origin = window.location.origin;
-        const { error } = await supabase.auth.signInWithOtp({
-          email,
-          options: { emailRedirectTo: `${origin}${redirectParam || '/'}` },
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${origin}/account/reset-password`,
         });
         if (error) { setError(error.message); return; }
-        setMessage('Magic link sent — check your inbox and click the link to sign in.');
+        setMessage('Password reset email sent — check your inbox and click the link to set a new password.');
       }
     } finally {
       setLoading(false);
@@ -73,7 +72,7 @@ function LoginForm() {
 
         <form onSubmit={handleSubmit} className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-6 space-y-4">
           <h2 className="font-semibold text-lg text-[var(--text-primary)]">
-            {mode === 'signin' ? 'Sign In' : mode === 'signup' ? 'Create Account' : 'Email me a sign-in link'}
+            {mode === 'signin' ? 'Sign In' : mode === 'signup' ? 'Create Account' : 'Reset Password'}
           </h2>
 
           {error && (
@@ -100,7 +99,7 @@ function LoginForm() {
             />
           </div>
 
-          {mode !== 'magic' && (
+          {mode !== 'reset' && (
             <div>
               <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Password</label>
               <input
@@ -119,7 +118,7 @@ function LoginForm() {
             <div className="text-right -mt-2">
               <button
                 type="button"
-                onClick={() => { setMode('magic'); setError(null); setMessage(null); }}
+                onClick={() => { setMode('reset'); setError(null); setMessage(null); }}
                 className="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] underline"
               >
                 Forgot password?
@@ -138,7 +137,7 @@ function LoginForm() {
               ? 'Sign In'
               : mode === 'signup'
               ? 'Create Account'
-              : 'Send magic link'}
+              : 'Send Reset Email'}
           </button>
 
           <p className="text-center text-sm text-[var(--text-secondary)]">
