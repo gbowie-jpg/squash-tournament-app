@@ -5,7 +5,7 @@ import { use } from 'react';
 import { useTournament } from '@/lib/useTournament';
 import {
   Trophy, Target, Users, Building2, Megaphone,
-  UserCheck, Mail, Settings, ChevronLeft, type LucideIcon,
+  UserCheck, Mail, Settings, ChevronLeft, Film, type LucideIcon,
 } from 'lucide-react';
 
 type AdminLink = { href: string; label: string; desc: string; Icon: LucideIcon };
@@ -28,6 +28,7 @@ export default function TournamentAdminDashboard({
     { href: `/t/${slug}/admin/courts`, label: 'Courts', desc: 'Court status and scheduling', Icon: Building2 },
     { href: `/t/${slug}/admin/announcements`, label: 'Announcements', desc: 'Push messages to everyone', Icon: Megaphone },
     { href: `/t/${slug}/admin/volunteers`, label: 'Volunteers & Refs', desc: 'Manage signups, assign referees to matches', Icon: UserCheck },
+    { href: `/t/${slug}/admin/videos`, label: 'Video Approvals', desc: 'Review and approve player highlight videos', Icon: Film },
     { href: `/t/${slug}/admin/email`, label: 'Email Marketing', desc: 'Send invitations and updates to participants', Icon: Mail },
     { href: `/t/${slug}/admin/settings`, label: 'Tournament Settings', desc: 'Edit details, graphic, schedule & contact info', Icon: Settings },
   ];

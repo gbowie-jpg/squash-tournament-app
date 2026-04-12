@@ -276,3 +276,26 @@ export type EmailSend = {
   sent_at: string | null;
   created_at: string;
 };
+
+export type PlayerVideo = {
+  id: string;
+  player_id: string;
+  tournament_id: string;
+  title: string | null;
+  description: string | null;
+  storage_path: string;
+  public_url: string | null;
+  thumbnail_url: string | null;
+  duration_seconds: number | null;
+  file_size_bytes: number | null;
+  mime_type: string;
+  status: 'pending' | 'approved' | 'rejected';
+  rejection_reason: string | null;
+  uploaded_by: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  player?: { name: string; tournament_id: string } | null;
+};
