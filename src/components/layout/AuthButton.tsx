@@ -7,13 +7,25 @@ import { UserCircle } from 'lucide-react';
 
 export default function AuthButton() {
   const [email, setEmail] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const supabase = createClient();
+
     supabase.auth.getUser().then(({ data: { user } }) => {
       setEmail(user?.email ?? null);
-      setLoading(false);
+      if (user) {
+        fetch('/api/account/profile')
+          .then((r) => r.ok ? r.json() : null)
+          .then((p) => {
+            if (p?.role === 'admin' || p?.role === 'superadmin') setIsAdmin(true);
+          })
+          .catch(() => {})
+          .finally(() => setLoading(false));
+      } else {
+        setLoading(false);
+      }
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_e, session) => {
@@ -27,14 +39,14 @@ export default function AuthButton() {
   if (email) {
     return (
       <Link
-        href="/account"
+        href={isAdmin ? '/admin' : '/account'}
         className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
         title={email}
       >
         <span className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs font-bold flex items-center justify-center">
           {email[0].toUpperCase()}
         </span>
-        <span className="hidden sm:inline text-white/90">My Account</span>
+        <span className="hidden sm:inline text-white/90">{isAdmin ? 'Dashboard' : 'My Account'}</span>
       </Link>
     );
   }

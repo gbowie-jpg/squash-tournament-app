@@ -4,10 +4,18 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { slugify } from '@/lib/utils';
 import { useAuth } from '@/lib/useAuth';
+import ThemeToggle from '@/components/ThemeToggle';
 import type { Tournament } from '@/lib/supabase/types';
+import { ChevronLeft, Trophy, ExternalLink, Settings2, Trash2 } from 'lucide-react';
+
+const STATUS_COLORS: Record<string, string> = {
+  upcoming: 'bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300',
+  active:   'bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-300',
+  completed:'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400',
+};
 
 export default function TournamentSetup() {
-  const { user, signOut } = useAuth();
+  const { signOut } = useAuth();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -67,31 +75,37 @@ export default function TournamentSetup() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-50">
-      <header className="bg-white border-b border-zinc-200">
-        <div className="max-w-4xl mx-auto px-4 py-6 flex items-center justify-between">
+    <div className="min-h-screen bg-[var(--surface)]">
+      <header className="bg-[var(--surface-card)] border-b border-[var(--border)] sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div>
-            <Link href="/admin" className="text-sm text-zinc-600 hover:text-zinc-800">&larr; Dashboard</Link>
-            <h1 className="text-2xl font-bold tracking-tight mt-1">Tournament Setup</h1>
+            <Link
+              href="/admin"
+              className="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] flex items-center gap-1 mb-1"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" /> Dashboard
+            </Link>
+            <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">Tournaments</h1>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
             {isSuperadmin && (
               <Link
                 href="/admin/users"
-                className="text-zinc-600 hover:text-zinc-700 text-sm font-medium transition-colors"
+                className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors px-2 py-1"
               >
                 Users
               </Link>
             )}
             <button
               onClick={() => setShowForm(!showForm)}
-              className="bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors"
+              className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
             >
               {showForm ? 'Cancel' : '+ New Tournament'}
             </button>
             <button
               onClick={signOut}
-              className="text-zinc-600 hover:text-zinc-800 text-sm transition-colors"
+              className="text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
             >
               Sign Out
             </button>
@@ -100,81 +114,86 @@ export default function TournamentSetup() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8">
+        {/* Create form */}
         {showForm && (
-          <form onSubmit={handleCreate} className="bg-white border border-zinc-200 rounded-xl p-6 mb-8 space-y-4">
+          <form
+            onSubmit={handleCreate}
+            className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-6 mb-8 space-y-4"
+          >
+            <h2 className="font-semibold text-[var(--text-primary)]">New Tournament</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">Tournament Name *</label>
+                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Tournament Name *</label>
                 <input
                   required
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   placeholder="SSRA Spring Open 2026"
-                  className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">Venue</label>
+                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Venue</label>
                 <input
                   value={form.venue}
                   onChange={(e) => setForm({ ...form, venue: e.target.value })}
                   placeholder="Seattle Athletic Club"
-                  className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">Start Date *</label>
+                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Start Date *</label>
                 <input
                   required
                   type="date"
                   value={form.start_date}
                   onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-                  className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">End Date</label>
+                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">End Date</label>
                 <input
                   type="date"
                   value={form.end_date}
                   onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-                  className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">Number of Courts</label>
+                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Number of Courts</label>
                 <input
                   type="number"
                   min={1}
                   max={20}
                   value={form.court_count}
                   onChange={(e) => setForm({ ...form, court_count: parseInt(e.target.value) || 4 })}
-                  className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-1">Address</label>
+                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Address</label>
                 <input
                   value={form.address}
                   onChange={(e) => setForm({ ...form, address: e.target.value })}
                   placeholder="123 Main St, Seattle WA"
-                  className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-zinc-700 mb-1">Description</label>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Description</label>
               <textarea
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 rows={2}
                 placeholder="Optional description..."
-                className="w-full border border-zinc-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
               />
             </div>
             <button
               type="submit"
-              className="bg-zinc-900 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors"
+              className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-6 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
             >
               Create Tournament
             </button>
@@ -182,51 +201,66 @@ export default function TournamentSetup() {
         )}
 
         {loading ? (
-          <p className="text-zinc-600 text-center py-12">Loading...</p>
+          <div className="space-y-3 animate-pulse">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl h-28" />
+            ))}
+          </div>
         ) : tournaments.length === 0 ? (
-          <p className="text-zinc-600 text-center py-12">No tournaments yet. Create one to get started.</p>
+          <div className="text-center py-16">
+            <Trophy className="w-10 h-10 text-[var(--text-muted)] mx-auto mb-3" strokeWidth={1.5} />
+            <p className="text-[var(--text-secondary)]">No tournaments yet. Create one to get started.</p>
+          </div>
         ) : (
           <div className="space-y-3">
             {tournaments.map((t) => (
-              <div key={t.id} className="bg-white border border-zinc-200 rounded-xl p-5">
+              <div key={t.id} className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-5">
                 <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h3 className="font-semibold text-lg">{t.name}</h3>
-                    <p className="text-zinc-600 text-sm">
-                      {t.venue} &middot; {new Date(t.start_date + 'T00:00:00').toLocaleDateString()}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-semibold text-lg text-[var(--text-primary)] truncate">{t.name}</h3>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_COLORS[t.status] ?? STATUS_COLORS.upcoming}`}>
+                        {t.status}
+                      </span>
+                    </div>
+                    <p className="text-[var(--text-secondary)] text-sm mt-0.5">
+                      {t.venue && <>{t.venue} · </>}
+                      {new Date(t.start_date + 'T00:00:00').toLocaleDateString()}
                       {t.end_date && ` – ${new Date(t.end_date + 'T00:00:00').toLocaleDateString()}`}
                     </p>
-                    <p className="text-zinc-600 text-xs mt-1">/{t.slug}</p>
+                    <p className="text-[var(--text-muted)] text-xs mt-0.5 font-mono">/{t.slug}</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={t.status}
-                      onChange={(e) => handleStatusChange(t.id, e.target.value)}
-                      className="border border-zinc-300 rounded-lg px-2 py-1 text-xs focus:outline-none"
-                    >
-                      <option value="upcoming">Upcoming</option>
-                      <option value="active">Active</option>
-                      <option value="completed">Completed</option>
-                    </select>
-                  </div>
+                  <select
+                    value={t.status}
+                    onChange={(e) => handleStatusChange(t.id, e.target.value)}
+                    className="border border-[var(--border)] rounded-lg px-2 py-1 text-xs bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none flex-shrink-0"
+                  >
+                    <option value="upcoming">Upcoming</option>
+                    <option value="active">Active</option>
+                    <option value="completed">Completed</option>
+                  </select>
                 </div>
-                <div className="flex gap-2 mt-4">
+
+                <div className="flex items-center gap-2 mt-4 flex-wrap">
                   <Link
                     href={`/t/${t.slug}/admin`}
-                    className="bg-zinc-100 text-zinc-700 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-zinc-200 transition-colors"
+                    className="flex items-center gap-1.5 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-3 py-1.5 rounded-lg text-xs font-medium hover:opacity-90 transition-opacity"
                   >
+                    <Settings2 className="w-3.5 h-3.5" />
                     Manage
                   </Link>
                   <Link
                     href={`/t/${t.slug}`}
-                    className="bg-zinc-100 text-zinc-700 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-zinc-200 transition-colors"
+                    className="flex items-center gap-1.5 bg-[var(--surface)] border border-[var(--border)] text-[var(--text-secondary)] px-3 py-1.5 rounded-lg text-xs font-medium hover:opacity-80 transition-opacity"
                   >
-                    Public View
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Public Page
                   </Link>
                   <button
                     onClick={() => handleDelete(t.id)}
-                    className="text-red-500 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-red-50 transition-colors ml-auto"
+                    className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-600 dark:hover:text-red-400 px-3 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors ml-auto"
                   >
+                    <Trash2 className="w-3.5 h-3.5" />
                     Delete
                   </button>
                 </div>
