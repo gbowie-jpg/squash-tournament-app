@@ -103,8 +103,12 @@ export default function AdminVideos({
 
   if (tLoading || !tournament) {
     return (
-      <div className="flex items-center justify-center min-h-screen text-[var(--text-secondary)]">
-        Loading…
+      <div className="min-h-screen bg-background p-6 space-y-4 animate-pulse">
+        <div className="h-14 bg-surface rounded-xl w-1/3" />
+        <div className="h-10 bg-surface rounded-xl w-1/2" />
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="h-36 bg-surface rounded-2xl" />
+        ))}
       </div>
     );
   }
@@ -203,8 +207,8 @@ export default function AdminVideos({
                     {/* Thumbnail / Play button */}
                     <button
                       onClick={() => setPlayingVideo(playingVideo === v.id ? null : v.id)}
-                      className="flex-shrink-0 w-16 h-14 rounded-xl bg-zinc-900 flex items-center justify-center hover:opacity-80 transition-opacity"
-                      title={playingVideo === v.id ? 'Hide video' : 'Preview video'}
+                      className="flex-shrink-0 w-16 h-14 rounded-xl bg-card flex items-center justify-center hover:opacity-80 transition-opacity"
+                      aria-label={playingVideo === v.id ? 'Hide video' : 'Preview video'}
                     >
                       <Play
                         className={`w-6 h-6 ${playingVideo === v.id ? 'text-blue-400' : 'text-white'}`}
@@ -253,7 +257,7 @@ export default function AdminVideos({
                       onClick={() => handleDelete(v.id)}
                       disabled={actionLoading === v.id}
                       className="flex-shrink-0 p-2 text-[var(--text-muted)] hover:text-red-500 transition-colors disabled:opacity-50"
-                      title="Delete video"
+                      aria-label="Delete video"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

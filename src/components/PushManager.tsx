@@ -91,15 +91,17 @@ export default function PushManager() {
     <div className="flex items-center gap-2">
       {status === 'subscribed' ? (
         <button onClick={unsubscribe} disabled={loading}
-          className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700 transition-colors">
-          <span>🔔</span> Notifications on
+          aria-label="Turn off push notifications"
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+          <span aria-hidden="true">🔔</span> Notifications on
         </button>
       ) : status === 'denied' ? (
-        <span className="text-xs text-zinc-400">Notifications blocked</span>
+        <span className="text-xs text-dim" aria-live="polite">Notifications blocked</span>
       ) : (
         <button onClick={subscribe} disabled={loading}
-          className="flex items-center gap-1.5 text-xs bg-yellow-400 hover:bg-yellow-500 text-zinc-900 font-medium px-3 py-1.5 rounded-full transition-colors">
-          <span>🔔</span> {loading ? 'Enabling...' : 'Enable Notifications'}
+          aria-label={loading ? 'Enabling notifications' : 'Enable push notifications'}
+          className="flex items-center gap-1.5 text-xs bg-yellow-400 hover:bg-yellow-500 text-foreground font-medium px-3 py-1.5 rounded-full transition-colors">
+          <span aria-hidden="true">🔔</span> {loading ? 'Enabling...' : 'Enable Notifications'}
         </button>
       )}
     </div>

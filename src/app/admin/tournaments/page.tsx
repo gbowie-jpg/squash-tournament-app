@@ -11,7 +11,7 @@ import { ChevronLeft, Trophy, ExternalLink, Settings2, Trash2 } from 'lucide-rea
 const STATUS_COLORS: Record<string, string> = {
   upcoming: 'bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300',
   active:   'bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-300',
-  completed:'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400',
+  completed:'bg-surface text-muted-foreground',
 };
 
 export default function TournamentSetup() {

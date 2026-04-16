@@ -119,46 +119,64 @@ export default function AccountPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[var(--surface)] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-zinc-300 border-t-zinc-700 rounded-full animate-spin" />
+      <div className="min-h-screen bg-background">
+        <div className="max-w-lg mx-auto px-4 py-6 space-y-6 animate-pulse">
+          <div className="bg-card border border-border rounded-2xl p-5 flex items-center gap-4">
+            <div className="w-20 h-20 rounded-full bg-border flex-shrink-0" />
+            <div className="flex-1 space-y-2">
+              <div className="h-4 bg-border rounded w-32" />
+              <div className="h-3 bg-border rounded w-48" />
+            </div>
+          </div>
+          <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+            <div className="h-4 bg-border rounded w-28" />
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="space-y-1">
+                <div className="h-3 bg-border rounded w-24" />
+                <div className="h-9 bg-border rounded-xl" />
+              </div>
+            ))}
+            <div className="h-11 bg-border rounded-xl" />
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[var(--surface)]">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-[var(--surface-card)] border-b border-[var(--border)] sticky top-0 z-10">
+      <header className="bg-card border-b border-border sticky top-0 z-10">
         <div className="max-w-lg mx-auto px-4 py-4 flex items-center gap-3">
           <Link
             href={isAdmin ? '/admin' : '/'}
-            className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1 -ml-1 flex items-center gap-1 text-sm"
+            className="text-muted-foreground hover:text-foreground p-1 -ml-1 flex items-center gap-1 text-sm"
           >
             <ChevronLeft className="w-5 h-5" />
             <span className="hidden sm:inline">{isAdmin ? 'Admin' : 'Home'}</span>
           </Link>
-          <h1 className="text-lg font-bold flex-1 text-[var(--text-primary)]">My Profile</h1>
+          <h1 className="text-lg font-bold flex-1 text-foreground">My Profile</h1>
           {saved && (
             <span className="text-sm text-green-600 font-medium flex items-center gap-1">
               <Check className="w-4 h-4" /> Saved
             </span>
           )}
-          <ThemeToggle className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-zinc-100 dark:hover:bg-zinc-800" />
+          <ThemeToggle className="text-muted-foreground hover:text-foreground hover:bg-surface" />
         </div>
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-6 space-y-6">
         {/* Photo */}
-        <div className="bg-[var(--surface-card)] border border-[var(--border)] rounded-2xl p-5 flex items-center gap-4">
+        <div className="bg-card border border-border rounded-2xl p-5 flex items-center gap-4">
           <div className="relative flex-shrink-0">
             {profile?.photo_url ? (
               <img
                 src={profile.photo_url}
                 alt="Profile photo"
-                className="w-20 h-20 rounded-full object-cover border-2 border-[var(--border)]"
+                className="w-20 h-20 rounded-full object-cover border-2 border-border"
               />
             ) : (
-              <div className="w-20 h-20 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-3xl font-bold text-zinc-500 select-none">
+              <div className="w-20 h-20 rounded-full bg-surface flex items-center justify-center text-3xl font-bold text-muted-foreground select-none">
                 {fullName ? fullName[0].toUpperCase() : '?'}
               </div>
             )}
@@ -169,8 +187,8 @@ export default function AccountPage() {
             )}
           </div>
           <div className="flex-1">
-            <p className="font-semibold text-[var(--text-primary)]">{fullName || profile?.email || 'Your Profile'}</p>
-            <p className="text-sm text-zinc-500">{profile?.email}</p>
+            <p className="font-semibold text-foreground">{fullName || profile?.email || 'Your Profile'}</p>
+            <p className="text-sm text-muted-foreground">{profile?.email}</p>
             <button
               onClick={() => fileRef.current?.click()}
               disabled={uploading}
@@ -190,8 +208,8 @@ export default function AccountPage() {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSave} className="bg-[var(--surface-card)] border border-[var(--border)] rounded-2xl p-5 space-y-4">
-          <h2 className="font-semibold text-[var(--text-primary)]">Player Details</h2>
+        <form onSubmit={handleSave} className="bg-card border border-border rounded-2xl p-5 space-y-4">
+          <h2 className="font-semibold text-foreground">Player Details</h2>
 
           {error && (
             <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2 text-sm text-red-700 dark:text-red-400">
@@ -200,59 +218,59 @@ export default function AccountPage() {
           )}
 
           <div>
-            <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Full Name</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Full Name</label>
             <input
               type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Your name"
-              className="w-full border border-[var(--border)] bg-[var(--surface)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-[var(--text-primary)]"
+              className="w-full border border-border bg-surface rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-foreground"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Squash Ranking / Rating</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Squash Ranking / Rating</label>
             <input
               type="text"
               value={ranking}
               onChange={(e) => setRanking(e.target.value)}
               placeholder="e.g. 4.5, A, 500 PSA, etc."
-              className="w-full border border-[var(--border)] bg-[var(--surface)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-[var(--text-primary)]"
+              className="w-full border border-border bg-surface rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-foreground"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Club</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Club</label>
             <input
               type="text"
               value={club}
               onChange={(e) => setClub(e.target.value)}
               placeholder="Your club or home court"
-              className="w-full border border-[var(--border)] bg-[var(--surface)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-[var(--text-primary)]"
+              className="w-full border border-border bg-surface rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-foreground"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Phone</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Phone</label>
             <input
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="Mobile number"
-              className="w-full border border-[var(--border)] bg-[var(--surface)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-[var(--text-primary)]"
+              className="w-full border border-border bg-surface rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-foreground"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-              Bio <span className="text-[var(--text-muted)]">(optional)</span>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">
+              Bio <span className="text-dim">(optional)</span>
             </label>
             <textarea
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               placeholder="A few words about yourself…"
               rows={3}
-              className="w-full border border-[var(--border)] bg-[var(--surface)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-[var(--text-primary)]"
+              className="w-full border border-border bg-surface rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-foreground"
             />
           </div>
 
@@ -266,17 +284,17 @@ export default function AccountPage() {
         </form>
 
         {/* Change password */}
-        <form onSubmit={handlePasswordChange} className="bg-[var(--surface-card)] border border-[var(--border)] rounded-2xl p-5 space-y-4">
+        <form onSubmit={handlePasswordChange} className="bg-card border border-border rounded-2xl p-5 space-y-4">
           <div className="flex items-center gap-2">
-            <KeyRound className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.5} />
-            <h2 className="font-semibold text-[var(--text-primary)]">Password</h2>
+            <KeyRound className="w-4 h-4 text-dim" strokeWidth={1.5} />
+            <h2 className="font-semibold text-foreground">Password</h2>
             {pwSaved && (
               <span className="text-sm text-green-600 font-medium flex items-center gap-1 ml-auto">
                 <Check className="w-4 h-4" /> Updated
               </span>
             )}
           </div>
-          <p className="text-xs text-[var(--text-secondary)]">
+          <p className="text-xs text-muted-foreground">
             Set or change your password. Useful if you signed in via a magic link and want to add a password.
           </p>
 
@@ -287,7 +305,7 @@ export default function AccountPage() {
           )}
 
           <div>
-            <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">New Password</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">New Password</label>
             <div className="relative">
               <input
                 type={showNewPw ? 'text' : 'password'}
@@ -295,12 +313,13 @@ export default function AccountPage() {
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="At least 6 characters"
                 minLength={6}
-                className="w-full border border-[var(--border)] bg-[var(--surface)] rounded-xl px-3 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-[var(--text-primary)]"
+                className="w-full border border-border bg-surface rounded-xl px-3 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-foreground"
               />
               <button
                 type="button"
                 onClick={() => setShowNewPw(!showNewPw)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+                aria-label={showNewPw ? 'Hide password' : 'Show password'}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-dim hover:text-muted-foreground"
               >
                 {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -308,14 +327,14 @@ export default function AccountPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Confirm New Password</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Confirm New Password</label>
             <input
               type={showNewPw ? 'text' : 'password'}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Same password again"
               minLength={6}
-              className="w-full border border-[var(--border)] bg-[var(--surface)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-[var(--text-primary)]"
+              className="w-full border border-border bg-surface rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-foreground"
             />
           </div>
 
@@ -336,7 +355,7 @@ export default function AccountPage() {
               await supabase.auth.signOut();
               router.push('/login');
             }}
-            className="text-sm text-[var(--text-muted)] hover:text-red-600 dark:hover:text-red-400"
+            className="text-sm text-dim hover:text-red-600 dark:hover:text-red-400"
           >
             Sign out
           </button>

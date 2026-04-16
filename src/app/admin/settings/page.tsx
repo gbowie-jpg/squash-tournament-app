@@ -4,51 +4,73 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/useAuth';
 
+function SettingsSkeleton() {
+  return (
+    <div className="min-h-screen bg-surface">
+      <header className="bg-card border-b border-border">
+        <div className="max-w-3xl mx-auto px-4 py-6 flex items-center justify-between">
+          <div>
+            <div className="h-4 w-24 bg-surface rounded animate-pulse" />
+            <div className="h-7 w-56 bg-surface rounded animate-pulse mt-1" />
+          </div>
+          <div className="h-4 w-16 bg-surface rounded animate-pulse" />
+        </div>
+      </header>
+      <main className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="bg-card border border-border rounded-xl p-6">
+            <div className="h-5 w-40 bg-surface rounded animate-pulse mb-4" />
+            <div className="space-y-3">
+              {[1, 2, 3].map((j) => (
+                <div key={j} className="h-4 w-full bg-surface rounded animate-pulse" />
+              ))}
+            </div>
+          </div>
+        ))}
+      </main>
+    </div>
+  );
+}
+
 export default function AdminSettings() {
   const { signOut } = useAuth();
   const [vapidStatus, setVapidStatus] = useState<'checking' | 'ok' | 'missing'>('checking');
   const [resendStatus, setResendStatus] = useState<'checking' | 'ok' | 'missing'>('checking');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Quick ping to push/send to check VAPID env
-    fetch('/api/push/send', { method: 'GET' }).then((r) => {
-      setVapidStatus(r.status === 405 ? 'ok' : 'missing');
-    }).catch(() => setVapidStatus('missing'));
+    Promise.allSettled([
+      fetch('/api/push/send', { method: 'GET' }).then((r) => {
+        setVapidStatus(r.status === 405 ? 'ok' : 'missing');
+      }).catch(() => setVapidStatus('missing')),
 
-    // Quick ping to email to check Resend config
-    fetch('/api/email/status').then((r) => {
-      setResendStatus(r.ok ? 'ok' : 'missing');
-    }).catch(() => setResendStatus('missing'));
+      fetch('/api/email/status').then((r) => {
+        setResendStatus(r.ok ? 'ok' : 'missing');
+      }).catch(() => setResendStatus('missing')),
+    ]).finally(() => setLoading(false));
   }, []);
 
-  const sections = [
-    {
-      title: 'URL Structure',
-      items: [
-        { label: 'Tournament URLs', value: '/t/[slug]', note: 'e.g. /t/seattle-city-championships' },
-        { label: 'Admin base', value: '/t/[slug]/admin', note: '' },
-        { label: 'Public court board', value: '/t/[slug]/courts', note: '' },
-      ],
-    },
-  ];
+  if (loading) {
+    return <SettingsSkeleton />;
+  }
 
   return (
-    <div className="min-h-screen bg-zinc-50">
-      <header className="bg-white border-b border-zinc-200">
+    <div className="min-h-screen bg-surface">
+      <header className="bg-card border-b border-border">
         <div className="max-w-3xl mx-auto px-4 py-6 flex items-center justify-between">
           <div>
-            <Link href="/admin" className="text-sm text-zinc-500 hover:text-zinc-700">&larr; Dashboard</Link>
-            <h1 className="text-2xl font-bold tracking-tight mt-0.5">Settings & Integrations</h1>
+            <Link href="/admin" className="text-sm text-muted-foreground hover:text-foreground">&larr; Dashboard</Link>
+            <h1 className="text-2xl font-bold tracking-tight mt-0.5 text-foreground">Settings & Integrations</h1>
           </div>
-          <button onClick={signOut} className="text-sm text-zinc-500 hover:text-zinc-700">Sign Out</button>
+          <button onClick={signOut} className="text-sm text-muted-foreground hover:text-foreground">Sign Out</button>
         </div>
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-8 space-y-6">
 
         {/* Integration Status */}
-        <div className="bg-white border border-zinc-200 rounded-xl p-6">
-          <h2 className="font-semibold text-zinc-900 mb-4">Integration Status</h2>
+        <div className="bg-card border border-border rounded-xl p-6">
+          <h2 className="font-semibold text-foreground mb-4">Integration Status</h2>
           <div className="space-y-3">
             <IntegrationRow
               label="Resend (Email)"
@@ -72,11 +94,11 @@ export default function AdminSettings() {
         </div>
 
         {/* URL Structure */}
-        <div className="bg-white border border-zinc-200 rounded-xl p-6">
-          <h2 className="font-semibold text-zinc-900 mb-1">URL Structure</h2>
-          <p className="text-sm text-zinc-500 mb-4">
-            Tournaments live at <code className="bg-zinc-100 px-1 rounded">/t/[slug]</code> — the{' '}
-            <code className="bg-zinc-100 px-1 rounded">/t/</code> prefix keeps tournament URLs short and separate from
+        <div className="bg-card border border-border rounded-xl p-6">
+          <h2 className="font-semibold text-foreground mb-1">URL Structure</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Tournaments live at <code className="bg-surface px-1 rounded">/t/[slug]</code> — the{' '}
+            <code className="bg-surface px-1 rounded">/t/</code> prefix keeps tournament URLs short and separate from
             admin and marketing pages.
           </p>
           <div className="space-y-2 text-sm">
@@ -91,17 +113,17 @@ export default function AdminSettings() {
               ['/admin/email', 'Global email marketing'],
             ].map(([path, label]) => (
               <div key={path} className="flex items-center gap-3">
-                <code className="text-xs bg-zinc-100 text-zinc-700 px-2 py-1 rounded font-mono w-72 shrink-0">{path}</code>
-                <span className="text-zinc-600">{label}</span>
+                <code className="text-xs bg-surface text-foreground px-2 py-1 rounded font-mono w-72 shrink-0">{path}</code>
+                <span className="text-muted-foreground">{label}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Vercel Env Vars */}
-        <div className="bg-white border border-zinc-200 rounded-xl p-6">
-          <h2 className="font-semibold text-zinc-900 mb-1">Vercel Environment Variables</h2>
-          <p className="text-sm text-zinc-500 mb-4">Add these in your Vercel project → Settings → Environment Variables.</p>
+        <div className="bg-card border border-border rounded-xl p-6">
+          <h2 className="font-semibold text-foreground mb-1">Vercel Environment Variables</h2>
+          <p className="text-sm text-muted-foreground mb-4">Add these in your Vercel project &rarr; Settings &rarr; Environment Variables.</p>
           <div className="space-y-2">
             {[
               { key: 'NEXT_PUBLIC_SUPABASE_URL', note: 'Supabase project URL' },
@@ -113,16 +135,16 @@ export default function AdminSettings() {
               { key: 'VAPID_PRIVATE_KEY', note: 'Push notification private key (server-only)' },
             ].map(({ key, note }) => (
               <div key={key} className="flex items-start gap-3 text-sm">
-                <code className="text-xs bg-zinc-100 text-zinc-700 px-2 py-1 rounded font-mono shrink-0">{key}</code>
-                <span className="text-zinc-500 mt-0.5">{note}</span>
+                <code className="text-xs bg-surface text-foreground px-2 py-1 rounded font-mono shrink-0">{key}</code>
+                <span className="text-muted-foreground mt-0.5">{note}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Quick Links */}
-        <div className="bg-white border border-zinc-200 rounded-xl p-6">
-          <h2 className="font-semibold text-zinc-900 mb-4">Quick Links</h2>
+        <div className="bg-card border border-border rounded-xl p-6">
+          <h2 className="font-semibold text-foreground mb-4">Quick Links</h2>
           <div className="flex flex-wrap gap-3">
             {[
               { href: 'https://supabase.com/dashboard', label: 'Supabase Dashboard' },
@@ -135,7 +157,7 @@ export default function AdminSettings() {
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm bg-zinc-100 hover:bg-zinc-200 text-zinc-700 px-3 py-2 rounded-lg transition-colors"
+                className="text-sm bg-surface hover:bg-surface/70 text-foreground px-3 py-2 rounded-lg transition-colors"
               >
                 {label} ↗
               </a>
@@ -162,22 +184,26 @@ function IntegrationRow({
   envVar?: string;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 py-3 border-b border-zinc-100 last:border-0">
+    <div className="flex items-start justify-between gap-4 py-3 border-b border-border last:border-0">
       <div>
-        <p className="text-sm font-medium text-zinc-800">{label}</p>
-        <p className="text-xs text-zinc-500 mt-0.5">{description}</p>
-        {envVar && <code className="text-xs text-zinc-400 mt-1 block">{envVar}</code>}
+        <p className="text-sm font-medium text-foreground">{label}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+        {envVar && <code className="text-xs text-dim mt-1 block">{envVar}</code>}
       </div>
       <div className="shrink-0 flex items-center gap-2">
         {status === 'checking' && (
-          <span className="text-xs text-zinc-400">checking...</span>
+          <span className="text-xs text-dim animate-pulse" role="status" aria-label={`Checking ${label} status`}>checking...</span>
         )}
         {status === 'ok' && (
-          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">✓ Connected</span>
+          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium" role="status" aria-label={`${label} connected`}>
+            <span aria-hidden="true">✓</span> Connected
+          </span>
         )}
         {status === 'missing' && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">⚠ Not set</span>
+          <div className="flex items-center gap-2" role="status" aria-label={`${label} not configured`}>
+            <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
+              <span aria-hidden="true">⚠</span> Not set
+            </span>
             {helpUrl && (
               <a href={helpUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">Setup →</a>
             )}

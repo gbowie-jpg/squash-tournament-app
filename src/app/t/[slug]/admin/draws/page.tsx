@@ -193,8 +193,17 @@ export default function DrawsPage({
     }
   };
 
-  if (tournamentLoading) return <div className="flex items-center justify-center min-h-screen text-[var(--text-secondary)]">Loading...</div>;
-  if (!tournament) return <div className="flex items-center justify-center min-h-screen text-[var(--text-secondary)]">Not found</div>;
+  if (tournamentLoading) return (
+    <div className="min-h-screen bg-background p-6 space-y-4 animate-pulse">
+      <div className="h-10 bg-surface rounded-xl w-1/3" />
+      <div className="h-8 bg-surface rounded-xl w-1/2" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="h-64 bg-surface rounded-xl" />
+        <div className="h-64 bg-surface rounded-xl" />
+      </div>
+    </div>
+  );
+  if (!tournament) return <div className="flex items-center justify-center min-h-screen text-muted-foreground">Not found</div>;
 
   return (
     <div className="min-h-screen bg-[var(--surface)]">
@@ -219,7 +228,17 @@ export default function DrawsPage({
 
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-8">
         {loading ? (
-          <p className="text-[var(--text-secondary)] text-center py-12">Loading...</p>
+          <div className="space-y-4 animate-pulse">
+            <div className="flex gap-2">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-10 w-28 bg-surface rounded-lg" />
+              ))}
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="h-64 bg-surface rounded-xl" />
+              <div className="h-64 bg-surface rounded-xl" />
+            </div>
+          </div>
         ) : draws.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-[var(--text-secondary)] mb-2">No draws found.</p>
@@ -435,10 +454,10 @@ export default function DrawsPage({
                               key={m.id}
                               className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm ${
                                 m.status === 'walkover'
-                                  ? 'bg-zinc-100 dark:bg-zinc-800 text-[var(--text-secondary)]'
+                                  ? 'bg-surface text-muted-foreground'
                                   : m.status === 'completed'
                                     ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400'
-                                    : 'bg-[var(--surface-card)]'
+                                    : 'bg-card'
                               }`}
                             >
                               <span className="text-xs text-[var(--text-secondary)] w-8">M{m.match_number}</span>

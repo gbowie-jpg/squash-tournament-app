@@ -21,7 +21,7 @@ const COURT_STATUS_COLORS: Record<string, string> = {
 const COURT_STATUS_DOT: Record<string, string> = {
   available: 'bg-green-500',
   in_use: 'bg-amber-500 animate-pulse',
-  maintenance: 'bg-zinc-400',
+  maintenance: 'bg-[var(--text-muted)]',
 };
 
 export default function CourtBoard({ params }: { params: Promise<{ slug: string }> }) {
@@ -71,9 +71,9 @@ export default function CourtBoard({ params }: { params: Promise<{ slug: string 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="bg-[var(--surface-card)] border border-[var(--border)] rounded-2xl p-5 animate-pulse">
-                <div className="h-5 bg-zinc-100 dark:bg-zinc-800 rounded w-24 mb-4" />
-                <div className="h-4 bg-zinc-100 dark:bg-zinc-800 rounded w-full mb-2" />
-                <div className="h-4 bg-zinc-100 dark:bg-zinc-800 rounded w-3/4" />
+                <div className="h-5 bg-surface rounded w-24 mb-4" />
+                <div className="h-4 bg-surface rounded w-full mb-2" />
+                <div className="h-4 bg-surface rounded w-3/4" />
               </div>
             ))}
           </div>
@@ -102,7 +102,7 @@ export default function CourtBoard({ params }: { params: Promise<{ slug: string 
                   )}
 
                   {next && (
-                    <div className="pt-3 border-t border-zinc-200/60 dark:border-zinc-700/60">
+                    <div className="pt-3 border-t border-border/60">
                       <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1.5">
                         {next.status === 'on_deck' ? 'On Deck' : 'Up Next'}
                       </p>

@@ -142,7 +142,16 @@ export default function MatchManagement({
   };
 
   if (!tournament || loading) {
-    return <div className="flex items-center justify-center min-h-screen text-[var(--text-secondary)]">Loading...</div>;
+    return (
+      <div className="min-h-screen bg-[var(--surface)] p-6">
+        <div className="max-w-5xl mx-auto space-y-3">
+          <div className="h-8 w-48 rounded-lg bg-[var(--surface-card)] animate-pulse" />
+          <div className="h-12 rounded-xl bg-[var(--surface-card)] animate-pulse" />
+          <div className="h-24 rounded-xl bg-[var(--surface-card)] animate-pulse" />
+          <div className="h-24 rounded-xl bg-[var(--surface-card)] animate-pulse" />
+        </div>
+      </div>
+    );
   }
 
   const filtered = filter === 'all' ? matches : matches.filter((m) => m.status === filter);
@@ -180,15 +189,15 @@ export default function MatchManagement({
             <div className="flex rounded-lg border border-[var(--border)] overflow-hidden">
               <button
                 onClick={() => setView('list')}
+                aria-label="List view"
                 className={`p-2 ${view === 'list' ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'bg-[var(--surface-card)] text-[var(--text-secondary)] hover:opacity-70'} transition-colors`}
-                title="List view"
               >
                 <List className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setView('schedule')}
+                aria-label="Schedule view"
                 className={`p-2 ${view === 'schedule' ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'bg-[var(--surface-card)] text-[var(--text-secondary)] hover:opacity-70'} transition-colors`}
-                title="Schedule view"
               >
                 <LayoutGrid className="w-4 h-4" />
               </button>
@@ -360,6 +369,9 @@ function ScheduleView({
   return (
     <div className="space-y-6">
       {/* Court columns */}
+      {courtsWithMatches.length === 0 && (
+        <p className="text-[var(--text-secondary)] text-center py-12">No courts configured. Add courts to use the schedule view.</p>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {courtsWithMatches.map(({ court, matches }) => {
           const liveMatch = matches.find((m) => m.status === 'in_progress');
@@ -476,10 +488,12 @@ function ScheduleMatchCard({ m, courts, ...rest }: ScheduleMatchCardProps) {
               className="border border-[var(--border)] rounded px-2 py-0.5 text-xs bg-[var(--surface)] text-[var(--text-primary)] w-40"
             />
             <button onClick={() => rest.onSaveTime(m.id)} disabled={rest.savingTime === m.id}
-              className="p-1 text-green-600 hover:text-green-700 disabled:opacity-50">
+              aria-label="Save time"
+              className="p-1 text-green-600 hover:text-green-700 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded">
               <Check className="w-3.5 h-3.5" />
             </button>
-            <button onClick={rest.onCancelEditTime} className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+            <button onClick={rest.onCancelEditTime} aria-label="Cancel edit"
+              className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-blue-500 rounded">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -517,7 +531,7 @@ function ScheduleMatchCard({ m, courts, ...rest }: ScheduleMatchCardProps) {
                 key={c.id}
                 onClick={() => rest.onUpdate(m.id, { court_id: c.id })}
                 title={`Move to ${c.name}`}
-                className="flex items-center gap-0.5 text-xs bg-zinc-100 dark:bg-zinc-800 text-[var(--text-secondary)] hover:bg-blue-100 dark:hover:bg-blue-950/40 hover:text-blue-700 dark:hover:text-blue-400 px-2 py-1 rounded transition-colors"
+                className="flex items-center gap-0.5 text-xs bg-surface text-[var(--text-secondary)] hover:bg-blue-100 dark:hover:bg-blue-950/40 hover:text-blue-700 dark:hover:text-blue-400 px-2 py-1 rounded transition-colors"
               >
                 <ArrowRight className="w-2.5 h-2.5" />
                 {c.name.replace(/court\s*/i, 'C')}
@@ -603,8 +617,10 @@ function MatchCard({ m, courts, ...rest }: MatchCardProps) {
                   onChange={(e) => rest.onSetTimeInput(e.target.value)}
                   className="border border-[var(--border)] rounded px-2 py-0.5 text-xs bg-[var(--surface)] text-[var(--text-primary)]" />
                 <button onClick={() => rest.onSaveTime(m.id)} disabled={rest.savingTime === m.id}
-                  className="p-1 text-green-600 disabled:opacity-50"><Check className="w-3.5 h-3.5" /></button>
-                <button onClick={rest.onCancelEditTime} className="p-1 text-[var(--text-muted)]"><X className="w-3.5 h-3.5" /></button>
+                  aria-label="Save time"
+                  className="p-1 text-green-600 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"><Check className="w-3.5 h-3.5" /></button>
+                <button onClick={rest.onCancelEditTime} aria-label="Cancel edit"
+                  className="p-1 text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"><X className="w-3.5 h-3.5" /></button>
               </div>
             ) : (
               <button onClick={() => rest.onStartEditTime(m.id, m.scheduled_time)}

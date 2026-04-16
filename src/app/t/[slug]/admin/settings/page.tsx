@@ -219,7 +219,7 @@ export default function TournamentSettings({
                       title={t.label}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
                         (form.hero_text_color || 'white') === t.key
-                          ? 'border-zinc-900 bg-zinc-900 text-white scale-105 shadow'
+                          ? 'border-foreground bg-foreground text-background scale-105 shadow'
                           : 'border-[var(--border)] bg-[var(--surface-card)] text-[var(--text-primary)] hover:opacity-80'
                       }`}
                     >
@@ -234,7 +234,7 @@ export default function TournamentSettings({
               <div>
                 <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
                   Hero Background Image
-                  <span className="text-xs font-normal text-zinc-500 ml-2">full-width photo behind the text — overrides gradient</span>
+                  <span className="text-xs font-normal text-muted-foreground ml-2">full-width photo behind the text — overrides gradient</span>
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -264,7 +264,7 @@ export default function TournamentSettings({
               <div>
                 <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
                   Tournament Graphic
-                  <span className="text-xs font-normal text-zinc-500 ml-2">small logo shown in the hero corner and on cards</span>
+                  <span className="text-xs font-normal text-muted-foreground ml-2">small logo shown in the hero corner and on cards</span>
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -306,11 +306,11 @@ export default function TournamentSettings({
                     type="button"
                     onClick={() => set('hero_overlay', form.hero_overlay === 'false' ? 'true' : 'false')}
                     className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
-                      form.hero_overlay !== 'false' ? 'bg-zinc-900' : 'bg-zinc-200'
+                      form.hero_overlay !== 'false' ? 'bg-foreground' : 'bg-border'
                     }`}
                   >
                     <span
-                      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                      className={`inline-block h-5 w-5 transform rounded-full bg-background shadow transition-transform duration-200 ${
                         form.hero_overlay !== 'false' ? 'translate-x-5' : 'translate-x-0'
                       }`}
                     />

@@ -47,7 +47,7 @@ export default function AdminDashboard() {
             <p className="text-sm text-[var(--text-secondary)]">Admin Dashboard</p>
           </div>
           <div className="flex items-center gap-3">
-            <ThemeToggle className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-zinc-100 dark:hover:bg-zinc-800" />
+            <ThemeToggle className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-surface" />
             <Link href="/account" className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors flex items-center gap-1.5">
               <User className="w-4 h-4" /> My Profile
             </Link>
@@ -66,18 +66,18 @@ export default function AdminDashboard() {
               <Link
                 key={card.label}
                 href={card.href}
-                className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-6 hover:border-zinc-300 dark:hover:border-zinc-600 hover:shadow-sm transition-all group"
+                className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-6 hover:border-border hover:shadow-sm transition-all group"
               >
-                <Icon className="w-7 h-7 text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors" strokeWidth={1.5} />
+                <Icon className="w-7 h-7 text-dim group-hover:text-muted-foreground transition-colors" strokeWidth={1.5} />
                 <h3 className="font-semibold text-lg mt-3 text-[var(--text-primary)]">{card.label}</h3>
                 <p className="text-sm text-[var(--text-secondary)] mt-1">{card.desc}</p>
               </Link>
             ) : (
               <div key={card.label} className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-6 opacity-50">
-                <Icon className="w-7 h-7 text-zinc-400" strokeWidth={1.5} />
+                <Icon className="w-7 h-7 text-dim" strokeWidth={1.5} />
                 <h3 className="font-semibold text-lg mt-3 text-[var(--text-primary)]">
                   {card.label}
-                  <span className="text-xs font-normal text-[var(--text-secondary)] ml-2 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full">
+                  <span className="text-xs font-normal text-[var(--text-secondary)] ml-2 bg-surface px-2 py-0.5 rounded-full">
                     Coming Soon
                   </span>
                 </h3>

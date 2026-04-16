@@ -157,7 +157,7 @@ function TournamentCard({ tournament: t }: { tournament: Tournament }) {
   const statusColors: Record<string, string> = {
     active: 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400',
     upcoming: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300',
-    completed: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400',
+    completed: 'bg-surface text-muted-foreground',
   };
 
   return (
@@ -166,7 +166,7 @@ function TournamentCard({ tournament: t }: { tournament: Tournament }) {
       className="flex items-center gap-4 bg-[var(--surface-card)] rounded-xl border border-[var(--border)] p-5 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all group"
     >
       {/* Tournament image / placeholder */}
-      <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-[#1a2332] flex items-center justify-center border border-zinc-100">
+      <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-[#1a2332] flex items-center justify-center border border-border">
         {t.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={t.image_url} alt={t.name} className="w-full h-full object-cover" />

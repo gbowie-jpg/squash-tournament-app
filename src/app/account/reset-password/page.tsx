@@ -82,7 +82,7 @@ export default function ResetPasswordPage() {
             </div>
           ) : !sessionReady ? (
             <div className="text-center py-6">
-              <div className="w-6 h-6 border-2 border-zinc-300 border-t-zinc-700 rounded-full animate-spin mx-auto mb-3" />
+              <div className="w-6 h-6 border-2 border-border border-t-foreground rounded-full animate-spin mx-auto mb-3" />
               <p className="text-sm text-[var(--text-secondary)]">Verifying reset link…</p>
               <p className="text-xs text-[var(--text-muted)] mt-2">
                 If this takes too long, the link may have expired.{' '}

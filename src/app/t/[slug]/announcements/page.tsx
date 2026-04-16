@@ -40,14 +40,14 @@ export default function Announcements({ params }: { params: Promise<{ slug: stri
           <div className="space-y-3">
             {[1, 2].map((i) => (
               <div key={i} className="bg-[var(--surface-card)] border border-[var(--border)] rounded-2xl p-4 animate-pulse">
-                <div className="h-4 bg-zinc-100 dark:bg-zinc-800 rounded w-3/4 mb-2" />
-                <div className="h-3 bg-zinc-100 dark:bg-zinc-800 rounded w-1/2" />
+                <div className="h-4 bg-surface rounded w-3/4 mb-2" />
+                <div className="h-3 bg-surface rounded w-1/2" />
               </div>
             ))}
           </div>
         ) : announcements.length === 0 ? (
           <div className="text-center py-16">
-            <Radio className="w-8 h-8 text-zinc-300 dark:text-zinc-700 mx-auto mb-3" strokeWidth={1.5} />
+            <Radio className="w-8 h-8 text-dim mx-auto mb-3" strokeWidth={1.5} />
             <p className="text-[var(--text-secondary)]">No announcements yet. Check back soon.</p>
           </div>
         ) : (

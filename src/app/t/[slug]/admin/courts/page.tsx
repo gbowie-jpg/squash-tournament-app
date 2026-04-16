@@ -9,7 +9,7 @@ import { Zap } from 'lucide-react';
 const STATUS_COLORS: Record<string, string> = {
   available: 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400',
   in_use: 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400',
-  maintenance: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400',
+  maintenance: 'bg-surface text-muted-foreground',
 };
 
 export default function CourtManagement({ params }: { params: Promise<{ slug: string }> }) {
@@ -105,7 +105,14 @@ export default function CourtManagement({ params }: { params: Promise<{ slug: st
     }
   };
 
-  if (!tournament) return <div className="flex items-center justify-center min-h-screen text-[var(--text-secondary)]">Loading...</div>;
+  if (!tournament) return (
+    <div className="min-h-screen bg-background p-6 space-y-4 animate-pulse">
+      <div className="h-10 bg-surface rounded-xl w-1/3" />
+      {[...Array(3)].map((_, i) => (
+        <div key={i} className="h-40 bg-surface rounded-2xl" />
+      ))}
+    </div>
+  );
 
   const unassignedMatches = matches.filter(m => !m.court_id && (m.status === 'scheduled' || m.status === 'on_deck'));
 
@@ -151,7 +158,11 @@ export default function CourtManagement({ params }: { params: Promise<{ slug: st
         </form>
 
         {loading ? (
-          <p className="text-[var(--text-secondary)] text-center py-12">Loading…</p>
+          <div className="space-y-4 animate-pulse">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="bg-surface rounded-2xl h-40" />
+            ))}
+          </div>
         ) : courts.length === 0 ? (
           <p className="text-[var(--text-secondary)] text-center py-12">No courts yet. Add one above.</p>
         ) : (

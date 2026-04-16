@@ -10,28 +10,35 @@ export default function InfoAccordion({ sections }: { sections: Section[] }) {
   if (visible.length === 0) return null;
 
   return (
-    <div className="border border-zinc-200 rounded-xl overflow-hidden divide-y divide-zinc-200 bg-white">
-      {visible.map((s) => (
-        <div key={s.label}>
-          <button
-            className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-zinc-50 transition-colors"
-            onClick={() => setOpen(open === s.label ? null : s.label)}
-          >
-            <span className="font-semibold text-sm uppercase tracking-wide text-zinc-700">{s.label}</span>
-            <svg
-              className={`w-4 h-4 text-zinc-400 transition-transform ${open === s.label ? 'rotate-180' : ''}`}
-              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+    <div className="border border-border rounded-xl overflow-hidden divide-y divide-border bg-card">
+      {visible.map((s) => {
+        const panelId = `accordion-panel-${s.label.replace(/\s+/g, '-').toLowerCase()}`;
+        const isOpen = open === s.label;
+        return (
+          <div key={s.label}>
+            <button
+              className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-surface transition-colors"
+              onClick={() => setOpen(isOpen ? null : s.label)}
+              aria-expanded={isOpen}
+              aria-controls={panelId}
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-          {open === s.label && (
-            <div className="px-5 pb-5 text-sm text-zinc-700 whitespace-pre-wrap leading-relaxed border-t border-zinc-100">
-              {s.content}
-            </div>
-          )}
-        </div>
-      ))}
+              <span className="font-semibold text-sm uppercase tracking-wide text-foreground">{s.label}</span>
+              <svg
+                className={`w-4 h-4 text-dim transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                aria-hidden="true"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {isOpen && (
+              <div id={panelId} className="px-5 pb-5 text-sm text-foreground whitespace-pre-wrap leading-relaxed border-t border-border">
+                {s.content}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

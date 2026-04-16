@@ -87,8 +87,16 @@ export default function PlayerManagement({
     setPlayers((prev) => prev.filter((p) => p.id !== playerId));
   };
 
-  if (tournamentLoading) return <div className="flex items-center justify-center min-h-screen text-[var(--text-secondary)]">Loading...</div>;
-  if (!tournament) return <div className="flex items-center justify-center min-h-screen text-[var(--text-secondary)]">Not found</div>;
+  if (tournamentLoading) return (
+    <div className="min-h-screen bg-background p-6 space-y-4 animate-pulse">
+      <div className="h-10 bg-surface rounded-xl w-1/3" />
+      <div className="h-8 bg-surface rounded-xl w-1/4" />
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className="h-12 bg-surface rounded-xl" />
+      ))}
+    </div>
+  );
+  if (!tournament) return <div className="flex items-center justify-center min-h-screen text-muted-foreground">Not found</div>;
 
   // Group by draw
   const draws = [...new Set(players.map((p) => p.draw || 'Unassigned'))].sort();
@@ -190,7 +198,11 @@ export default function PlayerManagement({
         )}
 
         {loading ? (
-          <p className="text-[var(--text-secondary)] text-center py-12">Loading...</p>
+          <div className="space-y-4 animate-pulse">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="bg-surface rounded-xl h-32" />
+            ))}
+          </div>
         ) : players.length === 0 ? (
           <p className="text-[var(--text-secondary)] text-center py-12">No players yet. Add some to get started.</p>
         ) : (
@@ -207,7 +219,7 @@ export default function PlayerManagement({
                     >
                       <div className="flex items-center gap-3">
                         {p.seed && (
-                          <span className="w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-800 text-[var(--text-secondary)] text-xs font-medium flex items-center justify-center">
+                          <span className="w-6 h-6 rounded-full bg-surface text-muted-foreground text-xs font-medium flex items-center justify-center">
                             {p.seed}
                           </span>
                         )}

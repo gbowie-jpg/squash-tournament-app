@@ -140,7 +140,7 @@ export default async function TournamentLanding({
                 ) : isUpcoming ? (
                   <span className="bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">Upcoming</span>
                 ) : (
-                  <span className="bg-zinc-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">Completed</span>
+                  <span className="bg-surface text-muted-foreground text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">Completed</span>
                 )}
               </div>
               <h1 className="text-3xl sm:text-4xl font-bold tracking-tight" style={{ color: textColors.heading }}>
@@ -206,7 +206,7 @@ export default async function TournamentLanding({
                 <h2 className="font-semibold mb-3 text-[var(--text-primary)]">Draws</h2>
                 <div className="flex flex-wrap gap-2">
                   {draws.map((d) => (
-                    <span key={d} className="bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-sm font-medium px-3 py-1.5 rounded-lg">{d}</span>
+                    <span key={d} className="bg-surface text-foreground text-sm font-medium px-3 py-1.5 rounded-lg">{d}</span>
                   ))}
                 </div>
               </div>
@@ -226,7 +226,7 @@ export default async function TournamentLanding({
                       className={`flex items-center justify-between p-3 rounded-lg text-sm transition-colors hover:opacity-80 ${
                         m.status === 'in_progress'
                           ? 'bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800'
-                          : 'bg-zinc-50 dark:bg-zinc-800/50'
+                          : 'bg-surface'
                       }`}
                     >
                       <div>
@@ -259,9 +259,9 @@ export default async function TournamentLanding({
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="flex items-center gap-4 bg-[var(--surface-card)] rounded-xl border border-[var(--border)] p-5 hover:border-zinc-300 dark:hover:border-zinc-600 hover:shadow-sm transition-all group"
+                  className="flex items-center gap-4 bg-[var(--surface-card)] rounded-xl border border-[var(--border)] p-5 hover:border-border hover:shadow-sm transition-all group"
                 >
-                  <link.Icon className="w-5 h-5 text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors flex-shrink-0" strokeWidth={1.5} />
+                  <link.Icon className="w-5 h-5 text-dim group-hover:text-muted-foreground transition-colors flex-shrink-0" strokeWidth={1.5} />
                   <div>
                     <p className="font-semibold text-[var(--text-primary)]">{link.label}</p>
                     <p className="text-sm text-[var(--text-secondary)]">{link.desc}</p>
@@ -281,7 +281,7 @@ export default async function TournamentLanding({
                 <div className="space-y-3">
                   {scheduleItems.map((item, i) => (
                     <div key={i} className="flex items-start gap-3">
-                      <div className="w-2 h-2 rounded-full bg-zinc-300 dark:bg-zinc-600 mt-1.5 shrink-0" />
+                      <div className="w-2 h-2 rounded-full bg-border mt-1.5 shrink-0" />
                       <div>
                         <p className="text-xs text-[var(--text-muted)]">{item.date}</p>
                         <p className="text-sm font-medium text-[var(--text-primary)]">{item.label}</p>

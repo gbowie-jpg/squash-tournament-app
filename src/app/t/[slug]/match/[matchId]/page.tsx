@@ -16,7 +16,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; dot?: string
   in_progress: { label: 'Live Now', color: 'bg-green-600 text-white', dot: 'bg-white animate-pulse' },
   on_deck:     { label: 'On Deck',  color: 'bg-amber-500 text-white', dot: 'bg-white' },
   scheduled:   { label: 'Upcoming', color: 'bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300' },
-  completed:   { label: 'Completed', color: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400' },
+  completed:   { label: 'Completed', color: 'bg-surface text-muted-foreground' },
   walkover:    { label: 'Walkover',  color: 'bg-purple-100 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400' },
   cancelled:   { label: 'Cancelled', color: 'bg-red-100 dark:bg-red-950/50 text-red-500 dark:text-red-400' },
 };
@@ -210,7 +210,7 @@ export default function MatchDetail({
                           ? 'bg-green-600 text-white'
                           : isOnDeck
                           ? 'bg-amber-500 text-white'
-                          : 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
+                          : 'bg-foreground text-card'
                       }`}
                     >
                       {isLive ? '🎾 Score this Match' : isOnDeck ? '⏳ Prepare to Score' : 'Open Scoring App'}
@@ -218,7 +218,7 @@ export default function MatchDetail({
                   ) : (
                     <Link
                       href={`/login?redirect=/t/${slug}/match/${matchId}/score`}
-                      className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-semibold text-sm bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:opacity-90 transition-opacity"
+                      className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-semibold text-sm bg-foreground text-card hover:opacity-90 transition-opacity"
                     >
                       Sign in to Score
                     </Link>
@@ -237,7 +237,7 @@ export default function MatchDetail({
                     <Link
                       key={id}
                       href={`/t/${slug}/player/${id}`}
-                      className={`flex items-center justify-between px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors ${i > 0 ? 'border-t border-[var(--border)]' : ''}`}
+                      className={`flex items-center justify-between px-4 py-3 hover:bg-surface transition-colors ${i > 0 ? 'border-t border-[var(--border)]' : ''}`}
                     >
                       <div>
                         <p className="font-semibold text-sm text-[var(--text-primary)]">{player?.name || 'TBD'}</p>

@@ -17,7 +17,7 @@ const STATUS_LABELS: Record<string, { text: string; color: string }> = {
   in_progress: { text: 'Playing NOW', color: 'bg-green-600 text-white' },
   on_deck: { text: 'ON DECK', color: 'bg-amber-500 text-white' },
   scheduled: { text: 'Upcoming', color: 'bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300' },
-  completed: { text: 'Completed', color: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400' },
+  completed: { text: 'Completed', color: 'bg-surface text-muted-foreground' },
   walkover: { text: 'Walkover', color: 'bg-purple-100 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400' },
   cancelled: { text: 'Cancelled', color: 'bg-red-100 dark:bg-red-950/50 text-red-500 dark:text-red-400' },
 };
@@ -177,7 +177,33 @@ export default function PlayerProfile({
   };
 
   if (tLoading || !tournament) {
-    return <div className="flex items-center justify-center min-h-screen text-zinc-600">Loading…</div>;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen gap-6 px-4">
+        <div className="w-full max-w-2xl space-y-6">
+          {/* Header skeleton */}
+          <div className="flex items-center gap-4 pt-16">
+            <div className="w-14 h-14 rounded-full bg-surface animate-pulse flex-shrink-0" />
+            <div className="flex-1 space-y-2">
+              <div className="h-5 w-36 bg-surface animate-pulse rounded" />
+              <div className="h-3 w-24 bg-surface animate-pulse rounded" />
+            </div>
+          </div>
+          {/* Match skeletons */}
+          <div className="space-y-2.5">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-card border border-border rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="h-5 w-20 bg-surface animate-pulse rounded-full" />
+                  <div className="h-3 w-16 bg-surface animate-pulse rounded" />
+                </div>
+                <div className="h-4 w-40 bg-surface animate-pulse rounded" />
+                <div className="h-3 w-24 bg-surface animate-pulse rounded" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const playerMatches = matches
@@ -219,7 +245,7 @@ export default function PlayerProfile({
                 className="w-14 h-14 rounded-full object-cover border-2 border-[var(--border)] flex-shrink-0"
               />
             ) : (
-              <div className="w-14 h-14 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-xl font-bold text-zinc-500 dark:text-zinc-300 flex-shrink-0 select-none">
+              <div className="w-14 h-14 rounded-full bg-surface flex items-center justify-center text-xl font-bold text-muted-foreground flex-shrink-0 select-none">
                 {displayName[0]?.toUpperCase() ?? '?'}
               </div>
             )}
@@ -227,7 +253,7 @@ export default function PlayerProfile({
             <div className="flex-1 min-w-0">
               <h1 className="text-xl font-bold tracking-tight truncate">{displayName}</h1>
               <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                {displayClub && <span className="text-sm text-zinc-500">{displayClub}</span>}
+                {displayClub && <span className="text-sm text-muted-foreground">{displayClub}</span>}
                 {playerProfile?.squash_ranking && (
                   <span className="text-xs font-medium bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
                     Rating: {playerProfile.squash_ranking}
@@ -235,7 +261,7 @@ export default function PlayerProfile({
                 )}
               </div>
               {playerProfile?.bio && (
-                <p className="text-xs text-zinc-500 mt-1 line-clamp-2">{playerProfile.bio}</p>
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{playerProfile.bio}</p>
               )}
             </div>
           </div>
@@ -324,7 +350,7 @@ export default function PlayerProfile({
                       {canScore && (
                         <Link
                           href={`/t/${slug}/match/${m.id}/score`}
-                          className="flex-shrink-0 bg-zinc-900 text-white text-xs font-semibold px-3 py-2 rounded-xl hover:bg-zinc-700 transition-colors"
+                          className="flex-shrink-0 bg-foreground text-card text-xs font-semibold px-3 py-2 rounded-xl hover:opacity-80 transition-opacity"
                         >
                           Score
                         </Link>
@@ -357,8 +383,8 @@ export default function PlayerProfile({
 
           {/* Upload success message */}
           {uploadSuccess && (
-            <div className="mb-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 rounded-xl px-4 py-3 text-sm flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 flex-shrink-0" />
+            <div role="status" aria-live="polite" className="mb-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 rounded-xl px-4 py-3 text-sm flex items-center gap-2">
+              <CheckCircle aria-hidden="true" className="w-4 h-4 flex-shrink-0" />
               Video uploaded! It will appear here once reviewed by the organizer.
             </div>
           )}
@@ -401,13 +427,13 @@ export default function PlayerProfile({
                   type="file"
                   accept="video/mp4,video/quicktime,video/webm,video/avi,video/mov"
                   required
-                  className="w-full text-sm text-[var(--text-secondary)] file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-zinc-900 file:text-white dark:file:bg-zinc-100 dark:file:text-zinc-900 hover:file:opacity-90"
+                  className="w-full text-sm text-[var(--text-secondary)] file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-foreground file:text-card hover:file:opacity-90"
                 />
                 <p className="text-xs text-[var(--text-muted)] mt-1">MP4, MOV, WebM · Max 500 MB</p>
               </div>
 
               {uploadingVideo && uploadProgress > 0 && (
-                <div className="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-1.5">
+                <div className="w-full bg-surface rounded-full h-1.5">
                   <div
                     className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
                     style={{ width: `${uploadProgress}%` }}
@@ -419,7 +445,7 @@ export default function PlayerProfile({
                 <button
                   type="submit"
                   disabled={uploadingVideo}
-                  className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-5 py-2 rounded-xl text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+                  className="bg-foreground text-card px-5 py-2 rounded-xl text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
                 >
                   {uploadingVideo ? 'Uploading…' : 'Submit for Review'}
                 </button>
@@ -441,8 +467,8 @@ export default function PlayerProfile({
                 const cfg = VIDEO_STATUS_CONFIG[v.status];
                 return (
                   <div key={v.id} className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-3 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center flex-shrink-0">
-                      <Film className="w-5 h-5 text-zinc-400" />
+                    <div className="w-10 h-10 rounded-lg bg-surface flex items-center justify-center flex-shrink-0">
+                      <Film className="w-5 h-5 text-dim" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-[var(--text-primary)] truncate">{v.title || 'Untitled'}</p>
@@ -493,7 +519,7 @@ export default function PlayerProfile({
 
         <div className="flex items-center gap-1.5 justify-center mt-8 pb-6">
           <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-xs text-zinc-500">Updates automatically</span>
+          <span className="text-xs text-muted-foreground">Updates automatically</span>
         </div>
       </main>
     </div>
