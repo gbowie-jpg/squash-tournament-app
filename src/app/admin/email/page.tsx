@@ -141,6 +141,7 @@ export default function GlobalEmail() {
   const [csvImporting, setCsvImporting] = useState(false);
   const [csvStatus, setCsvStatus] = useState<string>('');
   const [csvError, setCsvError] = useState<string>('');
+  const [csvSkipExisting, setCsvSkipExisting] = useState(false);
 
   const refresh = async () => {
     const [r, c] = await Promise.all([
@@ -284,15 +285,23 @@ export default function GlobalEmail() {
     }
   };
 
+  const existingEmailSet = new Set(recipients.map((r) => r.email.toLowerCase()));
+  const csvNew = csvPreview.filter((r) => !existingEmailSet.has(r.email.toLowerCase()));
+  const csvExisting = csvPreview.filter((r) => existingEmailSet.has(r.email.toLowerCase()));
+  const csvToImport = csvSkipExisting ? csvNew : csvPreview;
+
   const importCsv = async () => {
-    if (csvPreview.length === 0) return;
+    if (csvToImport.length === 0) return;
     setCsvImporting(true);
     await fetch('/api/admin/email/recipients', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(csvPreview),
+      body: JSON.stringify(csvToImport),
     });
     setCsvPreview([]);
+    setCsvStatus('');
+    setCsvError('');
+    setCsvSkipExisting(false);
     if (csvRef.current) csvRef.current.value = '';
     await refresh();
     setCsvImporting(false);
@@ -404,46 +413,66 @@ export default function GlobalEmail() {
                 />
                 {csvPreview.length > 0 && (
                   <>
-                    <span className="text-sm text-muted-foreground">{csvPreview.length} contacts ready</span>
-                    <button onClick={importCsv} disabled={csvImporting}
+                    <button onClick={importCsv} disabled={csvImporting || csvToImport.length === 0}
                       className="bg-foreground text-background px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50">
-                      {csvImporting ? 'Importing...' : `Import ${csvPreview.length}`}
+                      {csvImporting ? 'Importing...' : `Import ${csvToImport.length}`}
                     </button>
-                    <button onClick={() => { setCsvPreview([]); setCsvStatus(''); setCsvError(''); if (csvRef.current) csvRef.current.value = ''; }}
+                    <button onClick={() => { setCsvPreview([]); setCsvStatus(''); setCsvError(''); setCsvSkipExisting(false); if (csvRef.current) csvRef.current.value = ''; }}
                       className="text-sm text-muted-foreground hover:text-foreground">Cancel</button>
                   </>
                 )}
               </div>
 
-              {csvStatus && (
-                <div className="mt-3 text-xs bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 rounded-lg px-3 py-2">
-                  {csvStatus}
-                </div>
-              )}
               {csvError && (
                 <div className="mt-3 text-xs bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg px-3 py-2">
                   {csvError}
                 </div>
               )}
               {csvPreview.length > 0 && (
-                <div className="mt-3 max-h-40 overflow-auto border border-border rounded-lg">
-                  <table className="w-full text-xs">
-                    <thead><tr className="bg-surface">
-                      <th className="text-left px-3 py-2 font-medium">Name</th>
-                      <th className="text-left px-3 py-2 font-medium">Email</th>
-                      <th className="text-left px-3 py-2 font-medium">Tags</th>
-                    </tr></thead>
-                    <tbody>
-                      {csvPreview.slice(0, 10).map((r, i) => (
-                        <tr key={i} className="border-t border-border">
-                          <td className="px-3 py-1.5">{r.name}</td>
-                          <td className="px-3 py-1.5 text-muted-foreground">{r.email}</td>
-                          <td className="px-3 py-1.5 text-muted-foreground">{(r.tags || []).join(', ') || '—'}</td>
-                        </tr>
-                      ))}
-                      {csvPreview.length > 10 && <tr><td colSpan={3} className="px-3 py-1.5 text-muted-foreground">...and {csvPreview.length - 10} more</td></tr>}
-                    </tbody>
-                  </table>
+                <div className="mt-3 space-y-3">
+                  {csvExisting.length > 0 ? (
+                    <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2.5 space-y-2">
+                      <p className="text-xs text-amber-800 dark:text-amber-300">
+                        <strong>{csvNew.length} new</strong> · <strong>{csvExisting.length} already in list</strong>
+                        {!csvSkipExisting && <span className="text-amber-600 dark:text-amber-400"> — existing contacts will have their tags merged and name updated</span>}
+                      </p>
+                      <label className="flex items-center gap-2 cursor-pointer w-fit">
+                        <input type="checkbox" checked={csvSkipExisting} onChange={(e) => setCsvSkipExisting(e.target.checked)} className="rounded" />
+                        <span className="text-xs text-amber-800 dark:text-amber-300 font-medium">Skip existing — only import {csvNew.length} new contact{csvNew.length !== 1 ? 's' : ''}</span>
+                      </label>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground"><strong>{csvPreview.length}</strong> new contacts — none are in the list yet</p>
+                  )}
+                  <div className="max-h-48 overflow-auto border border-border rounded-lg">
+                    <table className="w-full text-xs">
+                      <thead><tr className="bg-surface">
+                        <th className="text-left px-3 py-2 font-medium">Name</th>
+                        <th className="text-left px-3 py-2 font-medium">Email</th>
+                        <th className="text-left px-3 py-2 font-medium">Tags</th>
+                        <th className="px-3 py-2 w-20"></th>
+                      </tr></thead>
+                      <tbody>
+                        {csvPreview.slice(0, 12).map((r, i) => {
+                          const isExisting = existingEmailSet.has(r.email.toLowerCase());
+                          const skipped = csvSkipExisting && isExisting;
+                          return (
+                            <tr key={i} className={`border-t border-border ${skipped ? 'opacity-40' : isExisting ? 'bg-amber-50 dark:bg-amber-950/20' : ''}`}>
+                              <td className="px-3 py-1.5 font-medium">{r.name}</td>
+                              <td className="px-3 py-1.5 text-muted-foreground">{r.email}</td>
+                              <td className="px-3 py-1.5 text-muted-foreground">{(r.tags || []).join(', ') || '—'}</td>
+                              <td className="px-3 py-1.5 text-right">
+                                {skipped ? <span className="text-muted-foreground">skip</span>
+                                  : isExisting ? <span className="text-amber-600 dark:text-amber-400 font-medium">update</span>
+                                  : <span className="text-green-600 dark:text-green-400 font-medium">new</span>}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {csvPreview.length > 12 && <tr><td colSpan={4} className="px-3 py-1.5 text-muted-foreground">...and {csvPreview.length - 12} more</td></tr>}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </div>
