@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { requireAuth } from '@/lib/supabase/auth-check';
+import { requireTournamentOrganizer } from '@/lib/supabase/require-role';
 
-/** GET: List recipients for a tournament. */
+/** GET: List recipients for a tournament (organizer only). */
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireAuth();
-  if (auth.error) return auth.error;
-
   const { id } = await params;
+  const auth = await requireTournamentOrganizer(id);
+  if (auth.error) return auth.error;
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('email_recipients')
@@ -22,15 +21,14 @@ export async function GET(
   return NextResponse.json(data);
 }
 
-/** POST: Add recipients (single or bulk array). */
+/** POST: Add recipients (single or bulk array). Organizer only. */
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireAuth();
-  if (auth.error) return auth.error;
-
   const { id } = await params;
+  const auth = await requireTournamentOrganizer(id);
+  if (auth.error) return auth.error;
   const supabase = createAdminClient();
   const body = await req.json();
 
@@ -38,31 +36,59 @@ export async function POST(
 
   const rows = items
     .filter((r: { name?: string; email?: string }) => r.name && r.email)
-    .map((r: { name: string; email: string; type?: string }) => ({
+    .map((r: { name: string; email: string; type?: string; tags?: string[] }) => ({
       tournament_id: id,
       name: r.name.trim(),
       email: r.email.trim().toLowerCase(),
       type: ['invitee', 'player', 'volunteer', 'other'].includes(r.type || '')
         ? r.type
         : 'invitee',
+      tags: Array.isArray(r.tags)
+        ? r.tags.map((t) => String(t).trim().toLowerCase()).filter(Boolean)
+        : [],
     }));
 
   if (rows.length === 0) {
     return NextResponse.json({ error: 'No valid recipients' }, { status: 400 });
   }
 
+  // Look up existing rows for these emails so we can UNION their tags (not overwrite).
+  // Preserves any hand-curated tags (e.g. "ssra") already on the recipient.
+  const emails = rows.map((r) => r.email);
+  const { data: existing } = await supabase
+    .from('email_recipients')
+    .select('email, tags')
+    .eq('tournament_id', id)
+    .in('email', emails);
+  const existingTagsByEmail = new Map<string, string[]>(
+    (existing ?? []).map((r: { email: string; tags: string[] | null }) => [r.email, r.tags ?? []]),
+  );
+
+  const mergedRows = rows.map((r) => {
+    const prior = existingTagsByEmail.get(r.email) ?? [];
+    const merged = Array.from(new Set([...prior, ...r.tags]));
+    return { ...r, tags: merged };
+  });
+
+  // ignoreDuplicates: false → on conflict, update existing rows. Since we pre-merged tags above,
+  // the update preserves old tags + adds new ones. Name/type are taken from CSV (authoritative).
+  // `subscribed` is NOT in the payload, so it remains untouched on existing rows.
   const { data, error } = await supabase
     .from('email_recipients')
-    .upsert(rows, { onConflict: 'tournament_id,email', ignoreDuplicates: true })
+    .upsert(mergedRows, { onConflict: 'tournament_id,email', ignoreDuplicates: false })
     .select();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data, { status: 201 });
 }
 
-/** PATCH: Update a recipient's name, type, and/or tags. */
-export async function PATCH(req: NextRequest) {
-  const auth = await requireAuth();
+/** PATCH: Update a recipient's name, type, and/or tags. Organizer only. */
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const auth = await requireTournamentOrganizer(id);
   if (auth.error) return auth.error;
 
   const supabase = createAdminClient();
@@ -94,9 +120,13 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json(data);
 }
 
-/** DELETE: Remove a recipient. */
-export async function DELETE(req: NextRequest) {
-  const auth = await requireAuth();
+/** DELETE: Remove a recipient. Organizer only. */
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const auth = await requireTournamentOrganizer(id);
   if (auth.error) return auth.error;
 
   const supabase = createAdminClient();

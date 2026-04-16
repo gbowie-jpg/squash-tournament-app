@@ -20,29 +20,62 @@ const TYPE_COLORS: Record<string, string> = {
   other: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400',
 };
 
-function parseCSV(text: string): { name: string; email: string; type?: string }[] {
+// Parses a single CSV line, correctly handling quoted fields (e.g. "Smith, John")
+function parseCsvLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
+      else { inQuotes = !inQuotes; }
+    } else if (ch === ',' && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+function parseCSV(text: string): { name: string; email: string; type?: string; tags?: string[] }[] {
+  // Strip UTF-8 BOM
+  if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
   const lines = text.split(/\r?\n/).filter((l) => l.trim());
   if (lines.length < 2) return [];
-  const headers = lines[0].split(',').map((h) => h.trim().toLowerCase().replace(/['"]/g, ''));
-  const nameIdx = headers.findIndex((h) => ['name', 'full name', 'fullname', 'player name'].includes(h));
+
+  const headers = parseCsvLine(lines[0]).map((h) => h.toLowerCase().replace(/['"]/g, ''));
+  const nameIdx  = headers.findIndex((h) => ['name', 'full name', 'fullname', 'player name', 'player'].includes(h));
   const emailIdx = headers.findIndex((h) => ['email', 'e-mail', 'email address'].includes(h));
-  const typeIdx = headers.findIndex((h) => ['type', 'category', 'role', 'segment'].includes(h));
+  const typeIdx  = headers.findIndex((h) => ['type', 'category', 'role', 'segment'].includes(h));
+  const tagsIdx  = headers.findIndex((h) => ['tag', 'tags', 'group', 'groups', 'label', 'labels'].includes(h));
   const firstIdx = headers.findIndex((h) => ['first name', 'first', 'firstname', 'fname'].includes(h));
-  const lastIdx = headers.findIndex((h) => ['last name', 'last', 'lastname', 'lname', 'surname'].includes(h));
+  const lastIdx  = headers.findIndex((h) => ['last name', 'last', 'lastname', 'lname', 'surname'].includes(h));
+
   if (emailIdx === -1) return [];
+
   return lines.slice(1).map((line) => {
-    const cells = line.split(',').map((c) => c.trim().replace(/^["']|["']$/g, ''));
-    const email = cells[emailIdx]?.toLowerCase();
+    const cells = parseCsvLine(line);
+    const email = cells[emailIdx]?.toLowerCase().trim();
     if (!email || !email.includes('@')) return null;
-    let name = nameIdx >= 0 ? cells[nameIdx] : '';
+    let name = nameIdx >= 0 ? cells[nameIdx] ?? '' : '';
     if (!name && (firstIdx >= 0 || lastIdx >= 0)) {
       name = [firstIdx >= 0 ? cells[firstIdx] : '', lastIdx >= 0 ? cells[lastIdx] : ''].filter(Boolean).join(' ');
     }
     if (!name) name = email.split('@')[0];
-    const type = typeIdx >= 0 ? cells[typeIdx]?.toLowerCase() : undefined;
-    const safeType = ['player', 'volunteer', 'invitee', 'other'].includes(type || '') ? type : 'invitee';
-    return { name: name.trim(), email, type: safeType };
-  }).filter(Boolean) as { name: string; email: string; type: string }[];
+    const type = typeIdx >= 0 ? cells[typeIdx]?.toLowerCase().trim() : undefined;
+    const safeType = ['player', 'volunteer', 'invitee', 'other'].includes(type ?? '') ? type : 'invitee';
+    // Tags can be separated by ; or , within the cell (e.g. "prior_tourney; non_WA")
+    const tagRaw = tagsIdx >= 0 ? cells[tagsIdx] ?? '' : '';
+    const tags = tagRaw
+      .split(/[;,]/)
+      .map((t) => t.trim().toLowerCase())
+      .filter(Boolean);
+    return { name: name.trim(), email, type: safeType, tags };
+  }).filter(Boolean) as { name: string; email: string; type: string; tags: string[] }[];
 }
 
 export default function EmailMarketing({ params }: { params: Promise<{ slug: string }> }) {
@@ -73,8 +106,10 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
 
   // CSV import
   const csvRef = useRef<HTMLInputElement>(null);
-  const [csvPreview, setCsvPreview] = useState<{ name: string; email: string; type?: string }[]>([]);
+  const [csvPreview, setCsvPreview] = useState<{ name: string; email: string; type?: string; tags?: string[] }[]>([]);
   const [csvImporting, setCsvImporting] = useState(false);
+  const [csvStatus, setCsvStatus] = useState<string>('');
+  const [csvError, setCsvError] = useState<string>('');
 
   // Sync
   const [syncing, setSyncing] = useState(false);
@@ -95,6 +130,7 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
   };
 
   useEffect(() => {
+    console.log('[CSV] email page mounted — build v3 (visible native input)');
     if (!tournament) return;
     Promise.all([
       fetch(`/api/tournaments/${tournament.id}/email/recipients`).then((r) => r.ok ? r.json() : []),
@@ -217,12 +253,48 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
     setSyncing(false);
   };
 
-  const handleCsvFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCsvFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCsvError('');
+    setCsvStatus('');
     const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => { setCsvPreview(parseCSV(ev.target?.result as string)); };
-    reader.readAsText(file);
+    console.log('[CSV] onChange fired. file =', file);
+    if (!file) {
+      setCsvError('No file selected.');
+      return;
+    }
+    setCsvStatus(`Reading ${file.name} (${(file.size / 1024).toFixed(1)} KB)…`);
+
+    // Reset the input value right away so selecting the same file again re-fires onChange
+    try { e.target.value = ''; } catch {}
+
+    try {
+      // Race file.text() against a timeout so cloud-synced offline files don't hang silently.
+      const text = await Promise.race([
+        file.text(),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error('Timed out after 8s — file may be offline in a cloud folder (iCloud/Dropbox). Copy it to your Desktop first.')),
+            8000
+          )
+        ),
+      ]);
+      console.log('[CSV] file.text() resolved. length =', (text as string).length);
+      setCsvStatus(`Parsing ${(text as string).length} chars…`);
+      const rows = parseCSV(text as string);
+      console.log('[CSV] parsed rows =', rows.length, rows.slice(0, 3));
+      if (rows.length === 0) {
+        setCsvError('No valid rows found. The CSV must have an "email" column, and emails must contain "@".');
+        setCsvStatus('');
+        return;
+      }
+      setCsvPreview(rows);
+      setCsvStatus(`Found ${rows.length} contacts — review below and click Import.`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[CSV] error:', msg);
+      setCsvError(msg);
+      setCsvStatus('');
+    }
   };
 
   const importCsv = async () => {
@@ -305,7 +377,7 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
         <div className="flex gap-1 bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-1 mb-6">
           {(['recipients', 'compose', 'history'] as Tab[]).map((t) => (
             <button key={t} onClick={() => setTab(t)}
-              className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${tab === t ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'text-[var(--text-secondary)] hover:bg-[var(--surface)]'}`}>
+              className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${tab === t ? 'bg-foreground text-card' : 'text-[var(--text-secondary)] hover:bg-surface'}`}>
               {t === 'recipients' ? `Recipients (${recipients.length})` : t === 'compose' ? 'Compose' : 'History'}
             </button>
           ))}
@@ -327,7 +399,7 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
                 const count = s === 'all' ? recipients.length : (counts[s] || 0);
                 return (
                   <button key={s} onClick={() => setSegment(s)}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${segment === s ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'bg-[var(--surface-card)] border border-[var(--border)] text-[var(--text-primary)] hover:opacity-80'}`}>
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${segment === s ? 'bg-foreground text-card' : 'bg-[var(--surface-card)] border border-[var(--border)] text-[var(--text-primary)] hover:opacity-80'}`}>
                     {SEGMENT_LABELS[s]} {count > 0 && <span className="opacity-60">({count})</span>}
                   </button>
                 );
@@ -349,39 +421,63 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
             {/* CSV Import */}
             <div className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-5">
               <h3 className="font-semibold mb-3">Bulk Import via CSV</h3>
-              <p className="text-xs text-[var(--text-secondary)] mb-3">CSV must have an <strong>email</strong> column. Optional: <strong>name</strong>, <strong>type</strong> (player/volunteer/invitee/other).</p>
+              <p className="text-xs text-[var(--text-secondary)] mb-3">CSV must have an <strong>email</strong> column. Optional: <strong>name</strong> (or <strong>player</strong>), <strong>type</strong> (player/volunteer/invitee/other).</p>
+
+              {/* Fully visible native file input — zero indirection, no label, no ref.click().
+                  Browser renders its own "Choose File" button which directly fires onChange. */}
               <div className="flex flex-wrap gap-2 items-center">
-                <label className="bg-zinc-100 dark:bg-zinc-800 hover:opacity-80 text-zinc-800 dark:text-zinc-200 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer">
-                  Choose CSV
-                  <input ref={csvRef} type="file" accept=".csv,.txt" onChange={handleCsvFile} className="hidden" />
-                </label>
+                <input
+                  id="csv-file-input"
+                  ref={csvRef}
+                  type="file"
+                  accept=".csv,.txt,text/csv,text/plain"
+                  onChange={handleCsvFile}
+                  onClick={() => console.log('[CSV] input clicked')}
+                  className="block text-sm text-foreground file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-surface file:text-foreground file:cursor-pointer hover:file:opacity-80 border border-border rounded-lg p-1"
+                  aria-label="Choose CSV file"
+                />
                 {csvPreview.length > 0 && (
                   <>
-                    <span className="text-sm text-[var(--text-secondary)]">{csvPreview.length} contacts found</span>
+                    <span className="text-sm text-[var(--text-secondary)]">{csvPreview.length} contacts ready</span>
                     <button onClick={importCsv} disabled={csvImporting}
-                      className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50">
+                      className="bg-foreground text-card px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50">
                       {csvImporting ? 'Importing…' : `Import ${csvPreview.length}`}
                     </button>
-                    <button onClick={() => { setCsvPreview([]); if (csvRef.current) csvRef.current.value = ''; }}
+                    <button onClick={() => { setCsvPreview([]); setCsvStatus(''); setCsvError(''); if (csvRef.current) csvRef.current.value = ''; }}
                       className="text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)]">Cancel</button>
                   </>
                 )}
               </div>
+              <p className="mt-2 text-xs text-[var(--text-muted)]">build v3 · if you don't see &quot;[CSV] email page mounted&quot; in console on load, the new code isn't running.</p>
+
+              {/* Visible status + error feedback so silent failures are impossible */}
+              {csvStatus && (
+                <div className="mt-3 text-xs bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 rounded-lg px-3 py-2">
+                  {csvStatus}
+                </div>
+              )}
+              {csvError && (
+                <div className="mt-3 text-xs bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg px-3 py-2">
+                  {csvError}
+                </div>
+              )}
               {csvPreview.length > 0 && (
-                <div className="mt-3 max-h-40 overflow-auto border border-[var(--border)] rounded-lg">
+                <div className="mt-3 max-h-60 overflow-auto border border-[var(--border)] rounded-lg">
                   <table className="w-full text-xs"><thead><tr className="bg-[var(--surface)]">
                     <th className="text-left px-3 py-2 font-medium">Name</th>
                     <th className="text-left px-3 py-2 font-medium">Email</th>
                     <th className="text-left px-3 py-2 font-medium">Type</th>
+                    <th className="text-left px-3 py-2 font-medium">Tags</th>
                   </tr></thead><tbody>
-                    {csvPreview.slice(0, 10).map((r, i) => (
+                    {csvPreview.slice(0, 15).map((r, i) => (
                       <tr key={i} className="border-t border-[var(--border)]">
                         <td className="px-3 py-1.5">{r.name}</td>
                         <td className="px-3 py-1.5 text-[var(--text-secondary)]">{r.email}</td>
                         <td className="px-3 py-1.5 text-[var(--text-secondary)]">{r.type || 'invitee'}</td>
+                        <td className="px-3 py-1.5 text-[var(--text-secondary)]">{(r.tags ?? []).join(', ') || '—'}</td>
                       </tr>
                     ))}
-                    {csvPreview.length > 10 && <tr><td colSpan={3} className="px-3 py-1.5 text-[var(--text-muted)]">…and {csvPreview.length - 10} more</td></tr>}
+                    {csvPreview.length > 15 && <tr><td colSpan={4} className="px-3 py-1.5 text-[var(--text-muted)]">…and {csvPreview.length - 15} more</td></tr>}
                   </tbody></table>
                 </div>
               )}
@@ -403,7 +499,7 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
                   <option value="other">Other</option>
                 </select>
                 <button onClick={addRecipient}
-                  className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90">Add</button>
+                  className="bg-foreground text-card px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90">Add</button>
               </div>
             </div>
 
@@ -442,9 +538,9 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
                               {/* Tag editor */}
                               <div className="flex flex-wrap gap-1.5 items-center">
                                 {editTags.map((t) => (
-                                  <span key={t} className="inline-flex items-center gap-1 bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs px-2 py-0.5 rounded-full">
+                                  <span key={t} className="inline-flex items-center gap-1 bg-surface text-foreground text-xs px-2 py-0.5 rounded-full border border-border">
                                     {t}
-                                    <button onClick={() => removeEditTag(t)} className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 leading-none">×</button>
+                                    <button onClick={() => removeEditTag(t)} aria-label={`Remove tag ${t}`} className="text-muted-foreground hover:text-foreground leading-none">×</button>
                                   </span>
                                 ))}
                                 <input
@@ -467,7 +563,7 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
                               )}
                               <div className="flex gap-2 mt-1">
                                 <button onClick={saveEdit} disabled={saving}
-                                  className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-3 py-1.5 rounded-lg text-xs font-medium hover:opacity-90 disabled:opacity-50">
+                                  className="bg-foreground text-card px-3 py-1.5 rounded-lg text-xs font-medium hover:opacity-90 disabled:opacity-50">
                                   {saving ? 'Saving…' : 'Save'}
                                 </button>
                                 <button onClick={cancelEdit} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)]">Cancel</button>
@@ -482,7 +578,7 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
                             {(r.tags ?? []).length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-1">
                                 {(r.tags ?? []).map((t) => (
-                                  <span key={t} className="bg-zinc-100 dark:bg-zinc-800 text-[var(--text-secondary)] text-xs px-1.5 py-0.5 rounded-full">{t}</span>
+                                  <span key={t} className="bg-surface text-muted-foreground text-xs px-1.5 py-0.5 rounded-full">{t}</span>
                                 ))}
                               </div>
                             )}
@@ -523,7 +619,7 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
                       .filter((r) => !subscribedOnly || r.subscribed).length;
                     return (
                       <button key={s} onClick={() => setSendSegment(s)}
-                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${sendSegment === s ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-zinc-900 dark:border-zinc-100' : 'bg-[var(--surface-card)] border-[var(--border)] text-[var(--text-primary)] hover:opacity-80'}`}>
+                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${sendSegment === s ? 'bg-foreground text-card border-foreground' : 'bg-[var(--surface-card)] border-[var(--border)] text-[var(--text-primary)] hover:opacity-80'}`}>
                         {SEGMENT_LABELS[s]} <span className="opacity-60">({count})</span>
                       </button>
                     );
@@ -541,7 +637,7 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
                       return (
                         <button key={t}
                           onClick={() => setSendTags(active ? sendTags.filter((x) => x !== t) : [...sendTags, t])}
-                          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${active ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-zinc-900 dark:border-zinc-100' : 'bg-[var(--surface-card)] border-[var(--border)] text-[var(--text-primary)] hover:opacity-80'}`}>
+                          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${active ? 'bg-foreground text-card border-foreground' : 'bg-[var(--surface-card)] border-[var(--border)] text-[var(--text-primary)] hover:opacity-80'}`}>
                           {t}
                         </button>
                       );
@@ -590,7 +686,7 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
               )}
 
               <button onClick={sendCampaign} disabled={sending || !subject || !body || sendRecipients.length === 0}
-                className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-6 py-2.5 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50">
+                className="bg-foreground text-card px-6 py-2.5 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50">
                 {sending ? 'Sending…' : `Send to ${sendRecipients.length} Recipient${sendRecipients.length !== 1 ? 's' : ''}`}
               </button>
             </div>

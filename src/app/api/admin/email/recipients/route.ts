@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { requireAuth } from '@/lib/supabase/auth-check';
+import { requireRole } from '@/lib/supabase/require-role';
 
 export async function GET() {
-  const auth = await requireAuth();
+  const auth = await requireRole('admin');
   if (auth.error) return auth.error;
 
   const supabase = createAdminClient();
@@ -17,7 +17,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await requireAuth();
+  const auth = await requireRole('admin');
   if (auth.error) return auth.error;
 
   const supabase = createAdminClient();
@@ -29,14 +29,33 @@ export async function POST(req: NextRequest) {
     .map((r) => ({
       name: r.name.trim(),
       email: r.email.trim().toLowerCase(),
-      tags: Array.isArray(r.tags) ? r.tags : r.tags ? [r.tags] : [],
+      tags: Array.isArray(r.tags)
+        ? r.tags.map((t: string) => String(t).trim().toLowerCase()).filter(Boolean)
+        : r.tags
+          ? [String(r.tags).trim().toLowerCase()]
+          : [],
     }));
 
   if (rows.length === 0) return NextResponse.json({ error: 'No valid recipients' }, { status: 400 });
 
+  // Merge tags with any existing recipient's tags (UNION) so re-uploads add without overwriting.
+  const emails = rows.map((r) => r.email);
+  const { data: existing } = await supabase
+    .from('global_email_recipients')
+    .select('email, tags')
+    .in('email', emails);
+  const existingTagsByEmail = new Map<string, string[]>(
+    (existing ?? []).map((r: { email: string; tags: string[] | null }) => [r.email, r.tags ?? []]),
+  );
+  const mergedRows = rows.map((r) => ({
+    ...r,
+    tags: Array.from(new Set([...(existingTagsByEmail.get(r.email) ?? []), ...r.tags])),
+  }));
+
+  // subscribed state is not in the payload, so it's untouched on re-upload.
   const { data, error } = await supabase
     .from('global_email_recipients')
-    .upsert(rows, { onConflict: 'email', ignoreDuplicates: true })
+    .upsert(mergedRows, { onConflict: 'email', ignoreDuplicates: false })
     .select();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -44,7 +63,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const auth = await requireAuth();
+  const auth = await requireRole('admin');
   if (auth.error) return auth.error;
 
   const supabase = createAdminClient();
@@ -72,7 +91,7 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const auth = await requireAuth();
+  const auth = await requireRole('admin');
   if (auth.error) return auth.error;
 
   const supabase = createAdminClient();

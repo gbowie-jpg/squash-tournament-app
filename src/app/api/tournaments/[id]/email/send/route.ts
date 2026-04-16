@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { requireAuth } from '@/lib/supabase/auth-check';
+import { requireTournamentOrganizer } from '@/lib/supabase/require-role';
 import { sendEmail, buildCampaignHtml, getEmailTemplateSettings } from '@/lib/email';
 
-/** POST: Send a campaign to all subscribed recipients. */
+/** POST: Send a campaign to all subscribed recipients (organizer only). */
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireAuth();
-  if (auth.error) return auth.error;
-
   const { id } = await params;
+  const auth = await requireTournamentOrganizer(id);
+  if (auth.error) return auth.error;
   const supabase = createAdminClient();
   const reqBody = await req.json();
   const { campaignId, tags: filterTags, segment: bodySegment } = reqBody;

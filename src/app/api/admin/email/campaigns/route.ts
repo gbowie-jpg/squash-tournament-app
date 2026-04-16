@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { requireAuth } from '@/lib/supabase/auth-check';
+import { requireRole } from '@/lib/supabase/require-role';
 
 export async function GET() {
-  const auth = await requireAuth();
+  const auth = await requireRole('admin');
   if (auth.error) return auth.error;
 
   const supabase = createAdminClient();
@@ -17,7 +17,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await requireAuth();
+  const auth = await requireRole('admin');
   if (auth.error) return auth.error;
 
   const supabase = createAdminClient();
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const auth = await requireAuth();
+  const auth = await requireRole('admin');
   if (auth.error) return auth.error;
 
   const supabase = createAdminClient();

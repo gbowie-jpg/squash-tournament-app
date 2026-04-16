@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { requireAuth } from '@/lib/supabase/auth-check';
+import { requireRole } from '@/lib/supabase/require-role';
 import { sendEmail, buildCampaignHtml, getEmailTemplateSettings } from '@/lib/email';
 
 export async function POST(req: NextRequest) {
-  const auth = await requireAuth();
+  const auth = await requireRole('admin');
   if (auth.error) return auth.error;
 
   const supabase = createAdminClient();

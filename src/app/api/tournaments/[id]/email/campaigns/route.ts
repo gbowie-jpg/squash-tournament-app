@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { requireAuth } from '@/lib/supabase/auth-check';
+import { requireTournamentOrganizer } from '@/lib/supabase/require-role';
 
-/** GET: List campaigns for a tournament. */
+/** GET: List campaigns for a tournament (organizer only). */
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireAuth();
-  if (auth.error) return auth.error;
-
   const { id } = await params;
+  const auth = await requireTournamentOrganizer(id);
+  if (auth.error) return auth.error;
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('email_campaigns')
@@ -22,15 +21,14 @@ export async function GET(
   return NextResponse.json(data);
 }
 
-/** POST: Create a new campaign (draft). */
+/** POST: Create a new campaign (draft). Organizer only. */
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireAuth();
-  if (auth.error) return auth.error;
-
   const { id } = await params;
+  const auth = await requireTournamentOrganizer(id);
+  if (auth.error) return auth.error;
   const supabase = createAdminClient();
   const { subject, body, segment } = await req.json();
 
@@ -56,9 +54,13 @@ export async function POST(
   return NextResponse.json(data, { status: 201 });
 }
 
-/** PATCH: Update a draft campaign. */
-export async function PATCH(req: NextRequest) {
-  const auth = await requireAuth();
+/** PATCH: Update a draft campaign. Organizer only. */
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const auth = await requireTournamentOrganizer(id);
   if (auth.error) return auth.error;
 
   const supabase = createAdminClient();
@@ -82,9 +84,13 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json(data);
 }
 
-/** DELETE: Delete a draft campaign. */
-export async function DELETE(req: NextRequest) {
-  const auth = await requireAuth();
+/** DELETE: Delete a draft campaign. Organizer only. */
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const auth = await requireTournamentOrganizer(id);
   if (auth.error) return auth.error;
 
   const supabase = createAdminClient();
