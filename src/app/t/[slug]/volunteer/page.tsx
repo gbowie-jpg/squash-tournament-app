@@ -213,7 +213,7 @@ export default function VolunteerSignup({
                     className={`p-3 rounded-xl border cursor-pointer text-center transition-colors ${
                       form.role === value
                         ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-500'
-                        : 'border-[var(--border)] hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
+                        : 'border-[var(--border)] hover:bg-surface'
                     }`}
                   >
                     <input

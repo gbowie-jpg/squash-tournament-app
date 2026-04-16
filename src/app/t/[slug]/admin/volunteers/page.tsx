@@ -108,7 +108,7 @@ export default function VolunteersAdmin({
     const colors: Record<string, string> = {
       referee: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400',
       volunteer: 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400',
-      helper: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400',
+      helper: 'bg-surface text-muted-foreground',
     };
     return (
       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${colors[role] || colors.helper}`}>
@@ -127,23 +127,39 @@ export default function VolunteersAdmin({
     return volunteers.find((v) => v.id === refId)?.name || 'Unknown';
   };
 
-  if (tournamentLoading) return <div className="flex items-center justify-center min-h-screen text-[var(--text-secondary)]">Loading...</div>;
-  if (!tournament) return <div className="flex items-center justify-center min-h-screen text-[var(--text-secondary)]">Not found</div>;
+  if (tournamentLoading) return (
+    <div className="min-h-screen bg-background animate-pulse">
+      <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
+        <div className="h-7 bg-border rounded w-56" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {[...Array(2)].map((_, i) => (
+            <div key={i} className="bg-card border border-border rounded-xl p-5 space-y-3">
+              <div className="h-5 bg-border rounded w-32" />
+              {[...Array(3)].map((_, j) => (
+                <div key={j} className="h-10 bg-border rounded-lg" />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+  if (!tournament) return <div className="flex items-center justify-center min-h-screen text-muted-foreground">Not found</div>;
 
   return (
-    <div className="min-h-screen bg-[var(--surface)]">
-      <header className="bg-[var(--surface-card)] border-b border-[var(--border)]">
+    <div className="min-h-screen bg-background">
+      <header className="bg-card border-b border-border">
         <div className="max-w-5xl mx-auto px-4 py-6">
           <div className="flex items-start justify-between">
             <div>
-              <div className="flex items-center gap-1.5 text-sm text-[var(--text-muted)]">
-                <Link href="/admin" className="hover:text-[var(--text-secondary)]">Admin Dashboard</Link>
+              <div className="flex items-center gap-1.5 text-sm text-dim">
+                <Link href="/admin" className="hover:text-muted-foreground">Admin Dashboard</Link>
                 <span>›</span>
-                <Link href={`/t/${slug}/admin`} className="hover:text-[var(--text-secondary)]">{tournament?.name ?? slug}</Link>
+                <Link href={`/t/${slug}/admin`} className="hover:text-muted-foreground">{tournament?.name ?? slug}</Link>
               </div>
               <h1 className="text-2xl font-bold tracking-tight mt-1">Volunteers & Referees</h1>
-              <p className="text-sm text-[var(--text-secondary)]">
-                Public signup: <span className="text-[var(--text-secondary)] font-mono">/t/{slug}/volunteer</span>
+              <p className="text-sm text-muted-foreground">
+                Public signup: <span className="text-muted-foreground font-mono">/t/{slug}/volunteer</span>
               </p>
             </div>
             <div className="flex items-center gap-2 mt-1">
@@ -156,13 +172,22 @@ export default function VolunteersAdmin({
 
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-8">
         {loading ? (
-          <p className="text-[var(--text-secondary)] text-center py-12">Loading...</p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-pulse">
+            {[...Array(2)].map((_, i) => (
+              <div key={i} className="bg-card border border-border rounded-xl p-5 space-y-3">
+                <div className="h-5 bg-border rounded w-32" />
+                {[...Array(3)].map((_, j) => (
+                  <div key={j} className="h-10 bg-border rounded-lg" />
+                ))}
+              </div>
+            ))}
+          </div>
         ) : (
           <>
             {/* Volunteers list */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Referees */}
-              <div className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-5">
+              <div className="bg-card border border-border rounded-xl p-5">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="font-semibold">Referees ({referees.length})</h2>
                   <button
@@ -170,7 +195,7 @@ export default function VolunteersAdmin({
                     disabled={assigning || referees.length === 0}
                     className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-3 py-1.5 rounded-lg text-xs font-medium hover:opacity-90 disabled:opacity-50"
                   >
-                    {assigning ? 'Assigning...' : 'Auto-Assign to Matches'}
+                    {assigning ? 'Assigning…' : 'Auto-Assign to Matches'}
                   </button>
                 </div>
                 {assignResult && (
@@ -179,22 +204,23 @@ export default function VolunteersAdmin({
                   </div>
                 )}
                 {referees.length === 0 ? (
-                  <p className="text-sm text-[var(--text-secondary)]">No referees signed up yet</p>
+                  <p className="text-sm text-muted-foreground">No referees signed up yet.</p>
                 ) : (
                   <div className="space-y-2">
                     {referees.map((v) => {
                       const assignedCount = matches.filter((m) => m.referee_id === v.id).length;
                       return (
-                        <div key={v.id} className="flex items-center justify-between bg-[var(--surface)] rounded-lg px-3 py-2">
+                        <div key={v.id} className="flex items-center justify-between bg-surface rounded-lg px-3 py-2">
                           <div>
                             <span className="text-sm font-medium">{v.name}</span>
-                            {v.email && <span className="text-xs text-[var(--text-secondary)] ml-2">{v.email}</span>}
+                            {v.email && <span className="text-xs text-muted-foreground ml-2">{v.email}</span>}
                             {assignedCount > 0 && (
                               <span className="text-xs text-blue-600 dark:text-blue-400 ml-2">{assignedCount} matches</span>
                             )}
                           </div>
                           <button
                             onClick={() => handleRemoveVolunteer(v.id)}
+                            aria-label={`Remove ${v.name}`}
                             className="text-xs text-red-500 hover:text-red-700"
                           >
                             Remove
@@ -207,22 +233,23 @@ export default function VolunteersAdmin({
               </div>
 
               {/* Other volunteers */}
-              <div className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-5">
+              <div className="bg-card border border-border rounded-xl p-5">
                 <h2 className="font-semibold mb-4">Volunteers & Helpers ({others.length})</h2>
                 {others.length === 0 ? (
-                  <p className="text-sm text-[var(--text-secondary)]">No volunteers signed up yet</p>
+                  <p className="text-sm text-muted-foreground">No volunteers signed up yet.</p>
                 ) : (
                   <div className="space-y-2">
                     {others.map((v) => (
-                      <div key={v.id} className="flex items-center justify-between bg-[var(--surface)] rounded-lg px-3 py-2">
+                      <div key={v.id} className="flex items-center justify-between bg-surface rounded-lg px-3 py-2">
                         <div>
                           <span className="text-sm font-medium">{v.name}</span>
                           {roleBadge(v.role)}
-                          {v.email && <span className="text-xs text-[var(--text-secondary)] ml-2">{v.email}</span>}
-                          {v.notes && <p className="text-xs text-[var(--text-secondary)] mt-0.5">{v.notes}</p>}
+                          {v.email && <span className="text-xs text-muted-foreground ml-2">{v.email}</span>}
+                          {v.notes && <p className="text-xs text-muted-foreground mt-0.5">{v.notes}</p>}
                         </div>
                         <button
                           onClick={() => handleRemoveVolunteer(v.id)}
+                          aria-label={`Remove ${v.name}`}
                           className="text-xs text-red-500 hover:text-red-700"
                         >
                           Remove
@@ -235,26 +262,27 @@ export default function VolunteersAdmin({
             </div>
 
             {/* Match referee assignments */}
-            <div className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-5">
+            <div className="bg-card border border-border rounded-xl p-5">
               <h2 className="font-semibold mb-4">Match Referee Assignments</h2>
               {assignableMatches.length === 0 ? (
-                <p className="text-sm text-[var(--text-secondary)]">No matches to assign referees to</p>
+                <p className="text-sm text-muted-foreground">No matches to assign referees to.</p>
               ) : (
                 <div className="space-y-1 max-h-96 overflow-auto">
                   {assignableMatches
                     .sort((a, b) => (a.match_number || 0) - (b.match_number || 0))
                     .map((m) => (
-                      <div key={m.id} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[var(--surface)]">
-                        <span className="text-xs text-[var(--text-secondary)] w-8">M{m.match_number}</span>
-                        <span className="text-xs text-[var(--text-secondary)] w-8">{m.round}</span>
+                      <div key={m.id} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface">
+                        <span className="text-xs text-muted-foreground w-8">M{m.match_number}</span>
+                        <span className="text-xs text-muted-foreground w-8">{m.round}</span>
                         <span className="flex-1 text-sm">
-                          {m.player1?.name || 'TBD'} <span className="text-[var(--text-secondary)]">vs</span>{' '}
+                          {m.player1?.name || 'TBD'} <span className="text-muted-foreground">vs</span>{' '}
                           {m.player2?.name || 'TBD'}
                         </span>
                         <select
                           value={m.referee_id || ''}
                           onChange={(e) => handleManualAssign(m.id, e.target.value || null)}
-                          className="border border-[var(--border)] rounded-lg px-2 py-1 text-xs bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none w-36"
+                          aria-label={`Assign referee for match ${m.match_number}`}
+                          className="border border-border rounded-lg px-2 py-1 text-xs bg-surface text-foreground focus:outline-none w-36"
                         >
                           <option value="">No referee</option>
                           {referees.map((r) => (

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { requireAuth } from '@/lib/supabase/auth-check';
+import { requireTournamentOrganizer } from '@/lib/supabase/require-role';
 
 /** Round priority: higher = more important match. */
 function roundPriority(round: string | null): number {
@@ -21,10 +21,9 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireAuth();
-  if (auth.error) return auth.error;
-
   const { id: tournamentId } = await params;
+  const auth = await requireTournamentOrganizer(tournamentId);
+  if (auth.error) return auth.error;
   const supabase = createAdminClient();
 
   // Get referees

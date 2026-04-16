@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { requireAuth } from '@/lib/supabase/auth-check';
+import { requireTournamentOrganizer } from '@/lib/supabase/require-role';
 
 /** GET: List all volunteers for a tournament (public). */
 export async function GET(
@@ -104,9 +104,13 @@ export async function POST(
   return NextResponse.json({ ...data, accountCreated: !existing }, { status: 201 });
 }
 
-/** DELETE: Remove a volunteer (auth required). */
-export async function DELETE(req: NextRequest) {
-  const auth = await requireAuth();
+/** DELETE: Remove a volunteer (organizer only). */
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const auth = await requireTournamentOrganizer(id);
   if (auth.error) return auth.error;
 
   const supabase = createAdminClient();
