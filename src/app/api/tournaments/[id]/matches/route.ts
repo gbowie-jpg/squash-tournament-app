@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getProgression } from '@/lib/draws/progression';
-import { requireAuth } from '@/lib/supabase/auth-check';
+import { requireTournamentOrganizer } from '@/lib/supabase/require-role';
+
+const MATCH_SELECT = '*, player1:players!player1_id(*), player2:players!player2_id(*), court:courts!court_id(*), referee:volunteers!referee_id(id, name)';
 
 export async function GET(
   _req: NextRequest,
@@ -11,7 +13,7 @@ export async function GET(
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('matches')
-    .select('*, player1:players!player1_id(*), player2:players!player2_id(*), court:courts!court_id(*), referee:volunteers!referee_id(id, name)')
+    .select(MATCH_SELECT)
     .eq('tournament_id', id)
     .order('sort_order')
     .order('scheduled_time', { nullsFirst: false });
@@ -20,53 +22,98 @@ export async function GET(
   return NextResponse.json(data);
 }
 
+// Allowed fields for match creation
+const MATCH_CREATE_FIELDS = [
+  'player1_id', 'player2_id', 'court_id', 'draw', 'round',
+  'match_number', 'status', 'scheduled_time', 'sort_order', 'notes',
+] as const;
+
+// Allowed fields for match updates
+const MATCH_UPDATE_FIELDS = [
+  'court_id', 'status', 'scheduled_time', 'scores', 'winner_id',
+  'sort_order', 'notes', 'referee_id',
+] as const;
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireAuth();
+  const { id } = await params;
+  const auth = await requireTournamentOrganizer(id);
   if (auth.error) return auth.error;
 
-  const { id } = await params;
   const supabase = createAdminClient();
   const body = await req.json();
 
+  // Whitelist fields
+  const insert: Record<string, unknown> = { tournament_id: id };
+  for (const key of MATCH_CREATE_FIELDS) {
+    if (key in body) insert[key] = body[key];
+  }
+
   const { data, error } = await supabase
     .from('matches')
-    .insert({ ...body, tournament_id: id })
-    .select('*, player1:players!player1_id(*), player2:players!player2_id(*), court:courts!court_id(*)')
+    .insert(insert)
+    .select(MATCH_SELECT)
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data, { status: 201 });
 }
 
-export async function PATCH(req: NextRequest) {
-  const auth = await requireAuth();
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const auth = await requireTournamentOrganizer(id);
   if (auth.error) return auth.error;
 
   const supabase = createAdminClient();
   const body = await req.json();
-  const { id: matchId, ...updates } = body;
+  const { id: matchId, expected_updated_at } = body;
+
+  if (!matchId) return NextResponse.json({ error: 'Match id required' }, { status: 400 });
+
+  // Whitelist fields
+  const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  for (const key of MATCH_UPDATE_FIELDS) {
+    if (key in body) updates[key] = body[key];
+  }
 
   // Auto-set timestamps based on status changes
-  if (updates.status === 'in_progress' && !updates.started_at) {
+  if (updates.status === 'in_progress' && !body.started_at) {
     updates.started_at = new Date().toISOString();
   }
-  if (updates.status === 'completed' && !updates.completed_at) {
+  if (updates.status === 'completed' && !body.completed_at) {
     updates.completed_at = new Date().toISOString();
   }
 
-  updates.updated_at = new Date().toISOString();
-
-  const { data, error } = await supabase
+  // Optimistic locking: if client sends expected_updated_at, verify it matches
+  let query = supabase
     .from('matches')
     .update(updates)
     .eq('id', matchId)
-    .select('*, player1:players!player1_id(*), player2:players!player2_id(*), court:courts!court_id(*)')
+    .eq('tournament_id', id);
+
+  if (expected_updated_at) {
+    query = query.eq('updated_at', expected_updated_at);
+  }
+
+  const { data, error } = await query
+    .select(MATCH_SELECT)
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    // If no rows matched and we had an optimistic lock, it's a conflict
+    if (expected_updated_at && error.code === 'PGRST116') {
+      return NextResponse.json(
+        { error: 'Conflict: this match was updated by someone else. Please refresh and try again.' },
+        { status: 409 },
+      );
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
   // On Deck logic: when a match starts on a court, set the next scheduled match to on_deck
   if (updates.status === 'in_progress' && data.court_id) {
@@ -125,14 +172,20 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json(data);
 }
 
-export async function DELETE(req: NextRequest) {
-  const auth = await requireAuth();
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const auth = await requireTournamentOrganizer(id);
   if (auth.error) return auth.error;
 
   const supabase = createAdminClient();
   const { matchId } = await req.json();
 
-  const { error } = await supabase.from('matches').delete().eq('id', matchId);
+  if (!matchId) return NextResponse.json({ error: 'matchId required' }, { status: 400 });
+
+  const { error } = await supabase.from('matches').delete().eq('id', matchId).eq('tournament_id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

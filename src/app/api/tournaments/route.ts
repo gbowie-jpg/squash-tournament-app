@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { requireAuth } from '@/lib/supabase/auth-check';
+import { requireRole } from '@/lib/supabase/require-role';
 
 // GET all tournaments (public)
 export async function GET() {
@@ -14,17 +14,39 @@ export async function GET() {
   return NextResponse.json(data);
 }
 
-// POST create tournament (auth required)
+// POST create tournament (admin only)
 export async function POST(req: NextRequest) {
-  const auth = await requireAuth();
+  const auth = await requireRole('admin');
   if (auth.error) return auth.error;
 
   const supabase = createAdminClient();
   const body = await req.json();
 
+  // Validate required fields
+  if (!body.name || typeof body.name !== 'string' || body.name.trim().length === 0) {
+    return NextResponse.json({ error: 'Tournament name is required' }, { status: 400 });
+  }
+  if (!body.start_date) {
+    return NextResponse.json({ error: 'Start date is required' }, { status: 400 });
+  }
+
+  // Whitelist fields
+  const insert: Record<string, unknown> = {
+    name: body.name.trim(),
+    slug: body.slug || body.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+    start_date: body.start_date,
+  };
+  const optional = [
+    'end_date', 'venue', 'address', 'location_city', 'court_count',
+    'category', 'description', 'status',
+  ];
+  for (const key of optional) {
+    if (body[key] !== undefined) insert[key] = body[key] === '' ? null : body[key];
+  }
+
   const { data, error } = await supabase
     .from('tournaments')
-    .insert(body)
+    .insert(insert)
     .select()
     .single();
 

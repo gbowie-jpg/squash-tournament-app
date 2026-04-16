@@ -3,7 +3,8 @@
 ## What This Is
 
 Real-time tournament companion app for **SSRA (Seattle Squash Racquets Association)**.
-Deployed at **squash-tournament-app.vercel.app** (custom domain pending).
+Deployed at **squash-tournament-app.vercel.app** (Vercel, auto-deploys on push to `main`).
+Supabase project ref: **rhrkkwvrehntnqqadehq**
 
 **This is NOT a Club Locker replacement.** Club Locker handles registration, draws, and seeding. This fills the gap Club Locker ignores: live communication and management during the tournament day. Strategy: companion app now, absorb Club Locker functions over time.
 
@@ -19,8 +20,9 @@ Deployed at **squash-tournament-app.vercel.app** (custom domain pending).
 | Language | TypeScript |
 | Styling | Tailwind CSS v4 |
 | Database | Supabase (Postgres) |
-| Auth | Supabase Auth (email/password — organizers only) |
+| Auth | Supabase Auth (email/password + magic link + password reset) |
 | Real-time | Supabase Realtime |
+| Storage | Supabase Storage (`tournament-images` bucket, `player-videos` bucket) |
 | Deployment | Vercel (auto-deploy on push to main) |
 | Email | Resend API |
 | Push notifications | Web Push / VAPID |
@@ -31,12 +33,12 @@ Deployed at **squash-tournament-app.vercel.app** (custom domain pending).
 ## Key Commands
 
 ```bash
-npm run dev     # start dev server on localhost:3000
-npm run build   # production build
+npm run dev       # start dev server on localhost:3000
+npm run build     # production build
 npx tsc --noEmit  # type check (ignore .next/types/ errors — those are generated)
 ```
 
-**Run migrations:** `SUPABASE_ACCESS_TOKEN=sbp_... npx supabase db query --linked -f file.sql`
+**Run migrations:** SQL migrations in `supabase/` — run via Supabase dashboard SQL editor or Management API.
 
 ---
 
@@ -54,9 +56,13 @@ NEXT_PUBLIC_VAPID_PUBLIC_KEY
 VAPID_PRIVATE_KEY
 ```
 
-VAPID keys (already generated):
+VAPID keys (already generated and set):
 - Public: `BOmOGJHaXQcsUPcQLFK60yaXXqeDf3B11ilJPzqGSNtODW69GsArKVoIGE4-ibqLtu4-_7JjyxvuLzNXObL1-bc`
 - Private: `xOqjO3aHTLIOXRgQR5B535IIxA5gzZK4b9US04qvIbc`
+
+Auth redirect URLs configured in Supabase:
+- `https://squash-tournament-app.vercel.app/**`
+- `http://localhost:3000/**`
 
 ---
 
@@ -66,11 +72,15 @@ VAPID keys (already generated):
 src/
   app/
     page.tsx                          # Homepage — tournament list + hero
-    layout.tsx                        # Root layout — manifest, ServiceWorkerRegistrar
-    login/page.tsx                    # Auth
+    layout.tsx                        # Root layout — ThemeProvider, NavigationLoadingBar, manifest
+    not-found.tsx                     # Custom 404
+    login/page.tsx                    # Sign in / Sign up / Password reset
+    account/
+      page.tsx                        # User profile — name, club, ranking, photo, change password
+      reset-password/page.tsx         # Password reset landing (handles Supabase recovery token)
     admin/
       page.tsx                        # Top-level admin dashboard
-      tournaments/page.tsx            # Create/manage tournaments
+      tournaments/page.tsx            # Create/manage tournaments (dark theme)
       content/page.tsx                # Homepage hero + tournament graphics editor
       email/page.tsx                  # Global email marketing (tag-based)
       settings/page.tsx               # Integrations, env vars, URL reference
@@ -81,54 +91,120 @@ src/
       players/page.tsx                # Player lookup / draw sheet
       announcements/page.tsx          # Public announcements feed
       volunteer/page.tsx              # Public volunteer signup (creates auth account)
+      player/[playerId]/page.tsx      # Player profile — matches + highlight video upload
+      match/[matchId]/page.tsx        # Match detail — status, score, players, CTA to score
+      match/[matchId]/score/page.tsx  # Full scoring app (4-step flow)
       admin/
         page.tsx                      # Tournament admin dashboard
-        matches/page.tsx              # Match management (assign courts, scores)
-        courts/page.tsx               # Court management
+        matches/page.tsx              # Match management — list + schedule view
+        courts/page.tsx               # Court management + auto-assign
         players/page.tsx              # Player management + CSV import
         draws/page.tsx                # Draw generation + scheduling
         announcements/page.tsx        # Announcement composer + push notifications
         volunteers/page.tsx           # Volunteer/referee management
+        videos/page.tsx               # Player highlight video approval queue
         email/page.tsx                # Tournament email marketing
         settings/page.tsx             # Tournament settings (hero, contact, schedule, etc.)
-    api/
-      tournaments/[id]/route.ts       # GET/PATCH/DELETE tournament
-      tournaments/[id]/players/route.ts
-      tournaments/[id]/matches/route.ts
-      tournaments/[id]/courts/route.ts
-      tournaments/[id]/announcements/route.ts
-      tournaments/[id]/volunteers/route.ts
-      tournaments/[id]/email/route.ts
-      tournaments/route.ts            # GET all / POST create
-      site-settings/route.ts          # GET/PATCH homepage settings
-      auth/me/route.ts
-      push/subscribe/route.ts         # Save/remove push subscriptions
-      push/send/route.ts              # Broadcast push to all subscribers
-      email/route.ts                  # Global email send (Resend)
+  api/
+    tournaments/route.ts              # GET all / POST create
+    tournaments/[id]/route.ts         # GET/PATCH/DELETE tournament
+    tournaments/[id]/players/route.ts
+    tournaments/[id]/matches/route.ts # includes winner progression + on_deck logic
+    tournaments/[id]/courts/route.ts
+    tournaments/[id]/announcements/route.ts
+    tournaments/[id]/volunteers/route.ts
+    tournaments/[id]/videos/route.ts  # GET/POST/PATCH/DELETE player videos
+    tournaments/[id]/email/route.ts
+    tournaments/[id]/referees/assign/route.ts
+    site-settings/route.ts
+    auth/me/route.ts
+    account/profile/route.ts
+    account/photo/route.ts
+    push/subscribe/route.ts
+    push/send/route.ts
+    email/route.ts
   components/
     layout/
-      SiteNav.tsx                     # Top nav with logo, links, PushManager
+      SiteNav.tsx                     # Top nav — logo, links, AuthButton (role-aware), PushManager
+      AuthButton.tsx                  # Shows 'Dashboard' → /admin for admins, 'My Account' for others
       SiteFooter.tsx
-    CountdownTimer.tsx                # Live countdown (client component)
-    InfoAccordion.tsx                 # Collapsible info sections (client component)
-    PushManager.tsx                   # Enable/disable push notifications
-    ServiceWorkerRegistrar.tsx        # Silent SW registration on load
+      TournamentBottomNav.tsx         # Mobile bottom nav on tournament pages
+    NavigationLoadingBar.tsx          # Click-based progress bar for client navigation
+    PullToRefresh.tsx                 # Pull-to-refresh on mobile tournament pages
+    RefreshButton.tsx                 # Manual refresh button (header)
+    ThemeToggle.tsx                   # Light/dark toggle (moon/sun icon)
+    CountdownTimer.tsx
+    InfoAccordion.tsx
+    PushManager.tsx
+    ServiceWorkerRegistrar.tsx
+    admin/CsvUpload.tsx
   lib/
     supabase/
       client.ts                       # Browser Supabase client
       server.ts                       # Server Supabase client
       admin.ts                        # Admin client (service role)
-      types.ts                        # Hand-written DB types (keep in sync with schema)
+      types.ts                        # DB types — keep in sync with schema
       auth-check.ts                   # requireAuth() helper
+    realtime/hooks.ts                 # useRealtimeMatches() — Supabase Realtime subscription
     gradients.ts                      # GRADIENT_PRESETS, TEXT_COLOR_PRESETS, heroBackground()
     useTournament.ts                  # Client hook: fetch tournament by slug
-    useAuth.ts                        # Client hook: Supabase auth state
-    email.ts                          # Resend integration, buildCampaignHtml()
-    utils.ts                          # slugify(), etc.
+    useAuth.ts                        # Client hook: Supabase auth state + signOut
+    email.ts                          # Resend integration
+    utils.ts                          # slugify(), formatScore(), etc.
   public/
     manifest.json                     # PWA manifest
     sw.js                             # Service worker (caching + push handling)
-    logo.png                          # Seattle Squash logo
+    logo.png
+```
+
+---
+
+## Dark Theme System
+
+**Tailwind v4** — uses `@custom-variant dark (&:where(.dark, .dark *))` in `globals.css`.
+
+**CSS variable tokens** (defined for both light and dark in `globals.css`):
+- `--surface` — page background
+- `--surface-card` — card/panel background
+- `--border` — border color
+- `--text-primary`, `--text-secondary`, `--text-muted` — text hierarchy
+- `--nav-bg` — nav bar (always dark)
+
+**ThemeProvider** in root layout reads `localStorage` and sets `.dark` class on `<html>`.
+Inline script in `<head>` prevents flash on load.
+**ThemeToggle** component available on every page.
+
+**Important:** For conditional colors that depend on state (e.g. scoring app `isServing` highlight), use **inline styles** instead of Tailwind classes — Tailwind JIT may purge conditional classes. Example:
+```tsx
+style={{ background: isServing ? '#2563eb' : '#27272a' }}
+```
+
+---
+
+## Scoring App (`/t/[slug]/match/[matchId]/score`)
+
+4-step flow:
+
+1. **Confirm** — verify players, draw/round, select court
+2. **Serve** — choose who serves first + court sides (Left/Right)
+3. **Warmup** — 5-minute countdown (WSF Rule 4). Start/Skip/Start Match.
+4. **Scoring** — live point-by-point
+
+Scoring rules (US Squash / WSF):
+- PAR scoring: every rally scores a point
+- Games to 11, win by 2 (if 10-all, play to 12)
+- Best of 5 (first to win 3 games)
+- 90-second break between games (WSF Rule 14.1)
+- Auto-records game when winner reaches 11 with 2+ point lead
+- Auto-records match when player wins 3 games
+- Serve bar at top (h-14): tap to switch server
+- Serving player panel gets `outline: 2px solid #3b82f6` highlight
+
+**`saveRef` pattern** used to avoid stale closures:
+```ts
+const saveRef = useRef<typeof saveScores>();
+saveRef.current = saveScores;
+// inside adjustScore: saveRef.current?.()
 ```
 
 ---
@@ -139,93 +215,69 @@ Full schema in `DATA-MODEL.md`. Core tables:
 
 | Table | Purpose |
 |-------|---------|
-| `tournaments` | Top-level container with all hero/display settings |
+| `tournaments` | Top-level container |
 | `courts` | Physical courts per tournament |
-| `players` | Participants (no auth) |
-| `matches` | Core table — status, scores, court assignment |
-| `announcements` | Organizer messages, normal/urgent priority |
-| `volunteers` | Signup data, creates Supabase auth account |
-| `email_recipients` | Per-tournament marketing list (player/volunteer/invitee/other) |
-| `email_campaigns` | Sent campaigns with status/count |
+| `players` | Participants (no auth required) |
+| `matches` | Core — status, scores, court, referee |
+| `announcements` | Organizer messages |
+| `volunteers` | Signup data — role: referee/volunteer/helper |
+| `player_videos` | Player highlight clips — pending/approved/rejected |
+| `email_recipients` | Per-tournament marketing list |
+| `email_campaigns` | Sent campaigns |
 | `email_sends` | Per-recipient send records |
 | `push_subscriptions` | VAPID push endpoint data |
-| `site_settings` | Key/value store for homepage content |
+| `site_settings` | Key/value — homepage content |
+| `profiles` | Extended user data — name, club, ranking, photo, role |
+| `organizers` | Per-tournament admin/scorer access |
 
 ---
 
-## Hero / Display System
+## Auth & Roles
 
-Tournaments and the homepage both have a full appearance system:
+**Roles** (stored in `profiles.role`):
+- `user` — default
+- `admin` — can manage tournaments
+- `superadmin` — can also manage users
 
-**Fields on `tournaments`:**
-- `image_url` — small square graphic/logo (shown in hero corner + listing cards)
-- `hero_image_url` — full-width background photo for the hero banner
-- `hero_gradient` — key into `GRADIENT_PRESETS` (default: `'navy'`)
-- `hero_text_color` — key into `TEXT_COLOR_PRESETS` (default: `'white'`)
-- `hero_overlay` — `'true'`/`'false'` — dark tint over background image
+**Auth flows:**
+- Email/password sign in
+- Sign up → confirm email → sign in
+- "Forgot password?" → `resetPasswordForEmail` → email → `/account/reset-password` (sets new password via `supabase.auth.updateUser`)
+- Account profile page has "Change Password" section for users signed in via any method
 
-**Homepage via `site_settings` keys:**
-- `homepage_hero_image`, `homepage_hero_gradient`, `homepage_hero_text_color`, `homepage_hero_overlay`
-- `homepage_hero_title`, `homepage_hero_subtitle`, `homepage_cta1_label/href`, `homepage_cta2_label/href`
-
-**`src/lib/gradients.ts` exports:**
-- `GRADIENT_PRESETS` — 12 gradient options
-- `TEXT_COLOR_PRESETS` — 10 text color options
-- `heroBackground(imageUrl, gradientKey, overlay)` — builds CSS background string
-- `getTextColors(key)` — returns `{ heading, body, accent }` CSS color strings
+**AuthButton in nav:**
+- Logged out → "Sign In" → `/login`
+- Logged in + admin/superadmin → "Dashboard" → `/admin`
+- Logged in + regular user → "My Account" → `/account`
 
 ---
 
-## Tournament Settings Fields
+## Match Status Flow
 
-Beyond the hero, each tournament has:
-- `category` (e.g. "Open/Adult")
-- `location_city`, `venue`, `address`
-- `contact_name`, `contact_email`, `contact_phone`
-- `registration_opens`, `registration_deadline`, `draw_lock_date`, `entry_close_date` (dates)
-- `info_latest`, `info_accommodations`, `info_entry`, `info_rules` (text, shown as accordion)
+```
+scheduled → on_deck → in_progress → completed
+                                   → walkover
+                  → cancelled
+```
 
-All editable at `/t/[slug]/admin/settings`.
+When a match moves to `in_progress`, the next `scheduled` match on the same court automatically moves to `on_deck`.
 
----
-
-## PWA
-
-- **manifest.json** at `/public/manifest.json` — installable, standalone display
-- **sw.js** at `/public/sw.js` — caches static assets, handles push `showNotification`
-- **VAPID keys** generated and stored — need `NEXT_PUBLIC_VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` in Vercel
-- **PushManager** component in SiteNav — yellow "Enable Notifications" button
-- **Send push** from `/t/[slug]/admin/announcements` — "Send push notification" checkbox
+When a match is completed with a winner, the winner is automatically progressed to the next round match (via `getProgression()` in `src/lib/draws/progression.ts`).
 
 ---
 
-## Email Marketing
+## Player Videos
 
-**Three-tier system:**
+Supabase Storage bucket: `player-videos` (public).
 
-1. **Global** (`/admin/email`) — tag-based, targets all recipients with matching tags
-2. **Per-tournament** (`/t/[slug]/admin/email`) — type-based (player/volunteer/invitee/other)
-3. **Push announcements** — browser push via VAPID (not email)
+Flow:
+1. Player uploads from their profile page → stored at `{playerId}/{timestamp}.{ext}` in Storage
+2. DB record created with `status: 'pending'`
+3. Admin sees pending videos at `/t/[slug]/admin/videos` — preview, approve, or reject with reason
+4. Approved videos show inline `<video>` on the public player profile
+5. Player sees their own pending/rejected videos with status badge
 
-**Auto-sync:** Adding a player or volunteer with an email automatically upserts them into `email_recipients` for that tournament.
-
-**CSV import** available on both global and tournament email pages.
-
----
-
-## Volunteer Flow
-
-- Public signup at `/t/[slug]/volunteer` — name, email, password, availability, skills
-- Creates a Supabase Auth account so volunteer can access tournament info
-- Appears in admin volunteers list + auto-added to email recipients
-
----
-
-## Caching Notes
-
-- Tournament landing pages: `export const dynamic = 'force-dynamic'` — always fresh
-- Homepage: `export const dynamic = 'force-dynamic'` — reads from site_settings
-- Admin pages are all client components — no server caching issues
+Migration: `supabase/player-videos-migration.sql`
 
 ---
 
@@ -233,19 +285,36 @@ All editable at `/t/[slug]/admin/settings`.
 
 ```
 /                              Homepage
+/login                         Sign in / up / reset password
+/account                       User profile (name, club, ranking, photo, password)
+/account/reset-password        Password reset landing (from email link)
+
 /t/[slug]                      Tournament landing page
 /t/[slug]/courts               Live court board
 /t/[slug]/players              Player lookup
 /t/[slug]/announcements        Announcements feed
 /t/[slug]/volunteer            Volunteer signup (public)
+/t/[slug]/player/[id]          Player profile (matches + video highlights)
+/t/[slug]/match/[id]           Match detail
+/t/[slug]/match/[id]/score     Scoring app (4-step)
+
 /t/[slug]/admin                Tournament admin dashboard
-/t/[slug]/admin/settings       Tournament appearance + details editor
+/t/[slug]/admin/matches        Match management (list + schedule views)
+/t/[slug]/admin/courts         Court management + auto-assign
+/t/[slug]/admin/players        Player management + CSV import
+/t/[slug]/admin/draws          Draw generation + scheduling
+/t/[slug]/admin/announcements  Announcements + push
+/t/[slug]/admin/volunteers     Volunteer/referee management
+/t/[slug]/admin/videos         Player video approval queue
 /t/[slug]/admin/email          Tournament email marketing
-/admin                         Top-level admin
+/t/[slug]/admin/settings       Tournament appearance + details
+
+/admin                         Top-level admin dashboard
 /admin/tournaments             Create/manage tournaments
-/admin/content                 Homepage hero + all tournament graphics
+/admin/content                 Homepage hero + tournament graphics
 /admin/email                   Global email marketing
 /admin/settings                Integrations + env var reference
+/admin/users                   User management (superadmin)
 ```
 
 ---
@@ -253,20 +322,45 @@ All editable at `/t/[slug]/admin/settings`.
 ## Working Preferences
 
 - Brief and direct — no fluff, no cheerleading
-- Ask clarifying questions before diving in on anything ambiguous
-- Test TypeScript with `npx tsc --noEmit` before committing (ignore `.next/types/` errors)
-- Run migrations via Supabase CLI with `SUPABASE_ACCESS_TOKEN`
-- Always use `force-dynamic` on server components that read frequently-changing data
+- Ask clarifying questions before diving in on ambiguous tasks
+- TypeScript check: `npx tsc --noEmit` (ignore `.next/types/` errors)
+- Commit after logical units of work; push to `main`
+- For conditional Tailwind classes that might get purged, use inline styles
+- Always use CSS var tokens (`--surface`, `--border`, etc.) — never hardcode `bg-white` or `text-zinc-700`
 - Convert empty strings to `null` before PATCH requests to Supabase
+- `force-dynamic` on any server component reading frequently-changing data
 
 ---
 
+## Completed Features
+
+- [x] Tournament landing pages with hero, countdown, schedule, announcements
+- [x] Live court board (Supabase Realtime)
+- [x] Player lookup + profile pages with match history
+- [x] Match detail pages
+- [x] Full scoring app (4-step: confirm → serve → warmup → scoring)
+- [x] Auto game/match detection (PAR 11, win by 2, best of 5)
+- [x] Volunteer/referee public signup
+- [x] Admin: match management (list + schedule views, inline time edit, quick court move)
+- [x] Admin: court management + auto-assign
+- [x] Admin: draw generation + bracket scheduling
+- [x] Admin: announcements + push notifications
+- [x] Admin: player video approval queue
+- [x] Email marketing (per-tournament + global)
+- [x] PWA (installable, push notifications)
+- [x] Dark/light theme system (all pages)
+- [x] Navigation loading bar
+- [x] Pull-to-refresh on mobile
+- [x] Password reset flow (email → `/account/reset-password`)
+- [x] Change password from account profile
+- [x] Player video uploads with admin approval
+
 ## Pending / Wishlist
 
-- [ ] Custom Vercel domain
-- [ ] Resend domain verification (authentum.com or seattlesquash.com) so emails reach any recipient
-- [ ] Mobile scoring app — ref marks actual start time + live point-by-point scoring
+- [ ] Resend domain verification (seattlesquash.com) so emails reach any recipient
 - [ ] ClubLocker CSV player import
 - [ ] CSV export for players/results
 - [ ] Bracket visualization
-- [ ] Supabase Realtime on court board (currently polling or static)
+- [ ] Custom Vercel domain (seattlesquash.com)
+- [ ] Referee auto-assign algorithm (assign refs to matches by round priority)
+- [ ] Drag-to-reorder match scheduling

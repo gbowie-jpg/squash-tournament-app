@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { requireAuth } from '@/lib/supabase/auth-check';
+import { requireTournamentOrganizer } from '@/lib/supabase/require-role';
 import { autoSchedule } from '@/lib/draws/scheduler';
 
 /** POST: Auto-schedule matches to courts and time slots. */
@@ -8,10 +8,9 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireAuth();
-  if (auth.error) return auth.error;
-
   const { id: tournamentId } = await params;
+  const auth = await requireTournamentOrganizer(tournamentId);
+  if (auth.error) return auth.error;
   const supabase = createAdminClient();
   const body = await req.json();
 

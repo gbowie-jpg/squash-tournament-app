@@ -1,6 +1,10 @@
 # MVP Feature Spec — Seattle Squash Tournament Companion
 
-## Target: Usable at next SSRA tournament (weeks away)
+> **Note:** This is the original spec written before development began (early 2026). Most features are now built. See `CLAUDE.md` → Completed Features for current status.
+
+---
+
+## Target: Usable at next SSRA tournament
 
 ---
 
@@ -8,135 +12,141 @@
 
 ### Public Pages (no auth required)
 
-#### 1. Home — `/`
+#### 1. Home — `/` ✅
 - List of tournaments (upcoming + active)
 - Tap to enter a tournament
 
-#### 2. Tournament Hub — `/t/[slug]`
+#### 2. Tournament Hub — `/t/[slug]` ✅
 - Tournament name, venue, dates
 - Quick links: Court Board, Find My Matches, Announcements
 - At-a-glance: "X matches in progress, Y coming up"
 
-#### 3. Court Board — `/t/[slug]/courts`
+#### 3. Court Board — `/t/[slug]/courts` ✅
 **The big screen + phone view.** This is the app's centerpiece.
 - Grid/list of all courts
-- Each court shows: current match (players, draw, round, score if being updated), next match queued
-- Color-coded status: green = available, yellow = in progress, grey = maintenance
+- Each court shows: current match (players, draw, round, score), next match queued
+- Color-coded status: green = in use, grey = available
 - **Auto-updates via Supabase Realtime** — no refresh needed
 - Tap a court for match details
-- Designed to work on a lobby TV (full-screen mode) AND a phone
 
-#### 4. My Matches — `/t/[slug]/player/[player-id]`
+#### 4. My Matches — `/t/[slug]/player/[player-id]` ✅
 - Player's full schedule: past results + upcoming matches
-- Current status prominently displayed:
-  - "You're on Court 3 NOW" (if in_progress)
-  - "You're ON DECK — Court 2, after current match" (if on_deck)
-  - "Next match: ~2:30 PM, Court TBD vs. Alex Chen" (if scheduled)
-- Link to get here: organizer generates per-player URLs, or player searches by name
+- Current status prominently displayed
+- Highlight video upload (player's own profile, requires login)
 
-#### 5. Player Lookup — `/t/[slug]/players`
+#### 5. Player Lookup — `/t/[slug]/players` ✅
 - Search/filter player list by name
-- Tap a player to see their schedule (goes to My Matches view)
-- Also serves as a draw sheet — group by draw, show seedings
+- Tap a player to see their schedule
+- Draw sheet — group by draw, show seedings
 
-#### 6. Announcements — `/t/[slug]/announcements`
+#### 6. Announcements — `/t/[slug]/announcements` ✅
 - Reverse-chronological feed
 - Urgent announcements highlighted
-- Also shown as a banner/ticker on Court Board and My Matches views
+
+#### 7. Volunteer Signup — `/t/[slug]/volunteer` ✅
+- Public form: name, email, phone, role (referee/volunteer/helper), notes
+- No login required
 
 ### Admin Pages (auth required — Supabase Auth)
 
-#### 7. Admin Dashboard — `/t/[slug]/admin`
+#### 8. Admin Dashboard — `/t/[slug]/admin` ✅
 - Overview: match status counts, court utilization
-- Quick actions: push announcement, start next round
+- Quick links to all sub-sections
 
-#### 8. Match Management — `/t/[slug]/admin/matches`
-- List all matches, filter by draw/round/status
-- Assign match to court (dropdown or drag)
-- Update status: scheduled → on_deck → in_progress → completed
-- Enter scores (game-by-game: e.g., 11-7, 9-11, 11-5, 11-8)
-- Set winner
-- Every change broadcasts via Realtime instantly
+#### 9. Match Management — `/t/[slug]/admin/matches` ✅
+- List view: all matches, filter by draw/round/status
+- Schedule view: per-court column layout with inline time editing
+- Assign match to court, update status, enter scores
+- Quick court move buttons
+- Every change broadcasts via Realtime
 
-#### 9. Court Management — `/t/[slug]/admin/courts`
+#### 10. Court Management — `/t/[slug]/admin/courts` ✅
 - Add/edit/reorder courts
 - Set court status (available/maintenance)
-- View court schedule for the day
+- Auto-assign matches to courts
 
-#### 10. Player Management — `/t/[slug]/admin/players`
-- Add players (manual entry for MVP)
+#### 11. Player Management — `/t/[slug]/admin/players` ✅
+- Add players (manual entry)
+- CSV import
 - Set draw, seed, club
-- Generate shareable "My Matches" links
-- Future: CSV import, Club Locker sync
 
-#### 11. Announcement Composer — `/t/[slug]/admin/announcements`
+#### 12. Draw Generation — `/t/[slug]/admin/draws` ✅
+- Generate brackets per draw division
+- Auto-schedule matches
+
+#### 13. Announcement Composer — `/t/[slug]/admin/announcements` ✅
 - Write message, set priority (normal/urgent)
-- Publish → instant push to all connected clients
+- Optional push notification to all subscribed browsers
 
-#### 12. Tournament Setup — `/admin/tournaments`
+#### 14. Volunteer & Referee Management — `/t/[slug]/admin/volunteers` ✅
+- See all signups grouped by role
+- Auto-assign referees to matches by round priority
+- Manual referee assignment per match
+
+#### 15. Player Video Approvals — `/t/[slug]/admin/videos` ✅
+- Preview, approve, or reject player highlight videos
+- Reject with optional reason shown to player
+
+#### 16. Tournament Setup — `/admin/tournaments` ✅
 - Create/edit tournaments
-- Set venue, dates, court count
-- Manage organizer access
+- Set venue, dates, court count, status
+
+---
+
+## Scoring App — `/t/[slug]/match/[id]/score` ✅
+
+> Originally listed as "score-by-score live updates from referees" in the "NOT in MVP" section. Now built.
+
+4-step flow: Confirm → Serve selection → Warmup (5-min timer) → Live point-by-point scoring
+
+Rules:
+- PAR scoring: every rally scores a point
+- Games to 11, win by 2 (play to 12 at 10-all)
+- Best of 5 (first to win 3 games)
+- 90-second break between games (WSF Rule 14.1)
 
 ---
 
 ## Key UX Behaviors
 
-### Real-Time Updates
+### Real-Time Updates ✅
 - Supabase Realtime subscriptions on `matches`, `courts`, `announcements`
 - All public pages auto-update without refresh
-- Visual indicator when data updates (subtle flash/highlight on changed items)
-- Connection status indicator (green dot = live, red = reconnecting)
 
-### "On Deck" Logic
-When an organizer marks a match `in_progress` on a court, the next scheduled match for that court automatically becomes `on_deck`. Both affected players see their status change instantly.
+### "On Deck" Logic ✅
+When a match moves to `in_progress` on a court, the next `scheduled` match on that court automatically becomes `on_deck`.
 
-### Player Notifications (MVP-lite)
-- No push notifications in v1 (requires service worker + VAPID setup)
-- Instead: prominent visual status on My Matches page + court board
-- **v1.1**: PWA push notifications — "Your match is on deck, Court 3"
+### Player Notifications ✅
+- PWA push notifications via VAPID — "Your match is on deck"
+- Sent from Announcements composer
 
-### Mobile-First Design
+### Mobile-First Design ✅
 - Court Board and My Matches are the primary mobile views
-- Admin pages can be tablet/desktop-optimized (organizer is usually at a table)
-- Court Board has a "TV mode" (full-screen, large text, auto-rotate through courts)
+- Admin pages work on tablet/desktop
 
-### Offline Resilience
-- PWA caches the app shell
-- Show "last updated X seconds ago" when connection drops
-- Queue organizer actions if briefly offline, sync when reconnected (stretch goal)
+### PWA ✅
+- Installable on iOS and Android
+- Service worker caches the app shell
 
 ---
 
-## What's NOT in MVP
-- Player authentication (players don't log in — they use direct links or search)
-- Club Locker integration / data sync
-- Bracket visualization (just list matches by round for now)
-- Push notifications (v1.1)
-- Score-by-score live updates from referees
-- Spectator favorites / following
-- Multiple tournament format engines (just flat match lists grouped by draw/round)
-- Payment / registration
+## What Was NOT in MVP (Original List)
 
----
-
-## Implementation Order (Suggested)
-
-1. **Supabase setup** — create project, run schema SQL, enable Realtime, set up RLS
-2. **Tournament + Court + Player admin** — CRUD pages so organizer can set up an event
-3. **Match admin** — create matches, assign to courts, update status/scores
-4. **Court Board** (public) — the showcase page, real-time court grid
-5. **My Matches** (public) — player schedule view with status
-6. **Player Lookup** (public) — search + draw sheet
-7. **Announcements** — composer (admin) + feed (public) + banner on other pages
-8. **PWA setup** — manifest, service worker, add-to-home-screen
-9. **Polish** — TV mode for court board, mobile refinements, connection status indicator
+| Feature | Status |
+|---------|--------|
+| Player authentication | Not built — players use direct links or search |
+| Club Locker integration | Pending |
+| Bracket visualization | Pending |
+| Push notifications | ✅ Built (v1.1) |
+| Score-by-score live updates from referees | ✅ Built (scoring app) |
+| Spectator favorites / following | Not planned |
+| Payment / registration | Not planned |
+| Multiple tournament format engines | Partial — draws + round robin |
 
 ---
 
 ## Design Notes
 - Clean, high-contrast design — readable in a bright squash club
 - Large touch targets — people are tapping between matches with sweaty hands
-- Court status colors should be colorblind-safe
+- Dark mode available on all pages ✅
 - Minimal chrome — the data IS the UI
-- Consider dark mode for TV/projector display

@@ -1,9 +1,9 @@
 # Seattle Squash Tournament Companion App
 
-Real-time tournament management and communication platform for the Seattle Squash Racquets Association (SSRA). Built to fill the gap Club Locker leaves on tournament day — live court boards, player schedules, announcements, email marketing, and volunteer coordination.
+Real-time tournament management and communication platform for the Seattle Squash Racquets Association (SSRA). Built to fill the gap Club Locker leaves on tournament day — live court boards, player schedules, live scoring, announcements, email marketing, and volunteer coordination.
 
 **Live:** squash-tournament-app.vercel.app  
-**Owner:** Geof Bowie
+**Owner:** Geof Bowie (gbowie@gmail.com)
 
 ---
 
@@ -32,7 +32,7 @@ VAPID_PRIVATE_KEY=
 ## Tech Stack
 
 - **Next.js 16** (App Router) + TypeScript
-- **Supabase** — Postgres, Auth, Realtime
+- **Supabase** — Postgres, Auth, Realtime, Storage
 - **Tailwind CSS v4**
 - **Resend** — transactional email
 - **Web Push / VAPID** — browser push notifications
@@ -40,13 +40,34 @@ VAPID_PRIVATE_KEY=
 
 ---
 
-## Running Migrations
+## Supabase Setup
 
+### Storage Buckets
+
+Two public buckets required:
+
+| Bucket | Purpose |
+|--------|---------|
+| `tournament-images` | Tournament hero/logo images (manual upload via dashboard) |
+| `player-videos` | Player highlight video uploads (created via migration) |
+
+To create `player-videos` bucket (if not already exists):
 ```bash
-SUPABASE_ACCESS_TOKEN=sbp_... npx supabase db query --linked -f supabase/your-migration.sql
+curl -X POST https://<project-ref>.supabase.co/storage/v1/bucket \
+  -H "Authorization: Bearer <service-role-key>" \
+  -H "Content-Type: application/json" \
+  -d '{"id":"player-videos","name":"player-videos","public":true}'
 ```
 
-Migration files live in `supabase/`.
+### Auth Redirect URLs
+
+Add these in Supabase Dashboard → Authentication → URL Configuration:
+- `https://squash-tournament-app.vercel.app/**`
+- `http://localhost:3000/**`
+
+### Running Migrations
+
+Run SQL files in `supabase/` via Supabase Dashboard → SQL Editor (or Management API).
 
 ---
 
@@ -65,16 +86,25 @@ Migration files live in `supabase/`.
 
 ### For Players / Public
 - **Tournament landing page** — countdown timer, schedule, venue, contact info
-- **Live court board** — see what's happening on every court in real time
-- **Player lookup** — find your matches by name
+- **Live court board** — real-time court grid via Supabase Realtime
+- **Player lookup** — find matches by name, view full draw sheet
+- **Player profile** — personal match history + highlight video uploads
 - **Announcements** — urgent and normal updates from the organizer
+- **Volunteer signup** — public form to sign up as referee, volunteer, or helper
+
+### For Scorers
+- **Full scoring app** — 4-step flow: confirm → serve selection → warmup → live scoring
+- PAR scoring (games to 11, win by 2, best of 5)
+- Auto game/match detection, 90-second break overlay, serve indicator
 
 ### For Organizers (Admin)
-- **Match management** — assign courts, update status, enter scores
+- **Match management** — list view + schedule view (per-court columns), inline time edit, quick court move
 - **Draw generation** — create brackets, auto-schedule matches
+- **Court management** — add courts, auto-assign matches
+- **Player video approvals** — approve/reject player highlight clips with reason
 - **Email marketing** — per-tournament and global campaigns via Resend
 - **Push notifications** — browser push to all subscribed users
-- **Volunteer management** — public signup creates auth account
+- **Volunteer management** — view signups, assign referees to matches, auto-assign by round priority
 - **Site content editor** — homepage hero image, gradient, text color
 - **Tournament appearance** — per-tournament hero image, background, gradient, text
 
@@ -88,17 +118,35 @@ Migration files live in `supabase/`.
 ## URL Structure
 
 ```
-/                        Homepage (tournament list)
-/t/[slug]                Tournament landing page
-/t/[slug]/courts         Live court board
-/t/[slug]/players        Player lookup
-/t/[slug]/volunteer      Volunteer signup
-/admin                   Admin dashboard
-/admin/tournaments       Manage tournaments
-/admin/content           Homepage & tournament graphics
-/admin/email             Global email marketing
-/admin/settings          Integrations & config reference
-/t/[slug]/admin          Tournament admin dashboard
-/t/[slug]/admin/settings Tournament appearance + details
-/t/[slug]/admin/email    Tournament email marketing
+/                              Homepage (tournament list)
+/login                         Sign in / sign up / reset password
+/account                       User profile (name, club, ranking, photo, password)
+/account/reset-password        Password reset landing (from email link)
+
+/t/[slug]                      Tournament landing page
+/t/[slug]/courts               Live court board (Supabase Realtime)
+/t/[slug]/players              Player lookup + draw sheet
+/t/[slug]/announcements        Public announcements feed
+/t/[slug]/volunteer            Public volunteer/referee signup
+/t/[slug]/player/[id]          Player profile (matches + video highlights)
+/t/[slug]/match/[id]           Match detail
+/t/[slug]/match/[id]/score     Scoring app (4-step flow)
+
+/t/[slug]/admin                Tournament admin dashboard
+/t/[slug]/admin/matches        Match management (list + schedule views)
+/t/[slug]/admin/courts         Court management + auto-assign
+/t/[slug]/admin/players        Player management + CSV import
+/t/[slug]/admin/draws          Draw generation + scheduling
+/t/[slug]/admin/announcements  Announcements + push notifications
+/t/[slug]/admin/volunteers     Volunteer/referee management + auto-assign
+/t/[slug]/admin/videos         Player video approval queue
+/t/[slug]/admin/email          Tournament email marketing
+/t/[slug]/admin/settings       Tournament appearance + details
+
+/admin                         Top-level admin dashboard
+/admin/tournaments             Create/manage tournaments
+/admin/content                 Homepage hero + tournament graphics
+/admin/email                   Global email marketing
+/admin/settings                Integrations + env var reference
+/admin/users                   User management (superadmin only)
 ```

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireAuth } from '@/lib/supabase/auth-check';
+import { requireTournamentOrganizer } from '@/lib/supabase/require-role';
 
 // GET /api/tournaments/[id]/videos?status=pending|approved|all&player_id=xxx
 export async function GET(
@@ -32,7 +33,7 @@ export async function GET(
   return NextResponse.json(data);
 }
 
-// POST /api/tournaments/[id]/videos — record a video after upload
+// POST /api/tournaments/[id]/videos — record a video after upload (any auth user)
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -44,16 +45,29 @@ export async function POST(
   const supabase = createAdminClient();
   const body = await req.json();
 
+  // Validate required fields
+  if (!body.player_id || typeof body.player_id !== 'string') {
+    return NextResponse.json({ error: 'player_id is required' }, { status: 400 });
+  }
+  if (!body.storage_path || typeof body.storage_path !== 'string') {
+    return NextResponse.json({ error: 'storage_path is required' }, { status: 400 });
+  }
+
+  // Validate file size (500MB max)
+  if (body.file_size_bytes && body.file_size_bytes > 500 * 1024 * 1024) {
+    return NextResponse.json({ error: 'File too large (max 500MB)' }, { status: 400 });
+  }
+
   const { data, error } = await supabase
     .from('player_videos')
     .insert({
       tournament_id: id,
       player_id: body.player_id,
-      title: body.title || null,
-      description: body.description || null,
+      title: typeof body.title === 'string' ? body.title.trim() || null : null,
+      description: typeof body.description === 'string' ? body.description.trim() || null : null,
       storage_path: body.storage_path,
       public_url: body.public_url || null,
-      file_size_bytes: body.file_size_bytes || null,
+      file_size_bytes: typeof body.file_size_bytes === 'number' ? body.file_size_bytes : null,
       mime_type: body.mime_type || 'video/mp4',
       uploaded_by: auth.user.id,
       status: 'pending',
@@ -65,31 +79,34 @@ export async function POST(
   return NextResponse.json(data, { status: 201 });
 }
 
-// PATCH /api/tournaments/[id]/videos — approve or reject a video (admin)
+// PATCH /api/tournaments/[id]/videos — approve or reject a video (organizer only)
 export async function PATCH(
   req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireAuth();
+  const { id } = await params;
+  const auth = await requireTournamentOrganizer(id);
   if (auth.error) return auth.error;
 
   const supabase = createAdminClient();
   const body = await req.json();
   const { id: videoId, status, rejection_reason } = body;
 
+  if (!videoId) return NextResponse.json({ error: 'Video id required' }, { status: 400 });
   if (!['approved', 'rejected'].includes(status)) {
-    return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+    return NextResponse.json({ error: 'Status must be approved or rejected' }, { status: 400 });
   }
 
   const { data, error } = await supabase
     .from('player_videos')
     .update({
       status,
-      rejection_reason: rejection_reason || null,
+      rejection_reason: typeof rejection_reason === 'string' ? rejection_reason.trim() || null : null,
       reviewed_by: auth.user.id,
       reviewed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
     })
     .eq('id', videoId)
+    .eq('tournament_id', id)
     .select()
     .single();
 
@@ -97,26 +114,35 @@ export async function PATCH(
   return NextResponse.json(data);
 }
 
-// DELETE /api/tournaments/[id]/videos
-export async function DELETE(req: NextRequest) {
-  const auth = await requireAuth();
+// DELETE /api/tournaments/[id]/videos (organizer only)
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const auth = await requireTournamentOrganizer(id);
   if (auth.error) return auth.error;
 
   const supabase = createAdminClient();
   const { videoId } = await req.json();
+
+  if (!videoId) return NextResponse.json({ error: 'videoId required' }, { status: 400 });
 
   // Get the video first to delete from storage
   const { data: video } = await supabase
     .from('player_videos')
     .select('storage_path')
     .eq('id', videoId)
+    .eq('tournament_id', id)
     .single();
 
-  if (video?.storage_path) {
+  if (!video) return NextResponse.json({ error: 'Video not found' }, { status: 404 });
+
+  if (video.storage_path) {
     await supabase.storage.from('player-videos').remove([video.storage_path]);
   }
 
-  const { error } = await supabase.from('player_videos').delete().eq('id', videoId);
+  const { error } = await supabase.from('player_videos').delete().eq('id', videoId).eq('tournament_id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

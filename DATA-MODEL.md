@@ -123,6 +123,7 @@ create table matches (
   completed_at timestamptz,
   scores jsonb default '[]'::jsonb,  -- [{p1: 11, p2: 7}, ...]
   winner_id uuid references players(id),
+  referee_id uuid references volunteers(id),  -- assigned referee
   notes text,
   sort_order int default 0,
   created_at timestamptz default now(),
@@ -131,6 +132,10 @@ create table matches (
 ```
 
 **Match status flow:** `scheduled → on_deck → in_progress → completed`
+
+When a match moves to `in_progress`, the next `scheduled` match on the same court automatically moves to `on_deck`.
+
+When a match is completed with a winner, the winner is automatically progressed to the next round match (via `getProgression()` in `src/lib/draws/progression.ts`).
 
 ---
 
@@ -153,24 +158,62 @@ create table announcements (
 
 ## volunteers
 
-Public signups. Each volunteer gets a Supabase Auth account.
+Public signups for referee, volunteer, or helper roles. No auth required to sign up.
 
 ```sql
 create table volunteers (
   id uuid primary key default gen_random_uuid(),
   tournament_id uuid references tournaments(id) on delete cascade,
   name text not null,
-  email text not null,
+  email text,
   phone text,
-  availability text,
-  skills text,
+  role text default 'referee'
+    check (role in ('referee', 'volunteer', 'helper')),
   notes text,
-  user_id uuid,                  -- Supabase Auth user ID (created on signup)
   created_at timestamptz default now()
 );
 ```
 
-**Note:** Volunteers are automatically added to `email_recipients` with `type = 'volunteer'`.
+**Roles:**
+- `referee` — eligible for auto-assign to matches
+- `volunteer` — general tournament helper
+- `helper` — ad-hoc day-of helper
+
+**Note:** Volunteers are automatically added to `email_recipients` with `type = 'volunteer'` (when email is provided).
+
+---
+
+## player_videos
+
+Player highlight video clips with admin approval workflow.
+
+```sql
+create table player_videos (
+  id uuid primary key default gen_random_uuid(),
+  player_id uuid references players(id) on delete cascade,
+  tournament_id uuid references tournaments(id) on delete cascade,
+  storage_path text not null,    -- path in Supabase Storage player-videos bucket
+  public_url text not null,      -- public CDN URL
+  title text,                    -- optional caption
+  file_size int,                 -- bytes
+  status text default 'pending'
+    check (status in ('pending', 'approved', 'rejected')),
+  rejection_reason text,         -- admin feedback if rejected
+  uploaded_by uuid,              -- auth.users.id of uploader
+  reviewed_by uuid,              -- auth.users.id of admin who reviewed
+  reviewed_at timestamptz,
+  created_at timestamptz default now()
+);
+```
+
+**Flow:**
+1. Player uploads from their profile page → stored at `{playerId}/{timestamp}.{ext}` in Storage
+2. DB record created with `status: 'pending'`
+3. Admin reviews at `/t/[slug]/admin/videos` — approve or reject with reason
+4. Approved videos show on the public player profile as inline `<video>`
+5. Rejected videos show the rejection reason to the player
+
+**Storage bucket:** `player-videos` (public). Created via `player-videos-migration.sql`.
 
 ---
 
@@ -281,6 +324,45 @@ create table site_settings (
 
 ---
 
+## profiles
+
+Extended user data for authenticated accounts. Auto-created on first sign-in.
+
+```sql
+create table profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  email text,
+  full_name text,
+  club text,
+  phone text,
+  squash_ranking text,
+  bio text,
+  photo_url text,
+  role text default 'user' check (role in ('user', 'admin', 'superadmin')),
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+```
+
+---
+
+## organizers
+
+Per-tournament admin/scorer access grants.
+
+```sql
+create table organizers (
+  id uuid primary key default gen_random_uuid(),
+  tournament_id uuid references tournaments(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete cascade,
+  role text default 'admin' check (role in ('admin', 'scorer')),
+  created_at timestamptz default now(),
+  unique(tournament_id, user_id)
+);
+```
+
+---
+
 ## Realtime
 
 Enable on these tables in Supabase Dashboard → Database → Replication:
@@ -301,6 +383,9 @@ create index idx_matches_player2 on matches(player2_id);
 create index idx_players_tournament on players(tournament_id);
 create index idx_announcements_tournament on announcements(tournament_id, created_at desc);
 create index idx_email_recipients_tournament on email_recipients(tournament_id);
+create index idx_player_videos_player on player_videos(player_id);
+create index idx_player_videos_status on player_videos(tournament_id, status);
+create index idx_volunteers_tournament on volunteers(tournament_id);
 ```
 
 ---
@@ -317,6 +402,11 @@ create policy "Auth write" on tournaments for all
   using (auth.role() = 'authenticated');
 ```
 
+`player_videos` has additional RLS:
+- Public can only see `status = 'approved'` videos
+- Authenticated users can see their own uploads (any status)
+- Inserts require `auth.uid() = uploaded_by`
+
 ---
 
 ## Migration Files
@@ -326,5 +416,6 @@ create policy "Auth write" on tournaments for all
 | `supabase/tournament-details-migration.sql` | Adds detail/contact/schedule/info columns to tournaments |
 | `supabase/site-settings-migration.sql` | Creates site_settings table with default seed data |
 | `supabase/tournament-hero-migration.sql` | Adds hero_gradient, hero_text_color to tournaments |
-| `supabase/hero-overlay-migration.sql` | Adds hero_overlay to tournaments, hero_overlay to site_settings |
+| `supabase/hero-overlay-migration.sql` | Adds hero_overlay to tournaments + site_settings |
 | `supabase/tournament-hero-bg-migration.sql` | Adds hero_image_url to tournaments |
+| `supabase/player-videos-migration.sql` | Creates player_videos table, storage bucket + policies, adds referee_id to matches |

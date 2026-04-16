@@ -74,22 +74,109 @@ Go to **Tournament Admin → Draws & Scheduling**
 
 Go to **Tournament Admin → Matches**
 
+#### List View
 For each match:
 1. **Assign to court** — pick from the court dropdown
 2. **Update status** — Scheduled → On Deck → In Progress → Completed
 3. **Enter scores** — game by game (e.g. 11-7, 9-11, 11-5)
+4. **Edit scheduled time** — click the clock icon, edit inline, press ✓ to save
+
+#### Schedule View
+Click the **Schedule** tab to switch to the per-court column layout:
+- Each court is a column showing its matches in order
+- Live courts have a green header
+- Click the clock icon on any match to edit its time inline
+- Use the **→ Court X** buttons to quickly move a match to another court
+- Unassigned matches appear in the bottom section
 
 ---
 
-## During the Tournament
+## Scoring a Match
 
-### Push Announcements
+From any match detail page, tap **Score This Match** to open the 4-step scoring app.
+
+### Step 1 — Confirm
+- Verify the players, draw/round, and select which court the match is on.
+
+### Step 2 — Serve
+- Choose who serves first (tap a player name)
+- Choose court sides (Left / Right)
+
+### Step 3 — Warmup
+- 5-minute countdown (WSF Rule 4)
+- Tap **Start Match** to proceed early, or wait for the timer
+
+### Step 4 — Scoring
+- Tap the serving player's score area to award them a point
+- Tap the **serve bar** at the top to switch server
+- Games go to 11, win by 2 (play to 12 at 10-all)
+- Best of 5 — first to win 3 games wins the match
+- A 90-second break overlay appears between games
+- Match is automatically completed when a player wins 3 games
+
+---
+
+## Volunteer & Referee Management
+
+### Public signup
+
+Volunteers and referees go to `/t/[slug]/volunteer` and fill in:
+- Name, email (optional), phone (optional)
+- Role: **Referee**, **Volunteer**, or **Helper**
+- Optional notes
+
+No login required — signups go directly to the volunteer list.
+
+### Managing volunteers
+
+Go to **Tournament Admin → Volunteers & Refs**
+
+- See all signups grouped by role (Referee / Volunteer / Helper)
+- **Auto-Assign Referees** — automatically assigns available referees to unassigned matches, prioritizing Finals → Semis → Quarters → earlier rounds
+- **Manual assignment** — use the dropdown on each match to pick a specific referee
+- Remove a volunteer from the list via the delete button
+
+### Referee assignment rules
+- Only volunteers with role `referee` are eligible for auto-assign
+- A referee won't be assigned to a match they're playing in
+- If there are more matches than referees, the most important matches (by round) get refs first
+
+---
+
+## Player Video Highlights
+
+### Player uploads
+
+Players visit their own profile page (`/t/[slug]/player/[id]`) while logged in.
+
+- Only the player whose profile it is sees the upload button (matched by email)
+- Supported formats: MP4, MOV, WebM — up to 500 MB
+- After uploading, the video shows a **Pending Review** badge
+
+### Admin approval
+
+Go to **Tournament Admin → Video Approvals**
+
+- **Pending** tab — new uploads waiting for review
+- Click **▶ Play** to preview the video inline before deciding
+- **Approve** — video goes live on the player's public profile
+- **Reject** — enter an optional reason; the player sees the reason on their profile
+- **Delete** — permanently removes the video from storage and the database
+
+### What players see
+- **Approved** videos: inline video player on their public profile
+- **Pending** videos: "Pending Review" badge (only visible to themselves)
+- **Rejected** videos: "Not Approved" badge with the rejection reason (only visible to themselves)
+
+---
+
+## Push Announcements
 
 Go to **Tournament Admin → Announcements**
 
 - Type your message, pick Normal or Urgent
 - Check **Send push notification** to also broadcast to all subscribed users' browsers
-- Urgent announcements appear highlighted in red
+- Urgent announcements appear highlighted in red on the public feed
 
 ### Live Court Board
 
@@ -119,21 +206,6 @@ Three tabs:
 Go to **Admin → Email Marketing** (top-level)
 
 Tag-based — assign tags to recipients (e.g. "members", "newsletter"), then target by tag.
-
----
-
-## Volunteer Management
-
-### Public signup
-
-Volunteers go to `/t/[slug]/volunteer` and fill in their name, email, password, availability, and skills. This creates a Supabase Auth account so they can access tournament info.
-
-### Managing volunteers
-
-Go to **Tournament Admin → Volunteers & Refs**
-
-- See all signups with contact info and availability
-- Assign volunteers as referees to specific matches
 
 ---
 
@@ -189,6 +261,20 @@ The bucket should be set to **public** so URLs work without auth.
 
 ---
 
+## Your Account & Password
+
+Go to `/account` (click your initial in the top-right nav → My Account).
+
+- **Profile details** — full name, club, ranking, phone, bio
+- **Profile photo** — upload a photo (stored in Supabase Storage)
+- **Password** — set or change your password; useful if you signed in via magic link and want to add a password
+
+### Forgot your password?
+
+On the login page, click **Forgot password?**, enter your email, and click **Send reset email**. You'll get an email with a link that takes you to `/account/reset-password` where you can set a new password.
+
+---
+
 ## Settings & Integrations
 
 Go to **Admin → ⚙️ Settings**
@@ -218,7 +304,7 @@ Add these in Vercel project → Settings → Environment Variables:
 
 ## Pending / Known Limitations
 
-- **Resend domain** — emails may only go to verified addresses until the sending domain (seattlesquash.com or authentum.com) is verified in Resend
-- **No live score entry from phone** — referee scoring app is on the wishlist
+- **Resend domain** — emails may only go to verified addresses until the sending domain (seattlesquash.com) is verified in Resend
 - **No ClubLocker sync** — players need to be added manually or via CSV
-- **Court board is not yet real-time** — requires Supabase Realtime subscription setup
+- **No bracket visualization** — matches are listed by round, no graphical bracket
+- **Referee auto-assign** — available, but no drag-to-reorder for match scheduling yet
