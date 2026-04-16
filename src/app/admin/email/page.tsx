@@ -142,6 +142,7 @@ export default function GlobalEmail() {
   const [csvStatus, setCsvStatus] = useState<string>('');
   const [csvError, setCsvError] = useState<string>('');
   const [csvSkipExisting, setCsvSkipExisting] = useState(false);
+  const [csvSuccess, setCsvSuccess] = useState<string>('');
 
   const refresh = async () => {
     const [r, c] = await Promise.all([
@@ -293,6 +294,7 @@ export default function GlobalEmail() {
   const importCsv = async () => {
     if (csvToImport.length === 0) return;
     setCsvImporting(true);
+    const skipped = csvPreview.length - csvToImport.length;
     await fetch('/api/admin/email/recipients', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -305,6 +307,11 @@ export default function GlobalEmail() {
     if (csvRef.current) csvRef.current.value = '';
     await refresh();
     setCsvImporting(false);
+    const msg = skipped > 0
+      ? `✓ Imported ${csvToImport.length} contacts (${skipped} existing skipped)`
+      : `✓ ${csvToImport.length} contacts imported`;
+    setCsvSuccess(msg);
+    setTimeout(() => setCsvSuccess(''), 5000);
   };
 
   const toggleSendTag = (tag: string) => {
@@ -423,6 +430,11 @@ export default function GlobalEmail() {
                 )}
               </div>
 
+              {csvSuccess && (
+                <div className="mt-3 text-xs bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 rounded-lg px-3 py-2">
+                  {csvSuccess}
+                </div>
+              )}
               {csvError && (
                 <div className="mt-3 text-xs bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg px-3 py-2">
                   {csvError}

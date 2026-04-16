@@ -111,6 +111,7 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
   const [csvStatus, setCsvStatus] = useState<string>('');
   const [csvError, setCsvError] = useState<string>('');
   const [csvSkipExisting, setCsvSkipExisting] = useState(false);
+  const [csvSuccess, setCsvSuccess] = useState<string>('');
 
   // Sync
   const [syncing, setSyncing] = useState(false);
@@ -308,6 +309,7 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
   const importCsv = async () => {
     if (!tournament || csvToImport.length === 0) return;
     setCsvImporting(true);
+    const skipped = csvPreview.length - csvToImport.length;
     await fetch(`/api/tournaments/${tournament.id}/email/recipients`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -320,6 +322,11 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
     if (csvRef.current) csvRef.current.value = '';
     await refreshRecipients();
     setCsvImporting(false);
+    const msg = skipped > 0
+      ? `✓ Imported ${csvToImport.length} contacts (${skipped} existing skipped)`
+      : `✓ ${csvToImport.length} contacts imported`;
+    setCsvSuccess(msg);
+    setTimeout(() => setCsvSuccess(''), 5000);
   };
 
   const sendCampaign = async () => {
@@ -464,6 +471,11 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
               {csvStatus && !csvPreview.length && (
                 <div className="mt-3 text-xs bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 rounded-lg px-3 py-2">
                   {csvStatus}
+                </div>
+              )}
+              {csvSuccess && (
+                <div className="mt-3 text-xs bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 rounded-lg px-3 py-2">
+                  {csvSuccess}
                 </div>
               )}
               {csvError && (
