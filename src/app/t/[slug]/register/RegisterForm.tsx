@@ -3,6 +3,25 @@
 import { useState } from 'react';
 import { CheckCircle } from 'lucide-react';
 
+const DIVISIONS = [
+  { value: 'Open', label: 'Open — no rating cutoff' },
+  { value: 'A', label: 'A — 5.0 or lower' },
+  { value: 'B', label: 'B — 4.5 or lower' },
+  { value: 'C', label: 'C — 4.0 or lower' },
+  { value: 'D', label: 'D — 3.5 or lower' },
+  { value: 'Other', label: 'Other (specify below)' },
+];
+
+const HOME_CLUBS = [
+  'Seattle Athletic Club - Downtown',
+  'Seattle Athletic Club - Northgate',
+  'Pro Club Bellevue',
+  'Columbia Athletic Club',
+  'Washington Athletic Club (WAC)',
+  'University of Washington',
+  'Other',
+];
+
 interface Props {
   tournamentId: string;
   tournamentSlug: string;
@@ -14,7 +33,8 @@ export default function RegisterForm({ tournamentId, tournamentSlug, draws }: Pr
     name: '',
     email: '',
     phone: '',
-    draw: draws.length > 0 ? draws[0] : '',
+    draw: '',
+    drawOther: '',
     club: '',
     notes: '',
   });
@@ -31,11 +51,19 @@ export default function RegisterForm({ tournamentId, tournamentSlug, draws }: Pr
     setSubmitting(true);
     setError(null);
 
+    // Resolve final draw value: use typed-in value if "Other" selected
+    const resolvedDraw = form.draw === 'Other' ? form.drawOther.trim() : form.draw;
+    if (!resolvedDraw) {
+      setError('Please select or specify a division.');
+      setSubmitting(false);
+      return;
+    }
+
     try {
       const res = await fetch(`/api/tournaments/${tournamentId}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, draw: resolvedDraw }),
       });
 
       if (!res.ok) {
@@ -132,44 +160,42 @@ export default function RegisterForm({ tournamentId, tournamentSlug, draws }: Pr
         <label className={labelClass}>
           Division / Draw <span className="text-red-500">*</span>
         </label>
-        {draws.length > 0 ? (
-          <select
-            required
-            value={form.draw}
-            onChange={set('draw')}
-            className={inputClass}
-          >
-            <option value="" disabled>
-              Select a division…
-            </option>
-            {draws.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
-        ) : (
+        <select
+          required
+          value={form.draw}
+          onChange={set('draw')}
+          className={inputClass}
+        >
+          <option value="" disabled>Select a division…</option>
+          {DIVISIONS.map((d) => (
+            <option key={d.value} value={d.value}>{d.label}</option>
+          ))}
+        </select>
+        {form.draw === 'Other' && (
           <input
-            required
             type="text"
-            value={form.draw}
-            onChange={set('draw')}
-            placeholder="e.g. Men's A, Women's B"
-            className={inputClass}
+            value={form.drawOther}
+            onChange={set('drawOther')}
+            placeholder="Describe your division…"
+            className={`${inputClass} mt-2`}
+            autoFocus
           />
         )}
       </div>
 
-      {/* Club */}
+      {/* Home Club */}
       <div>
-        <label className={labelClass}>Club / Home Club</label>
-        <input
-          type="text"
+        <label className={labelClass}>Home Club</label>
+        <select
           value={form.club}
           onChange={set('club')}
-          placeholder="Your squash club"
           className={inputClass}
-        />
+        >
+          <option value="">Select your club…</option>
+          {HOME_CLUBS.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
       </div>
 
       {/* Notes */}
