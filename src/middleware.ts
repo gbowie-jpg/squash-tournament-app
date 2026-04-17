@@ -32,17 +32,15 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Public tournament pages that don't need auth
-  const isPublicTournamentRoute =
-    /^\/t\/[^/]+(\/volunteer|\/register|\/players|\/announcements)?$/.test(pathname);
-
-  // Protect admin routes: /admin/* and /t/*/admin/*
+  // Admin routes always require auth: /admin/* and /t/[slug]/admin/*
   const isAdminRoute =
     pathname.startsWith('/admin') ||
-    /^\/t\/[^/]+\/admin/.test(pathname);
+    /^\/t\/[^/]+\/admin(\/|$)/.test(pathname);
 
-  // Protect tournament pages: /t/[slug]/* (except public routes)
+  // All /t/[slug]/* pages are public except admin sub-routes.
+  // Registered players can view draws, schedule, players, courts etc. without an account.
   const isTournamentRoute = /^\/t\/[^/]+/.test(pathname);
+  const isPublicTournamentRoute = isTournamentRoute && !isAdminRoute;
 
   if (!isPublicTournamentRoute && (isAdminRoute || isTournamentRoute) && !user) {
     const loginUrl = new URL('/login', request.url);
