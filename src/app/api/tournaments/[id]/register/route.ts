@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { sendEmail, getEmailTemplateSettings } from '@/lib/email';
 
 /** POST /api/tournaments/[id]/register — public player self-registration. No auth required. */
 export async function POST(
@@ -39,7 +40,7 @@ export async function POST(
   // Fetch tournament
   const { data: tournament, error: tErr } = await supabase
     .from('tournaments')
-    .select('id, status')
+    .select('id, status, slug, name')
     .eq('id', id)
     .single();
 
@@ -85,19 +86,55 @@ export async function POST(
     return NextResponse.json({ error: insertErr.message }, { status: 500 });
   }
 
-  // Sync to email_recipients (best-effort, ignore errors)
+  // Sync to email_recipients (best-effort)
   await supabase.from('email_recipients').upsert(
-    [
-      {
-        tournament_id: id,
-        name: name.trim(),
-        email: normalizedEmail,
-        type: 'player',
-        tags: ['registered'],
-      },
-    ],
+    [{ tournament_id: id, name: name.trim(), email: normalizedEmail, type: 'player', tags: ['registered'] }],
     { onConflict: 'tournament_id,email', ignoreDuplicates: true },
   );
+
+  // Send confirmation email with direct link to their player page (best-effort)
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://seattlesquash.com';
+  const playerPageUrl = `${siteUrl}/t/${tournament.slug}/player/${player.id}`;
+  const tournamentUrl = `${siteUrl}/t/${tournament.slug}`;
+
+  const tmpl = await getEmailTemplateSettings(supabase);
+  const drawLine = player.draw ? `<p style="margin:0 0 8px 0;"><strong>Division:</strong> ${player.draw}</p>` : '';
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:Arial,sans-serif;">
+  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+    <div style="background:${tmpl.headerBg || '#1a2332'};border-radius:12px 12px 0 0;padding:24px 32px;text-align:center;">
+      <h1 style="color:white;margin:0;font-size:20px;">${tmpl.heading || tournament.name}</h1>
+      <p style="color:rgba(255,255,255,0.65);margin:4px 0 0;font-size:13px;">Registration Confirmed</p>
+    </div>
+    <div style="background:white;padding:32px;border-radius:0 0 12px 12px;">
+      <p style="margin:0 0 16px 0;">Hi ${player.name},</p>
+      <p style="margin:0 0 16px 0;">You're registered for <strong>${tournament.name}</strong>. Here are your details:</p>
+      <div style="background:#f4f4f5;border-radius:8px;padding:16px;margin:0 0 24px 0;">
+        <p style="margin:0 0 8px 0;"><strong>Name:</strong> ${player.name}</p>
+        ${drawLine}
+        ${player.club ? `<p style="margin:0 0 8px 0;"><strong>Club:</strong> ${player.club}</p>` : ''}
+      </div>
+      <p style="margin:0 0 16px 0;">Bookmark your personal page to track your matches and schedule:</p>
+      <div style="text-align:center;margin:0 0 24px 0;">
+        <a href="${playerPageUrl}" style="display:inline-block;background:#18181b;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">
+          My Tournament Page →
+        </a>
+      </div>
+      <p style="margin:0 0 8px 0;font-size:13px;color:#71717a;">Or view the full tournament:</p>
+      <p style="margin:0;font-size:13px;"><a href="${tournamentUrl}" style="color:#3b82f6;">${tournamentUrl}</a></p>
+    </div>
+    <div style="text-align:center;padding:24px 0;color:#71717a;font-size:12px;">
+      <p>${tmpl.footerText || 'Seattle Squash Racquets Association'}</p>
+    </div>
+  </div>
+</body></html>`;
+
+  await sendEmail({
+    to: normalizedEmail,
+    subject: `You're registered — ${tournament.name}`,
+    html,
+  });
 
   return NextResponse.json(player, { status: 201 });
 }
