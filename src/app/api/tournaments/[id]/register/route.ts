@@ -94,8 +94,8 @@ export async function POST(
 
   // Send confirmation email with direct link to their player page (best-effort)
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://seattlesquash.com';
-  const playerPageUrl = `${siteUrl}/t/${tournament.slug}/player/${player.id}`;
   const tournamentUrl = `${siteUrl}/t/${tournament.slug}`;
+  const playerPageUrl = `${siteUrl}/t/${tournament.slug}/player/${player.id}`;
 
   const tmpl = await getEmailTemplateSettings(supabase);
   const drawLine = player.draw ? `<p style="margin:0 0 8px 0;"><strong>Division:</strong> ${player.draw}</p>` : '';
@@ -115,14 +115,14 @@ export async function POST(
         ${drawLine}
         ${player.club ? `<p style="margin:0 0 8px 0;"><strong>Club:</strong> ${player.club}</p>` : ''}
       </div>
-      <p style="margin:0 0 16px 0;">Bookmark your personal page to track your matches and schedule:</p>
+      <p style="margin:0 0 16px 0;">Visit the tournament page for draws, schedule, and results:</p>
       <div style="text-align:center;margin:0 0 24px 0;">
-        <a href="${playerPageUrl}" style="display:inline-block;background:#18181b;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">
-          My Tournament Page →
+        <a href="${tournamentUrl}" style="display:inline-block;background:#18181b;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">
+          View Tournament →
         </a>
       </div>
-      <p style="margin:0 0 8px 0;font-size:13px;color:#71717a;">Or view the full tournament:</p>
-      <p style="margin:0;font-size:13px;"><a href="${tournamentUrl}" style="color:#3b82f6;">${tournamentUrl}</a></p>
+      <p style="margin:0 0 4px 0;font-size:13px;color:#71717a;">Your personal player page (bookmark this to track your matches):</p>
+      <p style="margin:0;font-size:13px;"><a href="${playerPageUrl}" style="color:#3b82f6;">${playerPageUrl}</a></p>
     </div>
     <div style="text-align:center;padding:24px 0;color:#71717a;font-size:12px;">
       <p>${tmpl.footerText || 'Seattle Squash Racquets Association'}</p>
