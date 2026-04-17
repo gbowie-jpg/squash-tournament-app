@@ -127,17 +127,24 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
 
   const refreshRecipients = async () => {
     if (!tournament) return;
-    const r = await fetch(`/api/tournaments/${tournament.id}/email/recipients`).then((x) => x.ok ? x.json() : []);
-    setRecipients(r);
+    const res = await fetch(`/api/tournaments/${tournament.id}/email/recipients`);
+    if (res.ok) {
+      const r = await res.json();
+      setRecipients(r);
+    }
+    // on error: leave existing list intact rather than wiping it
   };
 
   useEffect(() => {
-    console.log('[CSV] email page mounted — build v3 (visible native input)');
     if (!tournament) return;
     Promise.all([
-      fetch(`/api/tournaments/${tournament.id}/email/recipients`).then((r) => r.ok ? r.json() : []),
-      fetch(`/api/tournaments/${tournament.id}/email/campaigns`).then((r) => r.ok ? r.json() : []),
-    ]).then(([r, c]) => { setRecipients(r); setCampaigns(c); setLoading(false); });
+      fetch(`/api/tournaments/${tournament.id}/email/recipients`).then((r) => r.json()),
+      fetch(`/api/tournaments/${tournament.id}/email/campaigns`).then((r) => r.json()),
+    ]).then(([r, c]) => {
+      setRecipients(Array.isArray(r) ? r : []);
+      setCampaigns(Array.isArray(c) ? c : []);
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, [tournament]);
 
   // All unique tags across recipients
@@ -309,24 +316,37 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
   const importCsv = async () => {
     if (!tournament || csvToImport.length === 0) return;
     setCsvImporting(true);
-    const skipped = csvPreview.length - csvToImport.length;
-    await fetch(`/api/tournaments/${tournament.id}/email/recipients`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(csvToImport),
-    });
-    setCsvPreview([]);
-    setCsvStatus('');
     setCsvError('');
-    setCsvSkipExisting(false);
-    if (csvRef.current) csvRef.current.value = '';
-    await refreshRecipients();
-    setCsvImporting(false);
-    const msg = skipped > 0
-      ? `✓ Imported ${csvToImport.length} contacts (${skipped} existing skipped)`
-      : `✓ ${csvToImport.length} contacts imported`;
-    setCsvSuccess(msg);
-    setTimeout(() => setCsvSuccess(''), 5000);
+    const skipped = csvPreview.length - csvToImport.length;
+    try {
+      const res = await fetch(`/api/tournaments/${tournament.id}/email/recipients`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(csvToImport),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setCsvError(`Import failed (${res.status}): ${err.error || 'unknown error'}`);
+        setCsvImporting(false);
+        return;
+      }
+      const saved = await res.json();
+      const savedCount = Array.isArray(saved) ? saved.length : csvToImport.length;
+      setCsvPreview([]);
+      setCsvStatus('');
+      setCsvSkipExisting(false);
+      if (csvRef.current) csvRef.current.value = '';
+      await refreshRecipients();
+      const msg = skipped > 0
+        ? `✓ ${savedCount} contacts imported (${skipped} existing skipped)`
+        : `✓ ${savedCount} contacts imported`;
+      setCsvSuccess(msg);
+      setTimeout(() => setCsvSuccess(''), 5000);
+    } catch (e) {
+      setCsvError(`Network error — ${e instanceof Error ? e.message : 'please try again'}`);
+    } finally {
+      setCsvImporting(false);
+    }
   };
 
   const sendCampaign = async () => {
