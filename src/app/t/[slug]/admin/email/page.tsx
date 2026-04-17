@@ -14,11 +14,38 @@ const SEGMENT_LABELS: Record<Segment, string> = {
   all: 'All', player: 'Players', volunteer: 'Volunteers', invitee: 'Invitees', other: 'Other',
 };
 const TYPE_COLORS: Record<string, string> = {
-  player: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400',
-  volunteer: 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400',
-  invitee: 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400',
-  other: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400',
+  player:    'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300',
+  volunteer: 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300',
+  invitee:   'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300',
+  other:     'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400',
 };
+
+const TYPE_ICONS: Record<string, string> = {
+  player: '🎯', volunteer: '🙋', invitee: '✉️', other: '•',
+};
+
+/** Deterministic hue from a string — same tag always gets the same colour. */
+function tagHue(tag: string): number {
+  let h = 0;
+  for (let i = 0; i < tag.length; i++) h = (h * 31 + tag.charCodeAt(i)) & 0xffff;
+  return h % 360;
+}
+
+function TagPill({ tag }: { tag: string }) {
+  const hue = tagHue(tag);
+  // Use CSS custom properties so a parent .dark class can flip lightness values
+  return (
+    <span
+      className="inline-block text-xs font-medium px-2 py-0.5 rounded-full dark:opacity-90"
+      style={{
+        backgroundColor: `hsl(${hue},50%,87%)`,
+        color: `hsl(${hue},60%,28%)`,
+      }}
+    >
+      {tag}
+    </span>
+  );
+}
 
 // Parses a single CSV line, correctly handling quoted fields (e.g. "Smith, John")
 function parseCsvLine(line: string): string[] {
@@ -111,6 +138,7 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
   const [csvStatus, setCsvStatus] = useState<string>('');
   const [csvError, setCsvError] = useState<string>('');
   const [csvSkipExisting, setCsvSkipExisting] = useState(false);
+  const [csvBulkType, setCsvBulkType] = useState<string>('auto');
   const [csvSuccess, setCsvSuccess] = useState<string>('');
 
   // Sync
@@ -311,7 +339,11 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
 
   const csvNew = csvPreview.filter((r) => !existingEmailSet.has(r.email.toLowerCase()));
   const csvExisting = csvPreview.filter((r) => existingEmailSet.has(r.email.toLowerCase()));
-  const csvToImport = csvSkipExisting ? csvNew : csvPreview;
+  const csvFiltered = csvSkipExisting ? csvNew : csvPreview;
+  // Apply bulk-type override if set (replaces auto-detected or default 'invitee')
+  const csvToImport = csvBulkType === 'auto'
+    ? csvFiltered
+    : csvFiltered.map((r) => ({ ...r, type: csvBulkType }));
 
   const importCsv = async () => {
     if (!tournament || csvToImport.length === 0) return;
@@ -335,6 +367,7 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
       setCsvPreview([]);
       setCsvStatus('');
       setCsvSkipExisting(false);
+      setCsvBulkType('auto');
       if (csvRef.current) csvRef.current.value = '';
       await refreshRecipients();
       const msg = skipped > 0
@@ -506,6 +539,23 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
               {csvPreview.length > 0 && (
                 <div className="mt-3 space-y-3">
                   {/* Duplicate summary banner */}
+                  {/* Type override */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-[var(--text-secondary)]">Import everyone as:</span>
+                    <select
+                      value={csvBulkType}
+                      onChange={(e) => setCsvBulkType(e.target.value)}
+                      className="border border-[var(--border)] rounded-lg px-2 py-1 text-xs bg-[var(--surface)] text-[var(--text-primary)]"
+                    >
+                      <option value="auto">Auto-detect from CSV</option>
+                      <option value="player">🎯 Player</option>
+                      <option value="volunteer">🙋 Volunteer</option>
+                      <option value="invitee">✉️ Invitee</option>
+                      <option value="other">• Other</option>
+                    </select>
+                  </div>
+
+                  {/* Duplicate summary */}
                   {csvExisting.length > 0 ? (
                     <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2.5 space-y-2">
                       <p className="text-xs text-amber-800 dark:text-amber-300">
@@ -533,26 +583,39 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
                     <table className="w-full text-xs">
                       <thead><tr className="bg-[var(--surface)]">
                         <th className="text-left px-3 py-2 font-medium">Name</th>
-                        <th className="text-left px-3 py-2 font-medium">Email</th>
+                        <th className="text-left px-3 py-2 font-medium">Type</th>
                         <th className="text-left px-3 py-2 font-medium">Tags</th>
-                        <th className="px-3 py-2 w-20"></th>
+                        <th className="px-3 py-2 w-16"></th>
                       </tr></thead>
                       <tbody>
                         {csvPreview.slice(0, 15).map((r, i) => {
                           const isExisting = existingEmailSet.has(r.email.toLowerCase());
                           const skipped = csvSkipExisting && isExisting;
+                          const effectiveType = csvBulkType === 'auto' ? (r.type || 'invitee') : csvBulkType;
                           return (
                             <tr key={i} className={`border-t border-[var(--border)] ${skipped ? 'opacity-40' : isExisting ? 'bg-amber-50 dark:bg-amber-950/20' : ''}`}>
-                              <td className="px-3 py-1.5 font-medium">{r.name}</td>
-                              <td className="px-3 py-1.5 text-[var(--text-secondary)]">{r.email}</td>
-                              <td className="px-3 py-1.5 text-[var(--text-secondary)]">{(r.tags ?? []).join(', ') || '—'}</td>
+                              <td className="px-3 py-1.5">
+                                <div className="font-medium">{r.name}</div>
+                                <div className="text-[var(--text-muted)] truncate max-w-[14rem]">{r.email}</div>
+                              </td>
+                              <td className="px-3 py-1.5">
+                                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${TYPE_COLORS[effectiveType] || TYPE_COLORS.other}`}>
+                                  {TYPE_ICONS[effectiveType]} {effectiveType}
+                                </span>
+                              </td>
+                              <td className="px-3 py-1.5">
+                                <div className="flex flex-wrap gap-1">
+                                  {(r.tags ?? []).length > 0
+                                    ? (r.tags ?? []).map((t) => <TagPill key={t} tag={t} />)
+                                    : <span className="text-[var(--text-muted)]">—</span>}
+                                </div>
+                              </td>
                               <td className="px-3 py-1.5 text-right">
                                 {skipped
                                   ? <span className="text-[var(--text-muted)]">skip</span>
                                   : isExisting
                                     ? <span className="text-amber-600 dark:text-amber-400 font-medium">update</span>
-                                    : <span className="text-green-600 dark:text-green-400 font-medium">new</span>
-                                }
+                                    : <span className="text-green-600 dark:text-green-400 font-medium">new</span>}
                               </td>
                             </tr>
                           );
@@ -601,7 +664,6 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
                   <thead><tr className="bg-[var(--surface)] border-b border-[var(--border)]">
                     <th className="text-left px-4 py-3 font-medium">Name / Tags</th>
                     <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">Email</th>
-                    <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">Type</th>
                     <th className="px-4 py-3 w-24"></th>
                   </tr></thead>
                   <tbody>
@@ -661,21 +723,20 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
                       ) : (
                         <tr key={r.id} className="border-b border-[var(--border)] hover:bg-[var(--surface)]">
                           <td className="px-4 py-2.5">
-                            <div className="font-medium">{r.name}</div>
+                            <div className="flex items-center gap-2">
+                              <span className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${TYPE_COLORS[r.type] || TYPE_COLORS.other}`}>
+                                {TYPE_ICONS[r.type] || '•'} {r.type}
+                              </span>
+                              <span className="font-medium">{r.name}</span>
+                            </div>
                             {(r.tags ?? []).length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {(r.tags ?? []).map((t) => (
-                                  <span key={t} className="bg-surface text-muted-foreground text-xs px-1.5 py-0.5 rounded-full">{t}</span>
-                                ))}
+                              <div className="flex flex-wrap gap-1 mt-1.5 ml-0.5">
+                                {(r.tags ?? []).map((t) => <TagPill key={t} tag={t} />)}
                               </div>
                             )}
                           </td>
                           <td className="px-4 py-2.5 text-[var(--text-secondary)] hidden sm:table-cell">{r.email}</td>
-                          <td className="px-4 py-2.5 hidden sm:table-cell">
-                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${TYPE_COLORS[r.type] || TYPE_COLORS.other}`}>
-                              {r.type}
-                            </span>
-                          </td>
+                          <td className="px-4 py-2.5 hidden sm:table-cell"></td>
                           <td className="px-4 py-2.5 text-right">
                             <div className="flex items-center justify-end gap-2">
                               <button onClick={() => startEdit(r)} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)]">Edit</button>
