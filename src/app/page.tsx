@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import SiteNav from '@/components/layout/SiteNav';
 import SiteFooter from '@/components/layout/SiteFooter';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
@@ -8,6 +9,11 @@ import { heroBackground, getTextColors } from '@/lib/gradients';
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
+  const featuredSlug = process.env.NEXT_PUBLIC_FEATURED_SLUG;
+  if (featuredSlug) {
+    redirect(`/t/${featuredSlug}/register`);
+  }
+
   const supabase = await createServerSupabaseClient();
 
   const [{ data: tournaments }, { data: settingsRows }] = await Promise.all([

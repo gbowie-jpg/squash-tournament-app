@@ -33,17 +33,18 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Public tournament pages that don't need auth
-  const isVolunteerSignup = /^\/t\/[^/]+\/volunteer$/.test(pathname);
+  const isPublicTournamentRoute =
+    /^\/t\/[^/]+(\/volunteer|\/register|\/players|\/announcements)?$/.test(pathname);
 
   // Protect admin routes: /admin/* and /t/*/admin/*
   const isAdminRoute =
     pathname.startsWith('/admin') ||
     /^\/t\/[^/]+\/admin/.test(pathname);
 
-  // Protect tournament pages: /t/[slug]/* (except volunteer signup)
+  // Protect tournament pages: /t/[slug]/* (except public routes)
   const isTournamentRoute = /^\/t\/[^/]+/.test(pathname);
 
-  if (!isVolunteerSignup && (isAdminRoute || isTournamentRoute) && !user) {
+  if (!isPublicTournamentRoute && (isAdminRoute || isTournamentRoute) && !user) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
@@ -66,6 +67,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    '/',
     '/admin/:path*',
     '/t/:slug/:path*',
     '/t/:slug',
