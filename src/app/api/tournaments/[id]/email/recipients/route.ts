@@ -64,7 +64,21 @@ export async function POST(
     (existing ?? []).map((r: { email: string; tags: string[] | null }) => [r.email, r.tags ?? []]),
   );
 
-  const mergedRows = rows.map((r) => {
+  // Deduplicate by email within the batch — Postgres throws
+  // "ON CONFLICT DO UPDATE command cannot affect row a second time"
+  // if the same email appears more than once in a single upsert statement.
+  const deduped = new Map<string, typeof rows[0]>();
+  for (const r of rows) {
+    const existing2 = deduped.get(r.email);
+    if (existing2) {
+      // merge tags from both CSV rows
+      deduped.set(r.email, { ...r, tags: Array.from(new Set([...existing2.tags, ...r.tags])) });
+    } else {
+      deduped.set(r.email, r);
+    }
+  }
+
+  const mergedRows = Array.from(deduped.values()).map((r) => {
     const prior = existingTagsByEmail.get(r.email) ?? [];
     const merged = Array.from(new Set([...prior, ...r.tags]));
     return { ...r, tags: merged };

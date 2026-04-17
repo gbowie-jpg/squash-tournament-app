@@ -47,7 +47,16 @@ export async function POST(req: NextRequest) {
   const existingTagsByEmail = new Map<string, string[]>(
     (existing ?? []).map((r: { email: string; tags: string[] | null }) => [r.email, r.tags ?? []]),
   );
-  const mergedRows = rows.map((r) => ({
+  // Deduplicate by email within the batch first (same email twice → Postgres error).
+  const deduped = new Map<string, typeof rows[0]>();
+  for (const r of rows) {
+    const prev = deduped.get(r.email);
+    deduped.set(r.email, prev
+      ? { ...r, tags: Array.from(new Set([...prev.tags, ...r.tags])) }
+      : r);
+  }
+
+  const mergedRows = Array.from(deduped.values()).map((r) => ({
     ...r,
     tags: Array.from(new Set([...(existingTagsByEmail.get(r.email) ?? []), ...r.tags])),
   }));
