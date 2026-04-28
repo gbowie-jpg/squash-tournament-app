@@ -47,50 +47,39 @@ export async function POST(
 
   const validRoles = ['referee', 'volunteer', 'helper'];
   const safeRole = validRoles.includes(role) ? role : 'volunteer';
+  const normalizedEmail = email.trim().toLowerCase();
 
-  // Check if email already has an account
-  const { data: existingUsers } = await supabase.auth.admin.listUsers();
-  const existing = existingUsers?.users?.find(
-    (u) => u.email?.toLowerCase() === email.trim().toLowerCase(),
-  );
-
-  let userId: string;
-
-  if (existing) {
-    // User already has an account — just create the volunteer record
-    userId = existing.id;
-  } else {
-    // Create auth user (auto-confirmed, no email verification needed)
+  // Attempt to create an auth account. If the email already exists, Supabase
+  // returns an error — we treat that silently so we never reveal whether an
+  // email is registered (fixes email enumeration + removes the O(n) listUsers call).
+  if (password && typeof password === 'string' && password.length >= 6) {
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email: email.trim(),
+      email: normalizedEmail,
       password,
       email_confirm: true,
       user_metadata: { full_name: name.trim() },
     });
 
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: 400 });
+    // Only create profile for genuinely new accounts; ignore "already exists" silently
+    if (!authError && authData?.user) {
+      await supabase
+        .from('profiles')
+        .upsert({
+          id: authData.user.id,
+          email: normalizedEmail,
+          full_name: name.trim(),
+          role: 'user',
+        }, { onConflict: 'id' });
     }
-    userId = authData.user.id;
-
-    // Create profile (the trigger may handle this, but ensure it exists)
-    await supabase
-      .from('profiles')
-      .upsert({
-        id: userId,
-        email: email.trim(),
-        full_name: name.trim(),
-        role: 'user',
-      }, { onConflict: 'id' });
   }
 
-  // Create volunteer record
+  // Create volunteer record (no auth dependency — signup works with or without an account)
   const { data, error } = await supabase
     .from('volunteers')
     .insert({
       tournament_id: id,
       name: name.trim(),
-      email: email.trim(),
+      email: normalizedEmail,
       phone: phone?.trim() || null,
       role: safeRole,
       notes: notes?.trim() || null,
@@ -102,11 +91,12 @@ export async function POST(
 
   // Auto-sync volunteer into email_recipients
   await supabase.from('email_recipients').upsert(
-    [{ tournament_id: id, name: name.trim(), email: email.trim().toLowerCase(), type: 'volunteer' }],
+    [{ tournament_id: id, name: name.trim(), email: normalizedEmail, type: 'volunteer' }],
     { onConflict: 'tournament_id,email', ignoreDuplicates: true },
   );
 
-  return NextResponse.json({ ...data, accountCreated: !existing }, { status: 201 });
+  // Never reveal whether an account was created or already existed
+  return NextResponse.json({ ok: true, id: data.id }, { status: 201 });
 }
 
 /** DELETE: Remove a volunteer (organizer only). */
@@ -129,7 +119,12 @@ export async function DELETE(
     .update({ referee_id: null, updated_at: new Date().toISOString() })
     .eq('referee_id', volunteerId);
 
-  const { error } = await supabase.from('volunteers').delete().eq('id', volunteerId);
+  // Scope deletion to this tournament — prevents cross-tournament deletion by guessing UUIDs
+  const { error } = await supabase
+    .from('volunteers')
+    .delete()
+    .eq('id', volunteerId)
+    .eq('tournament_id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
