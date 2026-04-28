@@ -31,6 +31,7 @@ export type Database = {
           info_accommodations: string | null;
           info_entry: string | null;
           info_rules: string | null;
+          entry_fee: number;
           created_at: string;
           updated_at: string;
         };
@@ -63,6 +64,7 @@ export type Database = {
           info_accommodations?: string | null;
           info_entry?: string | null;
           info_rules?: string | null;
+          entry_fee?: number;
         };
         Update: Partial<Database['public']['Tables']['tournaments']['Insert']>;
       };
@@ -94,6 +96,8 @@ export type Database = {
           email: string | null;
           phone: string | null;
           draw: string | null;
+          payment_status: 'free' | 'pending' | 'paid' | 'refunded' | 'waived';
+          stripe_session_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -105,6 +109,8 @@ export type Database = {
           email?: string | null;
           phone?: string | null;
           draw?: string | null;
+          payment_status?: 'free' | 'pending' | 'paid' | 'refunded' | 'waived';
+          stripe_session_id?: string | null;
         };
         Update: Partial<Database['public']['Tables']['players']['Insert']>;
       };
