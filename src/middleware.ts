@@ -70,6 +70,7 @@ export const config = {
     '/t/:slug/:path*',
     '/t/:slug',
     '/login',
+    '/unsubscribe',
     '/api/:path*',
   ],
 };

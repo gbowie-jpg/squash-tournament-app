@@ -71,17 +71,21 @@ export async function POST(
     .eq('id', campaignId);
 
   const template = await getEmailTemplateSettings(supabase);
-  const html = buildCampaignHtml({
-    body: campaign.body,
-    tournamentName: tournament?.name || 'Tournament',
-    template,
-  });
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://app.seattlesquash.com';
 
   let sentCount = 0;
   let failCount = 0;
 
-  // Send to each recipient and track
+  // Send to each recipient with a unique unsubscribe link
   for (const recipient of recipients) {
+    const unsubscribeUrl = `${siteUrl}/api/unsubscribe?token=${recipient.unsubscribe_token}`;
+    const html = buildCampaignHtml({
+      body: campaign.body,
+      tournamentName: tournament?.name || 'Tournament',
+      template,
+      unsubscribeUrl,
+    });
+
     const result = await sendEmail({
       to: recipient.email,
       subject: campaign.subject,
