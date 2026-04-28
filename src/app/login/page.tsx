@@ -45,9 +45,13 @@ function LoginForm() {
         router.push(dest);
         router.refresh();
       } else if (mode === 'signup') {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+        });
         if (error) { setError(error.message); return; }
-        setMessage('Check your email for a confirmation link, then sign in.');
+        setMessage('Check your email for a confirmation link — clicking it will sign you in automatically.');
         setMode('signin');
       } else if (mode === 'reset') {
         const origin = window.location.origin;

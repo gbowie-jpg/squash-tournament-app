@@ -10,9 +10,10 @@ export default function JoinPage() {
   const supabase = createClient();
 
   const [valid, setValid] = useState<boolean | null>(null); // null = checking
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
@@ -32,10 +33,14 @@ export default function JoinPage() {
     setError(null);
     setLoading(true);
     try {
+      const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
       const { error: signUpError } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { full_name: name } },
+        options: {
+          data: { full_name: fullName },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
       });
       if (signUpError) { setError(signUpError.message); return; }
       setDone(true);
@@ -81,17 +86,32 @@ export default function JoinPage() {
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Full name</label>
-                  <input
-                    type="text"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Jane Smith"
-                    autoFocus
-                    className={inputCls}
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">First name</label>
+                    <input
+                      type="text"
+                      required
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      placeholder="Jane"
+                      autoFocus
+                      autoComplete="given-name"
+                      className={inputCls}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Last name</label>
+                    <input
+                      type="text"
+                      required
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      placeholder="Smith"
+                      autoComplete="family-name"
+                      className={inputCls}
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Email</label>
@@ -101,6 +121,7 @@ export default function JoinPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
+                    autoComplete="email"
                     className={inputCls}
                   />
                 </div>
@@ -113,6 +134,7 @@ export default function JoinPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="6+ characters"
+                    autoComplete="new-password"
                     className={inputCls}
                   />
                 </div>
@@ -140,16 +162,12 @@ export default function JoinPage() {
           {done && (
             <div className="text-center py-4">
               <p className="text-3xl mb-3">🎉</p>
-              <h2 className="font-semibold text-[var(--text-primary)]">Account created!</h2>
+              <h2 className="font-semibold text-[var(--text-primary)]">
+                Welcome, {firstName}!
+              </h2>
               <p className="text-sm text-[var(--text-secondary)] mt-1 mb-4">
-                Check your email for a confirmation link, then sign in.
+                Check your email and click the confirmation link — it will sign you in automatically.
               </p>
-              <button
-                onClick={() => router.push('/login')}
-                className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-5 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
-              >
-                Go to sign in →
-              </button>
             </div>
           )}
         </div>
