@@ -26,9 +26,10 @@ interface Props {
   tournamentId: string;
   tournamentSlug: string;
   draws: string[];
+  entryFee?: number; // in cents
 }
 
-export default function RegisterForm({ tournamentId, tournamentSlug, draws }: Props) {
+export default function RegisterForm({ tournamentId, tournamentSlug, draws, entryFee = 0 }: Props) {
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -60,7 +61,12 @@ export default function RegisterForm({ tournamentId, tournamentSlug, draws }: Pr
     }
 
     try {
-      const res = await fetch(`/api/tournaments/${tournamentId}/register`, {
+      // Paid tournaments go through Stripe Checkout
+      const endpoint = entryFee > 0
+        ? `/api/tournaments/${tournamentId}/checkout`
+        : `/api/tournaments/${tournamentId}/register`;
+
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...form, draw: resolvedDraw }),
@@ -70,6 +76,12 @@ export default function RegisterForm({ tournamentId, tournamentSlug, draws }: Pr
         const data = await res.json().catch(() => ({}));
         setError(data.error || 'Something went wrong. Please try again.');
         return;
+      }
+
+      // Paid: redirect to Stripe Checkout
+      if (entryFee > 0) {
+        const { url } = await res.json();
+        if (url) { window.location.href = url; return; }
       }
 
       setSubmitted(true);
@@ -210,12 +222,19 @@ export default function RegisterForm({ tournamentId, tournamentSlug, draws }: Pr
         />
       </div>
 
+      {entryFee > 0 && (
+        <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl px-4 py-3 text-sm text-blue-800 dark:text-blue-300">
+          Entry fee: <strong>${(entryFee / 100).toFixed(2)}</strong> — you'll be taken to a secure payment page after submitting.
+        </div>
+      )}
       <button
         type="submit"
         disabled={submitting}
         className="w-full bg-foreground text-card px-6 py-3 rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
       >
-        {submitting ? 'Registering…' : 'Register'}
+        {submitting
+          ? entryFee > 0 ? 'Redirecting to payment…' : 'Registering…'
+          : entryFee > 0 ? `Register & Pay $${(entryFee / 100).toFixed(2)}` : 'Register'}
       </button>
     </form>
   );

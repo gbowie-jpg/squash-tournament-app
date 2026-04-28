@@ -124,6 +124,7 @@ export default async function RegisterPage({
             tournamentId={tournament.id}
             tournamentSlug={slug}
             draws={draws}
+            entryFee={tournament.entry_fee ?? 0}
           />
         )}
       </main>

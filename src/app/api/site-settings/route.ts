@@ -2,14 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireRole } from '@/lib/supabase/require-role';
 
-// GET all site settings as a flat key→value object
+// Keys that must never be exposed via the public GET endpoint
+const SENSITIVE_KEY_PATTERNS = ['secret', 'private', 'webhook'];
+const isSensitive = (key: string) =>
+  SENSITIVE_KEY_PATTERNS.some((p) => key.toLowerCase().includes(p));
+
+// GET all non-sensitive site settings as a flat key→value object (public)
 export async function GET() {
   const supabase = createAdminClient();
   const { data, error } = await supabase.from('site_settings').select('key, value');
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const settings: Record<string, string | null> = {};
-  for (const row of data || []) settings[row.key] = row.value;
+  for (const row of data || []) {
+    if (!isSensitive(row.key)) settings[row.key] = row.value;
+  }
   return NextResponse.json(settings);
 }
 

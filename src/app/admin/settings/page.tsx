@@ -142,6 +142,9 @@ export default function AdminSettings() {
           </div>
         </div>
 
+        {/* Stripe / Payment Processing */}
+        <StripeSettingsPanel />
+
         {/* Quick Links */}
         <div className="bg-card border border-border rounded-xl p-6">
           <h2 className="font-semibold text-foreground mb-4">Quick Links</h2>
@@ -166,6 +169,133 @@ export default function AdminSettings() {
         </div>
 
       </main>
+    </div>
+  );
+}
+
+function StripeSettingsPanel() {
+  const [fields, setFields] = useState({
+    stripe_publishable_key: '',
+    stripe_secret_key: '',
+    stripe_webhook_secret: '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    // Load publishable key only (secret keys are never returned by the API)
+    fetch('/api/site-settings')
+      .then((r) => r.json())
+      .then((data) => {
+        setFields((prev) => ({
+          ...prev,
+          stripe_publishable_key: data.stripe_publishable_key || '',
+        }));
+        setLoaded(true);
+      });
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    setSaved(false);
+    try {
+      const body: Record<string, string | null> = {
+        stripe_publishable_key: fields.stripe_publishable_key || null,
+      };
+      // Only send secret fields if they were filled in (non-empty = user entered a new value)
+      if (fields.stripe_secret_key) body.stripe_secret_key = fields.stripe_secret_key;
+      if (fields.stripe_webhook_secret) body.stripe_webhook_secret = fields.stripe_webhook_secret;
+
+      const res = await fetch('/api/site-settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || 'Save failed');
+      setSaved(true);
+      // Clear secret fields after save (they're write-only)
+      setFields((prev) => ({ ...prev, stripe_secret_key: '', stripe_webhook_secret: '' }));
+      setTimeout(() => setSaved(false), 3000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputCls = 'w-full border border-border rounded-lg px-3 py-2 text-sm bg-surface text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-blue-500';
+
+  if (!loaded) return null;
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-6">
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="font-semibold text-foreground">Payment Processing (Stripe)</h2>
+        <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">Stripe Dashboard ↗</a>
+      </div>
+      <p className="text-sm text-muted-foreground mb-5">
+        Enter your Stripe keys to enable entry fee collection on registrations. Secret keys are write-only — they&apos;re stored securely and never shown again.
+      </p>
+
+      {error && (
+        <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</div>
+      )}
+      {saved && (
+        <div className="mb-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">✓ Saved</div>
+      )}
+
+      <div className="space-y-4">
+        <div>
+          <label className="block text-xs font-medium text-foreground mb-1">Publishable Key <span className="text-muted-foreground font-normal">(starts with pk_)</span></label>
+          <input
+            type="text"
+            value={fields.stripe_publishable_key}
+            onChange={(e) => setFields((p) => ({ ...p, stripe_publishable_key: e.target.value }))}
+            placeholder="pk_live_..."
+            className={inputCls}
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-foreground mb-1">
+            Secret Key <span className="text-muted-foreground font-normal">(starts with sk_ — write-only, leave blank to keep existing)</span>
+          </label>
+          <input
+            type="password"
+            value={fields.stripe_secret_key}
+            onChange={(e) => setFields((p) => ({ ...p, stripe_secret_key: e.target.value }))}
+            placeholder="sk_live_... (leave blank to keep existing)"
+            className={inputCls}
+            autoComplete="new-password"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-foreground mb-1">
+            Webhook Secret <span className="text-muted-foreground font-normal">(starts with whsec_ — for confirming payments)</span>
+          </label>
+          <input
+            type="password"
+            value={fields.stripe_webhook_secret}
+            onChange={(e) => setFields((p) => ({ ...p, stripe_webhook_secret: e.target.value }))}
+            placeholder="whsec_... (leave blank to keep existing)"
+            className={inputCls}
+            autoComplete="new-password"
+          />
+          <p className="text-xs text-muted-foreground mt-1.5">
+            Add webhook endpoint in Stripe: <code className="bg-surface px-1 rounded">POST /api/webhooks/stripe</code> — listen for <code className="bg-surface px-1 rounded">checkout.session.completed</code>
+          </p>
+        </div>
+      </div>
+
+      <button
+        onClick={handleSave}
+        disabled={saving}
+        className="mt-5 bg-foreground text-card text-sm font-medium px-5 py-2 rounded-lg hover:opacity-90 disabled:opacity-50 transition-opacity"
+      >
+        {saving ? 'Saving…' : 'Save Stripe Credentials'}
+      </button>
     </div>
   );
 }

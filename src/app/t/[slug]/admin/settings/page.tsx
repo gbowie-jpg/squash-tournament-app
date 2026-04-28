@@ -38,6 +38,7 @@ export default function TournamentSettings({
     registration_deadline: '',
     draw_lock_date: '',
     entry_close_date: '',
+    entry_fee: '',
     info_latest: '',
     info_accommodations: '',
     info_entry: '',
@@ -67,6 +68,7 @@ export default function TournamentSettings({
       registration_deadline: tournament.registration_deadline || '',
       draw_lock_date: tournament.draw_lock_date || '',
       entry_close_date: tournament.entry_close_date || '',
+      entry_fee: tournament.entry_fee ? String(tournament.entry_fee / 100) : '',
       info_latest: tournament.info_latest || '',
       info_accommodations: tournament.info_accommodations || '',
       info_entry: tournament.info_entry || '',
@@ -84,6 +86,13 @@ export default function TournamentSettings({
       const payload = Object.fromEntries(
         Object.entries(form).map(([k, v]) => [k, v === '' ? null : v])
       );
+      // entry_fee: stored in cents, UI shows dollars
+      if (payload.entry_fee !== null) {
+        const dollars = parseFloat(payload.entry_fee as string);
+        payload.entry_fee = isNaN(dollars) || dollars < 0 ? 0 : Math.round(dollars * 100);
+      } else {
+        payload.entry_fee = 0;
+      }
       const res = await fetch(`/api/tournaments/${tournament.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -420,6 +429,31 @@ export default function TournamentSettings({
                   />
                 </div>
               ))}
+            </div>
+          </section>
+
+          {/* Entry Fee */}
+          <section className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-6 space-y-4">
+            <div>
+              <h2 className="font-semibold text-[var(--text-primary)]">Entry Fee</h2>
+              <p className="text-sm text-[var(--text-secondary)] mt-0.5">
+                Set to 0 (or leave blank) for free registration. Players will be taken to Stripe Checkout when a fee is set — requires Stripe credentials in Admin → Settings.
+              </p>
+            </div>
+            <div className="max-w-xs">
+              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Entry Fee (USD)</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-sm">$</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.entry_fee}
+                  onChange={(e) => set('entry_fee', e.target.value)}
+                  placeholder="0.00"
+                  className="w-full border border-[var(--border)] rounded-lg pl-7 pr-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                />
+              </div>
             </div>
           </section>
 
