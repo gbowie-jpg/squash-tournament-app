@@ -33,6 +33,11 @@ export default function UserManagement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Invite link state
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
+  const [inviteCopied, setInviteCopied] = useState(false);
+  const [inviteRegenerating, setInviteRegenerating] = useState(false);
+
   // Add organizer modal state
   const [showAddOrg, setShowAddOrg] = useState<string | null>(null); // userId
   const [addOrgTournament, setAddOrgTournament] = useState('');
@@ -40,6 +45,27 @@ export default function UserManagement() {
 
   // Masquerade state
   const [masquerading, setMasquerading] = useState<string | null>(null); // userId being masqueraded
+
+  useEffect(() => {
+    fetch('/api/admin/invite-link').then((r) => r.json()).then((d) => setInviteToken(d.token)).catch(() => {});
+  }, []);
+
+  const handleCopyInvite = async () => {
+    if (!inviteToken) return;
+    const url = `${window.location.origin}/join/${inviteToken}`;
+    await navigator.clipboard.writeText(url);
+    setInviteCopied(true);
+    setTimeout(() => setInviteCopied(false), 2500);
+  };
+
+  const handleRegenerateInvite = async () => {
+    if (!confirm('Regenerate the invite link? The old link will stop working immediately.')) return;
+    setInviteRegenerating(true);
+    const res = await fetch('/api/admin/invite-link', { method: 'POST' });
+    const data = await res.json();
+    setInviteToken(data.token);
+    setInviteRegenerating(false);
+  };
 
   useEffect(() => {
     Promise.all([
@@ -197,6 +223,41 @@ export default function UserManagement() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8">
+
+        {/* Invite link */}
+        <div className="bg-card border border-border rounded-xl p-5 mb-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="font-semibold text-foreground">Invite Link</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Share this link with anyone you want to join. They&apos;ll create their own account — you can set their role once they&apos;re in.
+              </p>
+              {inviteToken && (
+                <code className="block mt-2 text-xs text-muted-foreground bg-surface border border-border rounded px-2 py-1.5 font-mono truncate max-w-xs sm:max-w-sm md:max-w-md">
+                  {typeof window !== 'undefined' ? `${window.location.origin}/join/${inviteToken}` : `/join/${inviteToken}`}
+                </code>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleCopyInvite}
+                disabled={!inviteToken}
+                className="bg-foreground text-card text-xs font-medium px-3 py-1.5 rounded-lg hover:opacity-90 disabled:opacity-50 transition-opacity"
+              >
+                {inviteCopied ? '✓ Copied!' : 'Copy link'}
+              </button>
+              <button
+                onClick={handleRegenerateInvite}
+                disabled={inviteRegenerating}
+                className="text-xs text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 transition-colors disabled:opacity-50"
+                title="Regenerate link — invalidates the old one"
+              >
+                {inviteRegenerating ? 'Regenerating…' : 'Regenerate'}
+              </button>
+            </div>
+          </div>
+        </div>
+
         {error ? (
           <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-6 text-center">
             <p className="font-medium">Access Denied</p>
