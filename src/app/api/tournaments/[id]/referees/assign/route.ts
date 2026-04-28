@@ -38,10 +38,10 @@ export async function POST(
     return NextResponse.json({ error: 'No referees signed up' }, { status: 400 });
   }
 
-  // Get unassigned, non-walkover matches
+  // Get unassigned, non-walkover matches — include player emails for conflict detection
   const { data: matches } = await supabase
     .from('matches')
-    .select('id, round, player1_id, player2_id, referee_id, match_number')
+    .select('id, round, player1_id, player2_id, referee_id, match_number, player1:players!player1_id(email), player2:players!player2_id(email)')
     .eq('tournament_id', tournamentId)
     .is('referee_id', null)
     .not('status', 'in', '("walkover","cancelled","completed")');
@@ -55,21 +55,38 @@ export async function POST(
     (a, b) => roundPriority(b.round) - roundPriority(a.round),
   );
 
-  // Round-robin assign referees
+  // Round-robin assign referees, skipping refs who are playing in that match
   const assignments: { matchId: string; refereeId: string }[] = [];
   let refIndex = 0;
 
   for (const match of sorted) {
-    // Try to find a ref who isn't a player in this match
+    // Collect the emails of both players in this match (lowercased for comparison)
+    const playerEmails = new Set(
+      [
+        (match.player1 as { email?: string } | null)?.email,
+        (match.player2 as { email?: string } | null)?.email,
+      ]
+        .filter(Boolean)
+        .map((e) => e!.toLowerCase()),
+    );
+
+    // Try each referee in rotation; skip any who are a player in this match
     let assigned = false;
     for (let attempt = 0; attempt < referees.length; attempt++) {
       const ref = referees[(refIndex + attempt) % referees.length];
-      // Skip if ref matches a player (by name — volunteers don't have player IDs)
-      // This is a basic check; exact matching would need email comparison
+      const refEmail = (ref.email as string | null)?.toLowerCase() ?? '';
+
+      if (playerEmails.has(refEmail)) continue; // Conflict — ref is also playing
+
       assigned = true;
       assignments.push({ matchId: match.id, refereeId: ref.id });
       refIndex = (refIndex + attempt + 1) % referees.length;
       break;
+    }
+
+    // If all refs are playing in this match, leave it unassigned (edge case)
+    if (!assigned) {
+      refIndex = (refIndex + 1) % referees.length;
     }
   }
 
