@@ -4,14 +4,25 @@ import { requireAuth } from '@/lib/supabase/auth-check';
 import { requireTournamentOrganizer } from '@/lib/supabase/require-role';
 
 // GET /api/tournaments/[id]/videos?status=pending|approved|all&player_id=xxx
+// Public callers only get approved videos. pending/rejected/all requires organizer auth.
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   const url = new URL(req.url);
-  const status = url.searchParams.get('status') || 'approved';
+  const requestedStatus = url.searchParams.get('status') || 'approved';
   const playerId = url.searchParams.get('player_id');
+
+  // Non-approved requests require organizer/admin access
+  if (requestedStatus !== 'approved') {
+    const auth = await requireTournamentOrganizer(id);
+    if (auth.error) return auth.error;
+  }
+
+  // Clamp to valid values to prevent arbitrary filter injection
+  const validStatuses = ['approved', 'pending', 'rejected', 'all'];
+  const status = validStatuses.includes(requestedStatus) ? requestedStatus : 'approved';
 
   const supabase = createAdminClient();
 

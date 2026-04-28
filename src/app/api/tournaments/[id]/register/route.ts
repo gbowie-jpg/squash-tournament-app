@@ -41,18 +41,35 @@ export async function POST(
     return NextResponse.json({ error: 'A valid email address is required' }, { status: 400 });
   }
 
-  // Fetch tournament
+  // Fetch tournament (include date gate fields)
   const { data: tournament, error: tErr } = await supabase
     .from('tournaments')
-    .select('id, status, slug, name')
+    .select('id, status, slug, name, registration_opens, registration_deadline')
     .eq('id', id)
     .single();
 
   if (tErr || !tournament) {
     return NextResponse.json({ error: 'Tournament not found' }, { status: 404 });
   }
+
+  // Status gate
   if (tournament.status === 'completed') {
     return NextResponse.json({ error: 'Registration is closed' }, { status: 400 });
+  }
+
+  // Date gates — enforce server-side so direct API calls can't bypass the UI checks
+  const now = new Date();
+  if (tournament.registration_opens) {
+    const opensAt = new Date(tournament.registration_opens + 'T00:00:00');
+    if (now < opensAt) {
+      return NextResponse.json({ error: 'Registration is not open yet' }, { status: 400 });
+    }
+  }
+  if (tournament.registration_deadline) {
+    const deadlineAt = new Date(tournament.registration_deadline + 'T23:59:59');
+    if (now > deadlineAt) {
+      return NextResponse.json({ error: 'Registration deadline has passed' }, { status: 400 });
+    }
   }
 
   const normalizedEmail = email.trim().toLowerCase();
