@@ -23,7 +23,8 @@ export async function POST(req: NextRequest) {
     .eq('id', auth.user.id)
     .single();
 
-  if (!callerProfile || !['admin', 'superadmin'].includes(callerProfile.role)) {
+  const callerRole = callerProfile?.role;
+  if (!callerRole || !['admin', 'superadmin'].includes(callerRole)) {
     return NextResponse.json({ error: 'Admin role required' }, { status: 403 });
   }
 
@@ -38,6 +39,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Cannot masquerade as yourself' }, { status: 400 });
   }
 
+  // Get target user's profile to check their role before generating the link
+  const { data: targetProfile } = await supabase
+    .from('profiles')
+    .select('full_name, role')
+    .eq('id', userId)
+    .single();
+
+  // Role hierarchy: superadmin > admin > user.
+  // An admin cannot masquerade as a superadmin (privilege escalation).
+  const roleRank: Record<string, number> = { user: 0, admin: 1, superadmin: 2 };
+  const callerRank = roleRank[callerRole] ?? 0;
+  const targetRank = roleRank[targetProfile?.role ?? 'user'] ?? 0;
+  if (targetRank >= callerRank) {
+    return NextResponse.json(
+      { error: 'Cannot masquerade as a user with equal or higher privileges' },
+      { status: 403 },
+    );
+  }
+
   // Get target user from Supabase Auth
   const { data: targetAuth, error: authErr } = await supabase.auth.admin.getUserById(userId);
   if (authErr || !targetAuth.user) {
@@ -49,14 +69,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Target user has no email address' }, { status: 400 });
   }
 
-  // Get their display name from profiles
-  const { data: targetProfile } = await supabase
-    .from('profiles')
-    .select('full_name')
-    .eq('id', userId)
-    .single();
-
   const name = targetProfile?.full_name || email;
+
 
   // Build the redirect URL — go back to homepage after sign-in
   const origin = req.headers.get('origin') ?? req.headers.get('x-forwarded-host')

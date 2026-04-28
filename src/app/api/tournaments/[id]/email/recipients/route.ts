@@ -147,7 +147,12 @@ export async function DELETE(
   const { recipientId } = await req.json();
   if (!recipientId) return NextResponse.json({ error: 'recipientId required' }, { status: 400 });
 
-  const { error } = await supabase.from('email_recipients').delete().eq('id', recipientId);
+  // Scope to this tournament — prevents cross-tournament deletion by guessing UUIDs
+  const { error } = await supabase
+    .from('email_recipients')
+    .delete()
+    .eq('id', recipientId)
+    .eq('tournament_id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

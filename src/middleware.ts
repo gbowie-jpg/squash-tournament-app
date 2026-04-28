@@ -51,7 +51,14 @@ export async function middleware(request: NextRequest) {
   // Don't let authenticated users see login page
   if (pathname === '/login' && user) {
     const redirect = request.nextUrl.searchParams.get('redirect');
-    return NextResponse.redirect(new URL(redirect || '/admin', request.url));
+    // Only allow relative paths — reject anything with a protocol or double-slash
+    // to prevent open redirect phishing (e.g. /login?redirect=https://evil.com)
+    const isSafeRedirect =
+      redirect &&
+      redirect.startsWith('/') &&
+      !redirect.startsWith('//') &&
+      !redirect.includes(':');
+    return NextResponse.redirect(new URL(isSafeRedirect ? redirect : '/admin', request.url));
   }
 
   // Security headers
@@ -59,6 +66,31 @@ export async function middleware(request: NextRequest) {
   supabaseResponse.headers.set('X-Frame-Options', 'DENY');
   supabaseResponse.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   supabaseResponse.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  // HSTS — tell browsers to always use HTTPS for the next year
+  supabaseResponse.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  // CSP — restrict resource loading to same origin + known external sources
+  supabaseResponse.headers.set(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      // Scripts: self + Next.js inline scripts (needed for hydration)
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      // Styles: self + inline (Tailwind injects inline styles)
+      "style-src 'self' 'unsafe-inline'",
+      // Images: self + Supabase storage + data URIs
+      "img-src 'self' data: blob: https://*.supabase.co https://*.supabase.in",
+      // Fonts: self
+      "font-src 'self'",
+      // API/WS connections: self + Supabase
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.resend.com",
+      // Media (videos): self + Supabase storage
+      "media-src 'self' https://*.supabase.co",
+      // No frames allowed
+      "frame-ancestors 'none'",
+      // Form submissions only to self
+      "form-action 'self'",
+    ].join('; '),
+  );
 
   return supabaseResponse;
 }
