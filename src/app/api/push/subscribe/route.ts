@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { rateLimit, limits } from '@/lib/rateLimit';
 
 export async function POST(req: NextRequest) {
+  const limited = rateLimit(req, limits.pushSubscribe);
+  if (limited) return limited;
+
   const supabase = createAdminClient();
   const { endpoint, p256dh, auth, userAgent } = await req.json();
 

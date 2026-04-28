@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireTournamentOrganizer } from '@/lib/supabase/require-role';
+import { rateLimit, limits } from '@/lib/rateLimit';
 
 /** GET: List all volunteers for a tournament (public). */
 export async function GET(
@@ -26,6 +27,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+
+  const limited = rateLimit(req, limits.publicSignup, id);
+  if (limited) return limited;
+
   const supabase = createAdminClient();
   const body = await req.json();
 

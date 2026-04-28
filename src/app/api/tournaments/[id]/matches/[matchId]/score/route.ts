@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireAuth } from '@/lib/supabase/auth-check';
+import { rateLimit, limits } from '@/lib/rateLimit';
 
 type Params = { params: Promise<{ id: string; matchId: string }> };
 
@@ -28,6 +29,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
  *   3. The assigned referee (volunteer) for this match
  */
 export async function PATCH(req: NextRequest, { params }: Params) {
+  const limited = rateLimit(req, limits.scoring);
+  if (limited) return limited;
+
   const auth = await requireAuth();
   if (auth.error) return auth.error;
 

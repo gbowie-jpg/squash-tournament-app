@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail, getEmailTemplateSettings } from '@/lib/email';
+import { rateLimit, limits } from '@/lib/rateLimit';
 
 /** POST /api/tournaments/[id]/register — public player self-registration. No auth required. */
 export async function POST(
@@ -8,6 +9,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+
+  const limited = rateLimit(req, limits.publicSignup, id);
+  if (limited) return limited;
   const supabase = createAdminClient();
 
   let body: Record<string, unknown>;
