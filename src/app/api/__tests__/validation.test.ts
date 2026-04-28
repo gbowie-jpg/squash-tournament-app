@@ -210,17 +210,17 @@ describe('Court status validation', () => {
 
 describe('Announcement validation', () => {
   it('rejects empty message', () => {
-    const message = '';
+    const message: string = '';
     expect(!message || typeof message !== 'string' || message.trim().length === 0).toBe(true);
   });
 
   it('rejects whitespace-only message', () => {
-    const message = '   \n\t  ';
+    const message: string = '   \n\t  ';
     expect(!message || typeof message !== 'string' || message.trim().length === 0).toBe(true);
   });
 
   it('accepts valid message', () => {
-    const message = 'Court 3 is now available';
+    const message: string = 'Court 3 is now available';
     expect(!message || typeof message !== 'string' || message.trim().length === 0).toBe(false);
   });
 

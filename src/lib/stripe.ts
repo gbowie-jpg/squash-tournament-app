@@ -13,7 +13,7 @@ export async function getStripe(): Promise<Stripe | null> {
   for (const row of data || []) if (row.value) settings[row.key] = row.value;
 
   if (!settings.stripe_secret_key) return null;
-  return new Stripe(settings.stripe_secret_key, { apiVersion: '2025-04-30.basil' });
+  return new Stripe(settings.stripe_secret_key, { apiVersion: '2026-04-22.dahlia' });
 }
 
 /** Read Stripe publishable key from site_settings (safe to expose to client). */

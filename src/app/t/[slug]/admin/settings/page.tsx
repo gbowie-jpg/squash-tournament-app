@@ -83,7 +83,7 @@ export default function TournamentSettings({
     setSaveError(null);
     try {
       // Convert empty strings to null so Supabase stores null, not ""
-      const payload = Object.fromEntries(
+      const payload: Record<string, string | number | null> = Object.fromEntries(
         Object.entries(form).map(([k, v]) => [k, v === '' ? null : v])
       );
       // entry_fee: stored in cents, UI shows dollars
