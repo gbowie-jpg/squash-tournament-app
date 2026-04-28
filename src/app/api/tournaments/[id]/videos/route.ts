@@ -64,10 +64,26 @@ export async function POST(
     return NextResponse.json({ error: 'storage_path is required' }, { status: 400 });
   }
 
+  // Verify player_id actually belongs to this tournament — prevents cross-tournament video injection
+  const { data: playerCheck } = await supabase
+    .from('players')
+    .select('id')
+    .eq('id', body.player_id)
+    .eq('tournament_id', id)
+    .maybeSingle();
+
+  if (!playerCheck) {
+    return NextResponse.json({ error: 'player_id not found in this tournament' }, { status: 400 });
+  }
+
   // Validate file size (500MB max)
   if (body.file_size_bytes && body.file_size_bytes > 500 * 1024 * 1024) {
     return NextResponse.json({ error: 'File too large (max 500MB)' }, { status: 400 });
   }
+
+  // Whitelist mime types — never trust the client string directly
+  const allowedMimeTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm', 'video/mpeg'];
+  const mimeType = allowedMimeTypes.includes(body.mime_type) ? body.mime_type : 'video/mp4';
 
   const { data, error } = await supabase
     .from('player_videos')
@@ -79,7 +95,7 @@ export async function POST(
       storage_path: body.storage_path,
       public_url: body.public_url || null,
       file_size_bytes: typeof body.file_size_bytes === 'number' ? body.file_size_bytes : null,
-      mime_type: body.mime_type || 'video/mp4',
+      mime_type: mimeType,
       uploaded_by: auth.user.id,
       status: 'pending',
     })

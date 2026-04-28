@@ -87,8 +87,36 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const body = await req.json();
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
-  if ('scores' in body) updates.scores = body.scores;
+  if ('scores' in body) {
+    // Validate scores shape: must be an array of game objects with numeric p1/p2 in [0, 99]
+    const scores = body.scores;
+    if (!Array.isArray(scores)) {
+      return NextResponse.json({ error: 'scores must be an array' }, { status: 400 });
+    }
+    if (scores.length > 7) {
+      return NextResponse.json({ error: 'scores cannot have more than 7 games' }, { status: 400 });
+    }
+    for (const game of scores) {
+      if (typeof game !== 'object' || game === null) {
+        return NextResponse.json({ error: 'Each game must be an object' }, { status: 400 });
+      }
+      const p1 = (game as Record<string, unknown>).p1;
+      const p2 = (game as Record<string, unknown>).p2;
+      if (p1 !== undefined && (typeof p1 !== 'number' || !Number.isInteger(p1) || p1 < 0 || p1 > 99)) {
+        return NextResponse.json({ error: 'Game scores must be integers between 0 and 99' }, { status: 400 });
+      }
+      if (p2 !== undefined && (typeof p2 !== 'number' || !Number.isInteger(p2) || p2 < 0 || p2 > 99)) {
+        return NextResponse.json({ error: 'Game scores must be integers between 0 and 99' }, { status: 400 });
+      }
+    }
+    updates.scores = scores;
+  }
+
+  const validStatuses = ['scheduled', 'on_deck', 'in_progress', 'completed', 'cancelled', 'walkover'];
   if ('status' in body) {
+    if (!validStatuses.includes(body.status)) {
+      return NextResponse.json({ error: 'Invalid status value' }, { status: 400 });
+    }
     updates.status = body.status;
     if (body.status === 'in_progress' && !match.started_at) {
       updates.started_at = new Date().toISOString();
@@ -97,7 +125,19 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       updates.completed_at = new Date().toISOString();
     }
   }
-  if ('winner_id' in body) updates.winner_id = body.winner_id;
+
+  if ('winner_id' in body) {
+    // winner_id must be null or one of the two players in this match
+    const validWinners = [
+      (match.player1 as { id?: string } | null)?.id,
+      (match.player2 as { id?: string } | null)?.id,
+      null,
+    ];
+    if (!validWinners.includes(body.winner_id)) {
+      return NextResponse.json({ error: 'winner_id must be a player in this match' }, { status: 400 });
+    }
+    updates.winner_id = body.winner_id;
+  }
 
   const { data, error } = await supabase
     .from('matches')
