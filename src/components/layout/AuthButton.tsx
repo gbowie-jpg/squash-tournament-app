@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { UserCircle } from 'lucide-react';
 
@@ -9,6 +10,7 @@ export default function AuthButton() {
   const [email, setEmail] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const pathname = usePathname();
 
   useEffect(() => {
     const supabase = createClient();
@@ -51,9 +53,13 @@ export default function AuthButton() {
     );
   }
 
+  const loginHref = pathname && pathname !== '/login'
+    ? `/login?redirect=${encodeURIComponent(pathname)}`
+    : '/login';
+
   return (
     <Link
-      href="/login"
+      href={loginHref}
       className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors text-white/90"
     >
       <UserCircle className="w-4 h-4" />
