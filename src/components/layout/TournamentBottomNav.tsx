@@ -2,16 +2,16 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, ClipboardList, Search, Users, User } from 'lucide-react';
+import { Home, ClipboardList, Search, Users, GitBranch } from 'lucide-react';
 
 type Props = { slug: string };
 
 const TABS = [
   { href: (slug: string) => `/t/${slug}`, exact: true, Icon: Home, label: 'Home' },
   { href: (slug: string) => `/t/${slug}/courts`, exact: false, Icon: ClipboardList, label: 'Courts' },
+  { href: (slug: string) => `/t/${slug}/draws`, exact: false, Icon: GitBranch, label: 'Draws' },
   { href: (slug: string) => `/t/${slug}/players`, exact: false, Icon: Search, label: 'Matches' },
   { href: (slug: string) => `/t/${slug}/registrants`, exact: false, Icon: Users, label: 'Players' },
-  { href: (_slug: string) => `/account`, exact: false, Icon: User, label: 'Me' },
 ];
 
 export default function TournamentBottomNav({ slug }: Props) {
