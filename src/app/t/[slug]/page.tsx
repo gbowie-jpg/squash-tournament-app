@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { ClipboardList, Search, Megaphone, HandHelping, MapPin, Phone, Mail } from 'lucide-react';
+import { ClipboardList, Search, Megaphone, HandHelping, MapPin, Phone, Mail, Users } from 'lucide-react';
 import RefreshButton from '@/components/RefreshButton';
 
 // Always fetch fresh data — tournament details change frequently
@@ -96,6 +96,7 @@ export default async function TournamentLanding({
   const quickLinks = [
     { href: `/t/${slug}/courts`, label: 'Court Board', desc: 'Live view of all courts', Icon: ClipboardList },
     { href: `/t/${slug}/players`, label: 'Find My Matches', desc: 'Search by player name', Icon: Search },
+    { href: `/t/${slug}/registrants`, label: 'Registrants', desc: `${playerCount ?? 0} players registered`, Icon: Users },
     { href: `/t/${slug}/announcements`, label: 'Announcements', desc: 'Updates from the organizer', Icon: Megaphone },
     { href: `/t/${slug}/volunteer`, label: 'Volunteer / Referee', desc: 'Sign up to help or officiate', Icon: HandHelping },
   ];
