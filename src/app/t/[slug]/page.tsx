@@ -4,6 +4,8 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { ClipboardList, Search, Megaphone, HandHelping, MapPin, Phone, Mail, Users, GitBranch } from 'lucide-react';
 import RefreshButton from '@/components/RefreshButton';
 import PullToRefresh from '@/components/PullToRefresh';
+import TournamentMediaGallery from '@/components/tournament/TournamentMediaGallery';
+import type { TournamentMediaItem } from '@/components/tournament/TournamentMediaGallery';
 
 // Always fetch fresh data — tournament details change frequently
 export const dynamic = 'force-dynamic';
@@ -72,6 +74,25 @@ export default async function TournamentLanding({
     .limit(6);
 
   const nextMatches = (nextMatchesRaw || []) as unknown as MatchPreview[];
+
+  // Recent tournament media — fetch match IDs first, then media
+  const { data: tournamentMatchIds } = await supabase
+    .from('matches')
+    .select('id')
+    .eq('tournament_id', tournament.id);
+
+  const matchIdList = (tournamentMatchIds ?? []).map((m: { id: string }) => m.id);
+
+  let recentMedia: TournamentMediaItem[] = [];
+  if (matchIdList.length > 0) {
+    const { data: mediaRows } = await supabase
+      .from('match_media')
+      .select('id, url, type, caption, match_id, match:matches!match_id(id, player1:players!player1_id(name), player2:players!player2_id(name))')
+      .in('match_id', matchIdList)
+      .order('created_at', { ascending: false })
+      .limit(24);
+    recentMedia = (mediaRows ?? []) as unknown as TournamentMediaItem[];
+  }
 
   const fmt = (d: string | null, opts?: Intl.DateTimeFormatOptions) =>
     d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US', opts || { month: 'short', day: 'numeric', year: 'numeric' }) : null;
@@ -252,6 +273,11 @@ export default async function TournamentLanding({
                   View full court board
                 </Link>
               </div>
+            )}
+
+            {/* Tournament media gallery */}
+            {recentMedia.length > 0 && (
+              <TournamentMediaGallery slug={slug} items={recentMedia} />
             )}
 
             {/* Info accordion */}

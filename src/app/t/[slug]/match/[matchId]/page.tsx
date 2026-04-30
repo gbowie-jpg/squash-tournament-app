@@ -49,7 +49,9 @@ function MatchMediaSection({
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [lightbox, setLightbox] = useState<string | null>(null); // URL of photo to enlarge
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchMedia = useCallback(async () => {
@@ -110,12 +112,23 @@ function MatchMediaSection({
 
   async function handleDelete(item: MatchMedia) {
     if (!confirm('Remove this media?')) return;
-    const res = await fetch(
-      `/api/tournaments/${tournamentId}/matches/${matchId}/media?mediaId=${item.id}`,
-      { method: 'DELETE' }
-    );
-    if (res.ok) {
-      setMedia((prev) => prev.filter((m) => m.id !== item.id));
+    setDeleteError(null);
+    setDeletingId(item.id);
+    try {
+      const res = await fetch(
+        `/api/tournaments/${tournamentId}/matches/${matchId}/media?mediaId=${item.id}`,
+        { method: 'DELETE' }
+      );
+      if (res.ok) {
+        setMedia((prev) => prev.filter((m) => m.id !== item.id));
+      } else {
+        const d = await res.json().catch(() => ({}));
+        setDeleteError(d.error ?? `Delete failed (${res.status})`);
+      }
+    } catch {
+      setDeleteError('Network error — please try again');
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -163,6 +176,13 @@ function MatchMediaSection({
         </p>
       )}
 
+      {deleteError && (
+        <p className="mx-4 mb-2 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
+          <span>{deleteError}</span>
+          <button onClick={() => setDeleteError(null)} className="shrink-0 underline">Dismiss</button>
+        </p>
+      )}
+
       {loading ? (
         <div className="px-4 pb-4 text-sm text-[var(--text-muted)]">Loading…</div>
       ) : media.length === 0 ? (
@@ -192,10 +212,13 @@ function MatchMediaSection({
                     {currentUserId && (canDeleteAll || item.uploaded_by === currentUserId) && (
                       <button
                         onClick={() => handleDelete(item)}
-                        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        disabled={deletingId === item.id}
+                        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-80"
                         aria-label="Delete"
                       >
-                        <Trash2 className="w-3 h-3" />
+                        {deletingId === item.id
+                          ? <Loader2 className="w-3 h-3 animate-spin" />
+                          : <Trash2 className="w-3 h-3" />}
                       </button>
                     )}
                   </div>
@@ -227,10 +250,13 @@ function MatchMediaSection({
                     {currentUserId && (canDeleteAll || item.uploaded_by === currentUserId) && (
                       <button
                         onClick={() => handleDelete(item)}
-                        className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        disabled={deletingId === item.id}
+                        className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-80"
                         aria-label="Delete video"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        {deletingId === item.id
+                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          : <Trash2 className="w-3.5 h-3.5" />}
                       </button>
                     )}
                     {item.caption && (
@@ -295,7 +321,8 @@ export default function MatchDetail({
         supabase.from('profiles').select('role').eq('id', user.id).single(),
         supabase.from('organizers').select('id').eq('tournament_id', tournament.id).eq('user_id', user.id).maybeSingle(),
       ]);
-      const isGlobalAdmin = profileRes.data?.role === 'admin' || profileRes.data?.role === 'superadmin';
+      const profile = profileRes.data as { role: string } | null;
+      const isGlobalAdmin = profile?.role === 'admin' || profile?.role === 'superadmin';
       const isOrganizer = !!organizerRes.data;
       setCanDeleteAllMedia(isGlobalAdmin || isOrganizer);
     });
