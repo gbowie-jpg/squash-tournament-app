@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { ClipboardList, Search, Megaphone, HandHelping, MapPin, Phone, Mail, Users, GitBranch } from 'lucide-react';
 import RefreshButton from '@/components/RefreshButton';
+import PullToRefresh from '@/components/PullToRefresh';
 
 // Always fetch fresh data — tournament details change frequently
 export const dynamic = 'force-dynamic';
@@ -94,10 +95,10 @@ export default async function TournamentLanding({
   const textColors = getTextColors(tournament.hero_text_color);
 
   const quickLinks = [
-    { href: `/t/${slug}/courts`, label: 'Court Board', desc: 'Live view of all courts', Icon: ClipboardList },
-    { href: `/t/${slug}/draws`, label: 'Draws & Brackets', desc: 'Brackets, results, upcoming matches', Icon: GitBranch },
-    { href: `/t/${slug}/players`, label: 'Find My Matches', desc: 'Search by player name', Icon: Search },
-    { href: `/t/${slug}/registrants`, label: 'Registrants', desc: `${playerCount ?? 0} players registered`, Icon: Users },
+    { href: `/t/${slug}/draws`, label: 'Bracket', desc: 'Full draw & match results', Icon: GitBranch },
+    { href: `/t/${slug}/draws?tab=live`, label: 'Live Matches', desc: `${inProgress ?? 0} match${(inProgress ?? 0) !== 1 ? 'es' : ''} in progress`, Icon: ClipboardList },
+    { href: `/t/${slug}/draws?tab=done`, label: 'Results', desc: `${completed ?? 0} completed`, Icon: Search },
+    { href: `/t/${slug}/registrants`, label: 'Players', desc: `${playerCount ?? 0} registered`, Icon: Users },
     { href: `/t/${slug}/announcements`, label: 'Announcements', desc: 'Updates from the organizer', Icon: Megaphone },
     { href: `/t/${slug}/volunteer`, label: 'Volunteer / Referee', desc: 'Sign up to help or officiate', Icon: HandHelping },
   ];
@@ -110,12 +111,13 @@ export default async function TournamentLanding({
   ];
 
   return (
+    <PullToRefresh>
     <div className="min-h-screen bg-[var(--surface)] flex flex-col pb-16 md:pb-0">
       <SiteNav />
 
-      {/* Hero */}
+      {/* Hero — compact so info buttons are above the fold */}
       <header style={{ background: heroBackground(tournament.hero_image_url, tournament.hero_gradient, tournament.hero_overlay !== 'false') }}>
-        <div className="max-w-5xl mx-auto px-4 py-10">
+        <div className="max-w-5xl mx-auto px-4 py-5">
           <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
 
             {/* Tournament graphic */}
@@ -350,6 +352,7 @@ export default async function TournamentLanding({
       </div>
       <TournamentBottomNav slug={slug} />
     </div>
+    </PullToRefresh>
   );
 }
 

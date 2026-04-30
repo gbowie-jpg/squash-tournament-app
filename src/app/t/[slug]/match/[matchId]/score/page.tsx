@@ -8,7 +8,7 @@ import { ChevronLeft, Trophy } from 'lucide-react';
 import type { MatchWithDetails, GameScore, Court } from '@/lib/supabase/types';
 
 type Params = { slug: string; matchId: string };
-type Step = 'confirm' | 'serve' | 'warmup' | 'scoring';
+type Step = 'confirm' | 'warmup' | 'scoring';
 
 // ── Scoring helpers ────────────────────────────────────────────────
 function gameWinner(g: GameScore): 'p1' | 'p2' | null {
@@ -313,7 +313,7 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
   const isCompleted = match.status === 'completed' || match.status === 'walkover' || !!autoMatchWinner;
   const isNotStarted = match.status === 'scheduled' || match.status === 'on_deck';
 
-  // ── STEP 1: Confirm players & court ──────────────────────────────
+  // ── STEP 1: Confirm players, court, server & sides ───────────────
   if (step === 'confirm') {
     return (
       <div className="min-h-screen bg-zinc-950 text-white flex flex-col select-none">
@@ -322,13 +322,13 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
             <ChevronLeft className="w-5 h-5" />
           </Link>
           <div className="flex-1 text-center">
-            <p className="text-xs text-zinc-500 font-semibold uppercase tracking-widest">Step 1 of 3</p>
+            <p className="text-xs text-zinc-500 font-semibold uppercase tracking-widest">Step 1 of 2</p>
             <p className="text-sm font-bold mt-0.5">Confirm Match</p>
           </div>
           <div className="w-7" />
         </div>
 
-        <div className="flex-1 px-4 space-y-4 overflow-y-auto pb-6">
+        <div className="flex-1 px-4 space-y-5 overflow-y-auto pb-6">
           {/* Draw + Round */}
           {(match.draw || match.round) && (
             <div className="bg-zinc-800 rounded-2xl px-4 py-3 text-center">
@@ -373,119 +373,65 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
               <p className="text-zinc-400 text-sm">{match.court?.name ?? 'No court assigned'}</p>
             )}
           </div>
-        </div>
 
-        <div className="px-4 pb-10 pt-3">
-          <button
-            onClick={() => setStep('serve')}
-            className="w-full py-4 rounded-2xl text-lg font-bold text-white"
-            style={{ background: '#2563eb' }}
-          >
-            Confirm & Continue →
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // ── STEP 2: Who serves first + sides ──────────────────────────────
-  if (step === 'serve') {
-    const rightPlayer: 'p1' | 'p2' = leftPlayer === 'p1' ? 'p2' : 'p1';
-    return (
-      <div className="min-h-screen bg-zinc-950 text-white flex flex-col select-none">
-        <div className="flex items-center px-4 pt-8 pb-4">
-          <button onClick={() => setStep('confirm')} className="text-zinc-400 p-1 -ml-1">
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <div className="flex-1 text-center">
-            <p className="text-xs text-zinc-500 font-semibold uppercase tracking-widest">Step 2 of 3</p>
-            <p className="text-sm font-bold mt-0.5">Serve &amp; Sides</p>
-          </div>
-          <div className="w-7" />
-        </div>
-
-        <div className="flex-1 px-4 space-y-8 overflow-y-auto pb-6">
           {/* Who serves first */}
           <div>
-            <p className="text-xs text-zinc-500 font-semibold uppercase tracking-widest text-center mb-4">
+            <p className="text-xs text-zinc-500 font-semibold uppercase tracking-widest text-center mb-3">
               Who serves first?
             </p>
             <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setServer('p1')}
-                className="p-5 rounded-2xl font-bold text-base transition-all"
-                style={{
-                  background: server === 'p1' ? '#2563eb' : '#27272a',
-                  border: server === 'p1' ? '2px solid #60a5fa' : '2px solid transparent',
-                  color: '#fff',
-                }}
-              >
-                {p1?.name ?? 'Player 1'}
-                {server === 'p1' && (
-                  <div className="text-xs font-normal mt-1.5" style={{ color: '#bfdbfe' }}>
-                    ● Serves first
-                  </div>
-                )}
-              </button>
-              <button
-                onClick={() => setServer('p2')}
-                className="p-5 rounded-2xl font-bold text-base transition-all"
-                style={{
-                  background: server === 'p2' ? '#2563eb' : '#27272a',
-                  border: server === 'p2' ? '2px solid #60a5fa' : '2px solid transparent',
-                  color: '#fff',
-                }}
-              >
-                {p2?.name ?? 'Player 2'}
-                {server === 'p2' && (
-                  <div className="text-xs font-normal mt-1.5" style={{ color: '#bfdbfe' }}>
-                    ● Serves first
-                  </div>
-                )}
-              </button>
+              {(['p1', 'p2'] as const).map((p) => {
+                const name = p === 'p1' ? (p1?.name ?? 'Player 1') : (p2?.name ?? 'Player 2');
+                const active = server === p;
+                return (
+                  <button key={p} onClick={() => setServer(p)}
+                    className="p-4 rounded-2xl font-bold text-base transition-all"
+                    style={{
+                      background: active ? '#2563eb' : '#27272a',
+                      border: active ? '2px solid #60a5fa' : '2px solid transparent',
+                      color: '#fff',
+                    }}>
+                    {name}
+                    {active && <div className="text-xs font-normal mt-1" style={{ color: '#bfdbfe' }}>● Serves first</div>}
+                  </button>
+                );
+              })}
             </div>
-            <p className="text-xs text-zinc-600 text-center mt-2">Usually determined by coin toss</p>
+            <p className="text-xs text-zinc-600 text-center mt-1.5">Coin toss or mutual agreement</p>
           </div>
 
-          {/* Court sides */}
+          {/* Court positions */}
           <div>
-            <p className="text-xs text-zinc-500 font-semibold uppercase tracking-widest text-center mb-4">
-              Starting court positions
+            <p className="text-xs text-zinc-500 font-semibold uppercase tracking-widest text-center mb-3">
+              Court Positions
             </p>
             <div className="border-2 border-zinc-700 rounded-2xl overflow-hidden">
-              {/* Court top label */}
-              <div className="bg-zinc-900 py-2 text-center border-b border-zinc-700">
+              <div className="bg-zinc-900 py-1.5 text-center border-b border-zinc-700">
                 <p className="text-[10px] text-zinc-600 font-semibold uppercase tracking-widest">Front Wall</p>
               </div>
-              {/* Service boxes */}
               <div className="grid grid-cols-2">
-                <button
-                  onClick={() => setLeftPlayer('p1')}
-                  className="py-5 text-center border-r border-zinc-700 transition-colors"
-                  style={{ background: leftPlayer === 'p1' ? '#1e3a5f' : '#18181b' }}
-                >
-                  <p className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Left</p>
+                <button onClick={() => setLeftPlayer('p1')}
+                  className="py-4 text-center border-r border-zinc-700 transition-colors"
+                  style={{ background: leftPlayer === 'p1' ? '#1e3a5f' : '#18181b' }}>
+                  <p className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Left side</p>
                   <p className="font-bold text-sm" style={{ color: leftPlayer === 'p1' ? '#93c5fd' : '#71717a' }}>
-                    {leftPlayer === 'p1' ? p1?.name ?? 'P1' : p2?.name ?? 'P2'}
+                    {p1?.name ?? 'P1'}
                   </p>
                 </button>
-                <button
-                  onClick={() => setLeftPlayer('p2')}
-                  className="py-5 text-center transition-colors"
-                  style={{ background: leftPlayer === 'p2' ? '#1e3a5f' : '#18181b' }}
-                >
-                  <p className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Right</p>
+                <button onClick={() => setLeftPlayer('p2')}
+                  className="py-4 text-center transition-colors"
+                  style={{ background: leftPlayer === 'p2' ? '#1e3a5f' : '#18181b' }}>
+                  <p className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Right side</p>
                   <p className="font-bold text-sm" style={{ color: leftPlayer === 'p2' ? '#93c5fd' : '#71717a' }}>
-                    {leftPlayer === 'p2' ? p1?.name ?? 'P1' : p2?.name ?? 'P2'}
+                    {p2?.name ?? 'P2'}
                   </p>
                 </button>
               </div>
-              {/* Court back label */}
-              <div className="bg-zinc-900 py-2 text-center border-t border-zinc-700">
+              <div className="bg-zinc-900 py-1.5 text-center border-t border-zinc-700">
                 <p className="text-[10px] text-zinc-600 font-semibold uppercase tracking-widest">Back Wall</p>
               </div>
             </div>
-            <p className="text-xs text-zinc-600 text-center mt-2">Tap to swap. Sides alternate each game.</p>
+            <p className="text-xs text-zinc-600 text-center mt-1.5">Tap to swap · sides switch each game</p>
           </div>
         </div>
 
@@ -496,27 +442,25 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
             className="w-full py-4 rounded-2xl text-lg font-bold text-white disabled:opacity-30 transition-opacity"
             style={{ background: server ? '#2563eb' : '#27272a' }}
           >
-            Continue to Warm-up →
+            Confirm & Continue →
           </button>
-          {!server && (
-            <p className="text-center text-xs text-zinc-600 mt-2">Select who serves first</p>
-          )}
+          {!server && <p className="text-center text-xs text-zinc-600 mt-2">Select who serves first</p>}
         </div>
       </div>
     );
   }
 
-  // ── STEP 3: Warm-up timer ─────────────────────────────────────────
+  // ── STEP 2: Warm-up timer ─────────────────────────────────────────
   if (step === 'warmup') {
     const warmupDone = warmupSeconds === 0;
     return (
       <div className="min-h-screen bg-zinc-950 text-white flex flex-col select-none items-center">
         <div className="w-full flex items-center px-4 pt-8 pb-4">
-          <button onClick={() => setStep('serve')} className="text-zinc-400 p-1 -ml-1">
+          <button onClick={() => setStep('confirm')} className="text-zinc-400 p-1 -ml-1">
             <ChevronLeft className="w-5 h-5" />
           </button>
           <div className="flex-1 text-center">
-            <p className="text-xs text-zinc-500 font-semibold uppercase tracking-widest">Step 3 of 3</p>
+            <p className="text-xs text-zinc-500 font-semibold uppercase tracking-widest">Step 2 of 2</p>
             <p className="text-sm font-bold mt-0.5">Warm-up</p>
           </div>
           <div className="w-7" />
@@ -582,10 +526,10 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
     );
   }
 
-  // ── STEP 4: Scoring ───────────────────────────────────────────────
-  const serviceBox = server
-    ? (gs[server] % 2 === 0 ? 'Right box' : 'Left box')
-    : null;
+  // ── STEP 3: Scoring ───────────────────────────────────────────────
+  // PAR scoring service box: server's score even = right box, odd = left box
+  const serverScore = server ? gs[server] : 0;
+  const serviceBox = server ? (serverScore % 2 === 0 ? 'Right box' : 'Left box') : null;
 
   const p1Side = leftPlayer === 'p1' ? 'L' : 'R';
   const p2Side = leftPlayer === 'p2' ? 'L' : 'R';
@@ -608,40 +552,37 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
         <div className="w-7" />
       </div>
 
-      {/* ── Serve bar — tall, tap to switch server ── */}
+      {/* ── Serve bar ── */}
       {!isCompleted && (
-        <button
-          onClick={() => setServer(s => s === 'p1' ? 'p2' : 'p1')}
-          className="mx-4 mb-3 rounded-2xl overflow-hidden border border-zinc-700 h-14 grid grid-cols-2 cursor-pointer"
-          title="Tap to switch server"
-        >
-          <div
-            className="flex flex-col items-center justify-center transition-colors h-full"
-            style={{ background: server === 'p1' ? '#1d4ed8' : '#1c1c1e' }}
+        <div className="mx-4 mb-3 space-y-1">
+          {/* Serving indicator */}
+          <button
+            onClick={() => setServer(s => s === 'p1' ? 'p2' : 'p1')}
+            className="w-full rounded-2xl overflow-hidden border border-zinc-700 h-14 grid grid-cols-2 cursor-pointer"
+            title="Tap to switch server"
           >
-            <span className="text-xs font-bold truncate px-2 max-w-full"
-              style={{ color: server === 'p1' ? '#fff' : '#71717a' }}>
-              {server === 'p1' ? '● ' : ''}{p1?.name ?? 'P1'}
-            </span>
-            <span className="text-[10px] mt-0.5"
-              style={{ color: server === 'p1' ? '#93c5fd' : '#52525b' }}>
-              {server === 'p1' ? serviceBox : p1Side + ' side'}
-            </span>
-          </div>
-          <div
-            className="flex flex-col items-center justify-center transition-colors h-full border-l border-zinc-700"
-            style={{ background: server === 'p2' ? '#1d4ed8' : '#1c1c1e' }}
-          >
-            <span className="text-xs font-bold truncate px-2 max-w-full"
-              style={{ color: server === 'p2' ? '#fff' : '#71717a' }}>
-              {server === 'p2' ? '● ' : ''}{p2?.name ?? 'P2'}
-            </span>
-            <span className="text-[10px] mt-0.5"
-              style={{ color: server === 'p2' ? '#93c5fd' : '#52525b' }}>
-              {server === 'p2' ? serviceBox : p2Side + ' side'}
-            </span>
-          </div>
-        </button>
+            {(['p1', 'p2'] as const).map((p, i) => {
+              const isServing = server === p;
+              const name = p === 'p1' ? (p1?.name ?? 'P1') : (p2?.name ?? 'P2');
+              const side = p === 'p1' ? p1Side : p2Side;
+              return (
+                <div key={p}
+                  className={`flex flex-col items-center justify-center h-full transition-colors ${i === 1 ? 'border-l border-zinc-700' : ''}`}
+                  style={{ background: isServing ? '#1d4ed8' : '#1c1c1e' }}>
+                  <span className="text-xs font-bold truncate px-2 max-w-full"
+                    style={{ color: isServing ? '#fff' : '#71717a' }}>
+                    {isServing ? '● ' : ''}{name}
+                  </span>
+                  <span className="text-[10px] mt-0.5 font-semibold"
+                    style={{ color: isServing ? '#93c5fd' : '#52525b' }}>
+                    {isServing ? `Serving · ${serviceBox}` : `${side} side`}
+                  </span>
+                </div>
+              );
+            })}
+          </button>
+          <p className="text-center text-[10px] text-zinc-700">Tap bar to switch server</p>
+        </div>
       )}
 
       {/* Completed banner */}
@@ -730,7 +671,7 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
         </>
       )}
 
-      {/* Completed: scores summary */}
+      {/* Completed: final scores summary */}
       {isCompleted && scores.some(g => g.p1 > 0 || g.p2 > 0) && (
         <div className="px-4 mb-3">
           <div className="bg-zinc-900 rounded-2xl p-4">
@@ -756,25 +697,6 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
           </div>
         )}
         {saving && <p className="text-center text-xs text-zinc-600">Saving…</p>}
-
-        {!isCompleted && canScore && (
-          <button
-            onClick={() => {
-              const mw = matchWinner(scores);
-              if (!mw) {
-                // Manual declare
-                const wid = confirm(`${p1?.name ?? 'Player 1'} wins? (Cancel = ${p2?.name ?? 'Player 2'} wins)`)
-                  ? match.player1_id : match.player2_id;
-                saveScores(scores, 'completed', wid ?? undefined);
-                setAutoMatchWinner(match.player1_id === wid ? 'p1' : 'p2');
-              }
-            }}
-            className="w-full py-3.5 rounded-2xl font-bold text-zinc-900"
-            style={{ background: '#eab308' }}
-          >
-            Declare Match Winner
-          </button>
-        )}
 
         {isCompleted && (
           <Link href={`/t/${slug}/match/${matchId}`}

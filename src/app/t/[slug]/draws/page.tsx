@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import SiteNav from '@/components/layout/SiteNav';
 import SiteFooter from '@/components/layout/SiteFooter';
 import TournamentBottomNav from '@/components/layout/TournamentBottomNav';
+import PullToRefresh from '@/components/PullToRefresh';
 import DrawsClient from './DrawsClient';
 import type { Tournament } from '@/lib/supabase/types';
 import type { BracketMatch } from '@/components/tournament/Bracket';
@@ -12,10 +13,12 @@ export const dynamic = 'force-dynamic';
 
 export default async function DrawsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
-  const { slug } = await params;
+  const [{ slug }, { tab }] = await Promise.all([params, searchParams]);
   const supabase = await createServerSupabaseClient();
 
   const { data } = await supabase
@@ -54,7 +57,12 @@ export default async function DrawsPage({
     .filter((m) => m.player1 && m.player2) // skip TBD slots
     .slice(0, 10);
 
+  const defaultTab = (['bracket', 'live', 'done'] as const).includes(tab as 'bracket' | 'live' | 'done')
+    ? (tab as 'bracket' | 'live' | 'done')
+    : 'bracket';
+
   return (
+    <PullToRefresh>
     <div className="min-h-screen bg-[var(--surface)] flex flex-col pb-16 md:pb-0">
       <SiteNav />
 
@@ -80,9 +88,11 @@ export default async function DrawsPage({
           </div>
         ) : (
           <DrawsClient
+            slug={slug}
             drawNames={drawNames}
             matches={matches}
             upcoming={upcoming}
+            defaultTab={defaultTab}
           />
         )}
       </main>
@@ -90,5 +100,6 @@ export default async function DrawsPage({
       <SiteFooter />
       <TournamentBottomNav slug={slug} />
     </div>
+    </PullToRefresh>
   );
 }

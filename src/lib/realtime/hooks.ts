@@ -9,6 +9,7 @@ export function useRealtimeMatches(tournamentId: string) {
   const [loading, setLoading] = useState(true);
 
   const fetchMatches = useCallback(async () => {
+    if (!tournamentId) return; // Guard — don't fetch with empty ID
     const supabase = createClient();
     const { data } = await supabase
       .from('matches')
@@ -20,6 +21,8 @@ export function useRealtimeMatches(tournamentId: string) {
   }, [tournamentId]);
 
   useEffect(() => {
+    if (!tournamentId) return; // Don't subscribe with empty ID
+    setLoading(true); // Reset so we never flash "not found" between ID changes
     fetchMatches();
 
     const supabase = createClient();

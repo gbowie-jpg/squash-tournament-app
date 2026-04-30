@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import type { GameScore } from '@/lib/supabase/types';
 
 export type BracketMatch = {
@@ -114,7 +115,7 @@ function PlayerRow({
 }
 
 // ── Match card ────────────────────────────────────────────────────────────────
-function MatchCard({ match, isFinal }: { match: BracketMatch; isFinal?: boolean }) {
+function MatchCard({ match, isFinal, slug }: { match: BracketMatch; isFinal?: boolean; slug?: string }) {
   const { player1, player2, winner_id, scores, status, scheduled_time } = match;
   const isBye      = status === 'walkover' || !!match.notes?.startsWith('BYE');
   const isComplete = status === 'completed' || status === 'walkover';
@@ -135,7 +136,20 @@ function MatchCard({ match, isFinal }: { match: BracketMatch; isFinal?: boolean 
     </span>
   ) : null;
 
+  const Wrapper = slug
+    ? ({ children }: { children: React.ReactNode }) => (
+        <Link
+          href={`/t/${slug}/match/${match.id}`}
+          className="block hover:opacity-90 transition-opacity"
+          style={{ width: CARD_W }}
+        >
+          {children}
+        </Link>
+      )
+    : ({ children }: { children: React.ReactNode }) => <>{children}</>;
+
   return (
+    <Wrapper>
     <div
       className={`border rounded-xl overflow-hidden shadow-sm ${
         isFinal
@@ -171,6 +185,7 @@ function MatchCard({ match, isFinal }: { match: BracketMatch; isFinal?: boolean 
         )}
       </div>
     </div>
+    </Wrapper>
   );
 }
 
@@ -207,7 +222,7 @@ function Connectors({ numMatches, roundIdx }: { numMatches: number; roundIdx: nu
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
-export default function Bracket({ matches }: { matches: BracketMatch[] }) {
+export default function Bracket({ matches, slug }: { matches: BracketMatch[]; slug?: string }) {
   if (!matches.length) {
     return (
       <p className="text-center py-12 text-[var(--text-secondary)] text-sm">
@@ -256,7 +271,7 @@ export default function Bracket({ matches }: { matches: BracketMatch[] }) {
                   key={match.id}
                   style={{ position: 'absolute', top: LABEL_H + topOfMatch(roundIdx, mi), left: colLeft }}
                 >
-                  <MatchCard match={match} isFinal={isFinalRound} />
+                  <MatchCard match={match} isFinal={isFinalRound} slug={slug} />
                 </div>
               ))}
 
