@@ -114,7 +114,12 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ _check: true }),
       });
-      setCanScore(patchTest.status !== 403 && patchTest.status !== 401);
+      // 423 = scorer locked by someone else; 403/401 = not authorized
+      setCanScore(patchTest.status !== 403 && patchTest.status !== 401 && patchTest.status !== 423);
+      if (patchTest.status === 423) {
+        const d = await patchTest.json().catch(() => ({}));
+        setError(d.error ?? 'This match is already being scored.');
+      }
       setAuthChecked(true);
       setLoading(false);
     }
@@ -267,21 +272,34 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
   }
 
   if (authChecked && !canScore) {
+    const isLocked = error.includes('already being scored');
     return (
       <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center gap-4 px-4 text-center">
         <div className="w-14 h-14 bg-zinc-800 rounded-full flex items-center justify-center mb-2">
-          <svg className="w-7 h-7 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-          </svg>
+          {isLocked ? (
+            <svg className="w-7 h-7 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            </svg>
+          ) : (
+            <svg className="w-7 h-7 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          )}
         </div>
-        <h1 className="text-white text-xl font-bold">Sign in to score</h1>
+        <h1 className="text-white text-xl font-bold">
+          {isLocked ? 'Match already in progress' : 'Sign in to score'}
+        </h1>
         <p className="text-zinc-400 text-sm max-w-xs">
-          You must be a player in this match, an assigned referee, or tournament organizer.
+          {isLocked
+            ? 'Another scorer has already claimed this match. Contact the tournament organizer if there is an issue.'
+            : 'You must be a player in this match, an assigned referee, or tournament organizer.'}
         </p>
-        <Link href={`/login?redirect=/t/${slug}/match/${matchId}/score`}
-          className="bg-white text-zinc-900 font-semibold px-6 py-3 rounded-xl text-sm">
-          Sign In
-        </Link>
+        {!isLocked && (
+          <Link href={`/login?redirect=/t/${slug}/match/${matchId}/score`}
+            className="bg-white text-zinc-900 font-semibold px-6 py-3 rounded-xl text-sm">
+            Sign In
+          </Link>
+        )}
         <Link href={`/t/${slug}/match/${matchId}`} className="text-sm text-zinc-500 mt-1">Back to match</Link>
       </div>
     );

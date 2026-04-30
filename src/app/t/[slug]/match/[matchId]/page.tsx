@@ -66,13 +66,7 @@ export default function MatchDetail({
   const isOnDeck = match?.status === 'on_deck';
   const isCompleted = match?.status === 'completed' || match?.status === 'walkover';
 
-  // Determine if current user can score
-  const isPlayer1 = match?.player1?.email && userEmail && match.player1.email === userEmail;
-  const isPlayer2 = match?.player2?.email && userEmail && match.player2.email === userEmail;
-  const canScore = currentUserId && match && (
-    isPlayer1 || isPlayer2 ||
-    match.status === 'in_progress' || match.status === 'on_deck' || match.status === 'scheduled'
-  );
+  // The score page handles its own auth + scorer-lock check via the API
 
   return (
     <PullToRefresh>
@@ -213,7 +207,16 @@ export default function MatchDetail({
                           : 'bg-foreground text-card'
                       }`}
                     >
-                      {isLive ? '🎾 Score this Match' : isOnDeck ? '⏳ Prepare to Score' : 'Open Scoring App'}
+                      {isLive ? (
+                        <>
+                          <svg viewBox="0 0 20 20" className="w-4 h-4 inline-block mr-1.5 shrink-0" aria-hidden>
+                            <circle cx="10" cy="10" r="9" fill="#111"/>
+                            <circle cx="7.5" cy="8.5" r="2" fill="#EAB308"/>
+                            <circle cx="12.5" cy="12" r="2" fill="#EAB308"/>
+                          </svg>
+                          Score this Match
+                        </>
+                      ) : isOnDeck ? '⏳ Prepare to Score' : 'Open Scoring App'}
                     </Link>
                   ) : (
                     <Link

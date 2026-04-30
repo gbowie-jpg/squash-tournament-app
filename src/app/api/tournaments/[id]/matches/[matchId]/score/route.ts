@@ -48,6 +48,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   if (!match) return NextResponse.json({ error: 'Match not found' }, { status: 404 });
 
+  // Scorer lock: if scorer_user_id is already set, only that scorer (or organizer/admin) may proceed
+  const existingScorerId = (match.scorer_user_id as string | null) ?? null;
+
   // Check permissions
   const isOrganizer = await supabase
     .from('organizers')
@@ -84,8 +87,18 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Not authorized to score this match' }, { status: 403 });
   }
 
+  // If another scorer has already claimed this match, block everyone except them (and organizers/admins)
+  if (existingScorerId && existingScorerId !== auth.user.id && !isOrganizer && !isAdmin) {
+    return NextResponse.json({ error: 'This match is already being scored by someone else' }, { status: 423 });
+  }
+
   const body = await req.json();
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+
+  // Allow court_id to be set/changed
+  if ('court_id' in body) {
+    updates.court_id = body.court_id ?? null;
+  }
 
   if ('scores' in body) {
     const scores = body.scores;
@@ -154,10 +167,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'Invalid status value' }, { status: 400 });
     }
     updates.status = body.status;
-    if (body.status === 'in_progress' && !match.started_at) {
-      updates.started_at = new Date().toISOString();
+    if (body.status === 'in_progress') {
+      if (!match.started_at) updates.started_at = new Date().toISOString();
+      // Claim scorer lock for whoever starts the match
+      if (!existingScorerId) updates.scorer_user_id = auth.user.id;
     }
-    if (body.status === 'completed') {
+    if (body.status === 'completed' || body.status === 'walkover') {
       updates.completed_at = new Date().toISOString();
     }
   }
@@ -180,6 +195,16 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Update court status when match starts or ends
+  const courtId = data.court_id ?? match.court_id;
+  if (courtId) {
+    if (body.status === 'in_progress') {
+      await supabase.from('courts').update({ status: 'in_use' }).eq('id', courtId);
+    } else if (body.status === 'completed' || body.status === 'walkover' || body.status === 'cancelled') {
+      await supabase.from('courts').update({ status: 'available' }).eq('id', courtId);
+    }
+  }
 
   // On Deck logic: when a match starts, mark next match on that court as on_deck
   if (body.status === 'in_progress' && data.court_id) {

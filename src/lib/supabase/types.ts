@@ -132,6 +132,7 @@ export type Database = {
           winner_id: string | null;
           notes: string | null;
           referee_id: string | null;
+          scorer_user_id: string | null;
           sort_order: number;
           created_at: string;
           updated_at: string;
@@ -150,6 +151,7 @@ export type Database = {
           scores?: GameScore[];
           winner_id?: string | null;
           referee_id?: string | null;
+          scorer_user_id?: string | null;
           notes?: string | null;
           sort_order?: number;
         };
