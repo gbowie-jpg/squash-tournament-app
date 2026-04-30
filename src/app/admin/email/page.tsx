@@ -95,8 +95,15 @@ export default function GlobalEmail() {
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [sendTags, setSendTags] = useState<string[]>([]);
+  const [sendMode, setSendMode] = useState<'all' | 'single'>('all');
+  const [singleEmail, setSingleEmail] = useState('');
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  // Test send
+  const [testEmail, setTestEmail] = useState('');
+  const [testSending, setTestSending] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
   // Add single
   const [addName, setAddName] = useState('');
@@ -318,11 +325,57 @@ export default function GlobalEmail() {
     setSendTags((prev) => prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]);
   };
 
+  const sendTest = async () => {
+    if (!subject || !body || !testEmail) return;
+    setTestSending(true);
+    setTestResult(null);
+    try {
+      const res = await fetch('/api/admin/email/test-send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: testEmail, subject, body }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setTestResult({ ok: true, msg: `✓ Test sent to ${data.to}` });
+      } else {
+        setTestResult({ ok: false, msg: data.error || 'Test send failed' });
+      }
+    } catch {
+      setTestResult({ ok: false, msg: 'Network error' });
+    }
+    setTestSending(false);
+  };
+
   const sendCampaign = async () => {
     if (!subject || !body) return;
     setSending(true);
     setSendResult(null);
 
+    // Single-recipient mode — use test-send endpoint (no campaign record)
+    if (sendMode === 'single') {
+      if (!singleEmail) { setSendResult({ ok: false, msg: 'Enter a recipient email address' }); setSending(false); return; }
+      try {
+        const res = await fetch('/api/admin/email/test-send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to: singleEmail, subject, body }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setSendResult({ ok: true, msg: `✓ Sent to ${data.to}` });
+          setSubject(''); setBody(''); setSingleEmail(''); setSendMode('all');
+        } else {
+          setSendResult({ ok: false, msg: data.error || 'Send failed' });
+        }
+      } catch {
+        setSendResult({ ok: false, msg: 'Network error' });
+      }
+      setSending(false);
+      return;
+    }
+
+    // Broadcast mode — create campaign record and send to list
     const createRes = await fetch('/api/admin/email/campaigns', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -614,26 +667,45 @@ export default function GlobalEmail() {
           </div>
         ) : tab === 'compose' ? (
           <div className="bg-card border border-border rounded-xl p-6 space-y-4">
-            {/* Tag targeting */}
+            {/* Targeting */}
             <div>
               <label className="block text-sm font-medium mb-2">Send To</label>
               <div className="flex flex-wrap gap-2">
-                <button onClick={() => setSendTags([])}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${sendTags.length === 0 ? 'bg-foreground text-background border-foreground' : 'bg-card border-border text-foreground hover:border-foreground'}`}>
+                {/* Broadcast options */}
+                <button onClick={() => { setSendMode('all'); setSendTags([]); }}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${sendMode === 'all' && sendTags.length === 0 ? 'bg-foreground text-background border-foreground' : 'bg-card border-border text-foreground hover:border-foreground'}`}>
                   Everyone ({recipients.filter((r) => r.subscribed).length})
                 </button>
                 {allTags.map((tag) => {
                   const count = recipients.filter((r) => r.subscribed && (r.tags || []).includes(tag)).length;
-                  const active = sendTags.includes(tag);
+                  const active = sendMode === 'all' && sendTags.includes(tag);
                   return (
-                    <button key={tag} onClick={() => toggleSendTag(tag)}
+                    <button key={tag} onClick={() => { setSendMode('all'); toggleSendTag(tag); }}
                       className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${active ? 'bg-foreground text-background border-foreground' : 'bg-card border-border text-foreground hover:border-foreground'}`}>
                       {tag} ({count})
                     </button>
                   );
                 })}
+                {/* Single person */}
+                <button onClick={() => setSendMode(sendMode === 'single' ? 'all' : 'single')}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${sendMode === 'single' ? 'bg-blue-600 text-white border-blue-600' : 'bg-card border-border text-foreground hover:border-foreground'}`}>
+                  Single person
+                </button>
               </div>
-              {sendTags.length > 0 && (
+              {sendMode === 'single' && (
+                <div className="mt-3">
+                  <input
+                    type="email"
+                    value={singleEmail}
+                    onChange={(e) => setSingleEmail(e.target.value)}
+                    placeholder="recipient@example.com"
+                    aria-label="Single recipient email"
+                    className="w-full sm:w-80 border border-blue-300 dark:border-blue-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1.5">Sends directly to this address — no campaign record created.</p>
+                </div>
+              )}
+              {sendMode === 'all' && sendTags.length > 0 && (
                 <p className="text-xs text-muted-foreground mt-2">Sending to recipients tagged: {sendTags.join(', ')}</p>
               )}
             </div>
@@ -651,20 +723,61 @@ export default function GlobalEmail() {
                 className="w-full border border-border rounded-lg px-3 py-2.5 text-sm font-mono" />
             </div>
 
-            <div className="bg-surface rounded-lg p-4 text-sm text-muted-foreground">
-              Sending to <strong className="text-foreground">{sendTargetCount}</strong> subscribed recipient{sendTargetCount !== 1 ? 's' : ''}{sendTags.length > 0 ? ` tagged "${sendTags.join('", "')}"` : ''}.
-            </div>
+            {sendMode === 'all' && (
+              <div className="bg-surface rounded-lg p-4 text-sm text-muted-foreground">
+                Sending to <strong className="text-foreground">{sendTargetCount}</strong> subscribed recipient{sendTargetCount !== 1 ? 's' : ''}{sendTags.length > 0 ? ` tagged "${sendTags.join('", "')}"` : ''}.
+              </div>
+            )}
 
             {sendResult && (
-              <div className={`rounded-lg px-3 py-2 text-sm ${sendResult.ok ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'}`}>
+              <div className={`rounded-lg px-3 py-2 text-sm ${sendResult.ok ? 'bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400' : 'bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400'}`}>
                 {sendResult.msg}
               </div>
             )}
 
-            <button onClick={sendCampaign} disabled={sending || !subject || !body || sendTargetCount === 0}
-              className="bg-foreground text-background px-6 py-2.5 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50">
-              {sending ? 'Sending...' : `Send to ${sendTargetCount} Recipient${sendTargetCount !== 1 ? 's' : ''}`}
+            <button
+              onClick={sendCampaign}
+              disabled={
+                sending || !subject || !body ||
+                (sendMode === 'all' && sendTargetCount === 0) ||
+                (sendMode === 'single' && !singleEmail)
+              }
+              className="bg-foreground text-background px-6 py-2.5 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50"
+            >
+              {sending
+                ? 'Sending…'
+                : sendMode === 'single'
+                ? `Send to ${singleEmail || '…'}`
+                : `Send to ${sendTargetCount} Recipient${sendTargetCount !== 1 ? 's' : ''}`}
             </button>
+
+            {/* ── Test send ──────────────────────────────────── */}
+            <div className="border-t border-border pt-4 mt-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Send a Test</p>
+              <div className="flex flex-col sm:flex-row gap-2 items-start">
+                <input
+                  type="email"
+                  value={testEmail}
+                  onChange={(e) => { setTestEmail(e.target.value); setTestResult(null); }}
+                  placeholder="your@email.com"
+                  aria-label="Test email address"
+                  className="flex-1 sm:max-w-xs border border-border rounded-lg px-3 py-2 text-sm"
+                />
+                <button
+                  onClick={sendTest}
+                  disabled={testSending || !subject || !body || !testEmail}
+                  className="whitespace-nowrap bg-surface border border-border text-foreground px-4 py-2 rounded-lg text-sm font-medium hover:opacity-80 disabled:opacity-50 transition-opacity"
+                >
+                  {testSending ? 'Sending…' : 'Send Test →'}
+                </button>
+              </div>
+              {testResult && (
+                <p className={`mt-2 text-xs ${testResult.ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  {testResult.msg}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground mt-1.5">Uses current subject + body. No campaign record — just a preview in your inbox.</p>
+            </div>
           </div>
         ) : tab === 'history' ? (
           <div className="space-y-4">
