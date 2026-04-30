@@ -364,3 +364,4 @@ Migration: `supabase/player-videos-migration.sql`
 - [ ] Custom Vercel domain (seattlesquash.com)
 - [ ] Referee auto-assign algorithm (assign refs to matches by round priority)
 - [ ] Drag-to-reorder match scheduling
+- [ ] Post-tournament survey — auto-send a feedback survey to all registered players after a tournament ends (trigger: status → completed). Questions: overall experience, venue rating, court quality, organisation, NPS score, open comments. Results visible to organiser in tournament admin dashboard. Could use site_settings for default question set and allow per-tournament customisation.
