@@ -88,27 +88,63 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
   if ('scores' in body) {
-    // Validate scores shape: must be an array of game objects with numeric p1/p2 in [0, 99]
     const scores = body.scores;
     if (!Array.isArray(scores)) {
       return NextResponse.json({ error: 'scores must be an array' }, { status: 400 });
     }
-    if (scores.length > 7) {
-      return NextResponse.json({ error: 'scores cannot have more than 7 games' }, { status: 400 });
+    // US Squash PAR scoring: best of 3 or 5, so max 5 games
+    if (scores.length > 5) {
+      return NextResponse.json({ error: 'Squash is best of 5 — cannot have more than 5 games' }, { status: 400 });
     }
-    for (const game of scores) {
+
+    let p1GamesWon = 0;
+    let p2GamesWon = 0;
+
+    for (let i = 0; i < scores.length; i++) {
+      const game = scores[i];
       if (typeof game !== 'object' || game === null) {
-        return NextResponse.json({ error: 'Each game must be an object' }, { status: 400 });
+        return NextResponse.json({ error: 'Each game must be an object with p1 and p2' }, { status: 400 });
       }
       const p1 = (game as Record<string, unknown>).p1;
       const p2 = (game as Record<string, unknown>).p2;
-      if (p1 !== undefined && (typeof p1 !== 'number' || !Number.isInteger(p1) || p1 < 0 || p1 > 99)) {
-        return NextResponse.json({ error: 'Game scores must be integers between 0 and 99' }, { status: 400 });
+      if (typeof p1 !== 'number' || !Number.isInteger(p1) || p1 < 0) {
+        return NextResponse.json({ error: `Game ${i + 1}: p1 must be a non-negative integer` }, { status: 400 });
       }
-      if (p2 !== undefined && (typeof p2 !== 'number' || !Number.isInteger(p2) || p2 < 0 || p2 > 99)) {
-        return NextResponse.json({ error: 'Game scores must be integers between 0 and 99' }, { status: 400 });
+      if (typeof p2 !== 'number' || !Number.isInteger(p2) || p2 < 0) {
+        return NextResponse.json({ error: `Game ${i + 1}: p2 must be a non-negative integer` }, { status: 400 });
+      }
+
+      // A completed game: one player must have won
+      // Win condition: reach 11, OR if 10-all win by 2 (PAR scoring)
+      const isCompletedGame = (p1 !== p2) && (
+        (p1 >= 11 || p2 >= 11) &&                         // someone reached 11+
+        (Math.max(p1, p2) >= 11) &&                       // winner has at least 11
+        (Math.max(p1, p2) - Math.min(p1, p2) >= 1) &&    // someone is ahead
+        !(Math.min(p1, p2) >= 10 && Math.max(p1, p2) - Math.min(p1, p2) < 2) // if 10+ each, must win by 2
+      );
+
+      // Allow in-progress game scores (last game may be incomplete)
+      const isLastGame = i === scores.length - 1;
+      if (!isLastGame && !isCompletedGame) {
+        return NextResponse.json({
+          error: `Game ${i + 1} score ${p1}–${p2} is not a valid completed game. ` +
+            `Games are played to 11; if tied at 10-all, win by 2.`,
+        }, { status: 400 });
+      }
+
+      if (p1 > p2) p1GamesWon++;
+      else if (p2 > p1) p2GamesWon++;
+
+      // Make sure match hasn't already been decided before this game
+      if (i < scores.length - 1) {
+        if (p1GamesWon === 3 || p2GamesWon === 3) {
+          return NextResponse.json({
+            error: `Match was already decided after game ${i + 1} — extra games should not be recorded`,
+          }, { status: 400 });
+        }
       }
     }
+
     updates.scores = scores;
   }
 
