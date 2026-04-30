@@ -94,15 +94,10 @@ export default function PullToRefresh({ children }: { children: React.ReactNode 
         </div>
       </div>
 
-      {/* Content shifts down slightly while pulling */}
-      <div
-        style={{
-          transform: pullY > 0 ? `translateY(${pullY * 0.4}px)` : undefined,
-          transition: pullY === 0 ? 'transform 0.25s ease-out' : undefined,
-        }}
-      >
-        {children}
-      </div>
+      {/* No transform here — CSS transforms create a new containing block which
+          breaks position:fixed children (e.g. the bottom nav bar). The pull
+          indicator above is sufficient visual feedback. */}
+      {children}
     </div>
   );
 }
