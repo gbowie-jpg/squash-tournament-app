@@ -145,6 +145,9 @@ export default function AdminSettings() {
         {/* Stripe / Payment Processing */}
         <StripeSettingsPanel />
 
+        {/* Scholarship Applications */}
+        <ScholarshipTogglePanel />
+
         {/* Quick Links */}
         <div className="bg-card border border-border rounded-xl p-6">
           <h2 className="font-semibold text-foreground mb-4">Quick Links</h2>
@@ -296,6 +299,69 @@ function StripeSettingsPanel() {
       >
         {saving ? 'Saving…' : 'Save Stripe Credentials'}
       </button>
+    </div>
+  );
+}
+
+function ScholarshipTogglePanel() {
+  const [isOpen, setIsOpen] = useState<boolean | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/site-settings')
+      .then((r) => r.json())
+      .then((data) => setIsOpen(data.scholarship_open === 'true'));
+  }, []);
+
+  const toggle = async () => {
+    const next = !isOpen;
+    setSaving(true);
+    setSaved(false);
+    await fetch('/api/site-settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scholarship_open: next ? 'true' : 'false' }),
+    });
+    setIsOpen(next);
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  };
+
+  if (isOpen === null) return null;
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="font-semibold text-foreground">Scholarship Applications</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Controls whether the{' '}
+            <a href="/scholarship" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+              /scholarship ↗
+            </a>{' '}
+            page shows the application form or a &quot;closed&quot; notice.
+          </p>
+        </div>
+        <div className="flex items-center gap-3 shrink-0 mt-1">
+          {saved && <span className="text-xs text-green-600">✓ Saved</span>}
+          <button
+            onClick={toggle}
+            disabled={saving}
+            role="switch"
+            aria-checked={isOpen}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
+              isOpen ? 'bg-green-500' : 'bg-border'
+            }`}
+          >
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${isOpen ? 'translate-x-6' : 'translate-x-1'}`} />
+          </button>
+          <span className={`text-sm font-medium ${isOpen ? 'text-green-600' : 'text-muted-foreground'}`}>
+            {saving ? 'Saving…' : isOpen ? 'Open' : 'Closed'}
+          </span>
+        </div>
+      </div>
     </div>
   );
 }

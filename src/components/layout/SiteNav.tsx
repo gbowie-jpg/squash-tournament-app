@@ -22,6 +22,7 @@ export default function SiteNav() {
               <Link href="/events" className="text-white/70 hover:text-white transition-colors">Events</Link>
               <Link href="/winter-league" className="text-white/70 hover:text-white transition-colors">Winter League</Link>
               <Link href="/galleries" className="text-white/70 hover:text-white transition-colors">Galleries</Link>
+              <Link href="/scholarship" className="text-white/70 hover:text-white transition-colors">Scholarship</Link>
               <Link href="/about" className="text-white/70 hover:text-white transition-colors">About</Link>
               <Link href="/contact" className="text-white/70 hover:text-white transition-colors">Contact</Link>
             </div>
