@@ -38,10 +38,12 @@ function MatchMediaSection({
   tournamentId,
   matchId,
   currentUserId,
+  canDeleteAll,
 }: {
   tournamentId: string;
   matchId: string;
   currentUserId: string | null;
+  canDeleteAll: boolean;
 }) {
   const [media, setMedia] = useState<MatchMedia[]>([]);
   const [loading, setLoading] = useState(true);
@@ -187,7 +189,7 @@ function MatchMediaSection({
                       className="w-full h-full object-cover rounded-xl cursor-pointer"
                       onClick={() => setLightbox(item.url)}
                     />
-                    {currentUserId && item.uploaded_by === currentUserId && (
+                    {currentUserId && (canDeleteAll || item.uploaded_by === currentUserId) && (
                       <button
                         onClick={() => handleDelete(item)}
                         className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
@@ -222,7 +224,7 @@ function MatchMediaSection({
                       <Video className="w-3 h-3" />
                       Video
                     </div>
-                    {currentUserId && item.uploaded_by === currentUserId && (
+                    {currentUserId && (canDeleteAll || item.uploaded_by === currentUserId) && (
                       <button
                         onClick={() => handleDelete(item)}
                         className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
@@ -278,13 +280,26 @@ export default function MatchDetail({
   const { tournament, loading: tLoading } = useTournament(slug);
   const { matches, loading: mLoading } = useRealtimeMatches(tournament?.id ?? '');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [canDeleteAllMedia, setCanDeleteAllMedia] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setCurrentUserId(user?.id ?? null);
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      setCurrentUserId(user.id);
+
+      // Check if user is a global admin/superadmin or an organizer for this tournament.
+      // Both are allowed to delete any media item.
+      if (!tournament?.id) return;
+      const [profileRes, organizerRes] = await Promise.all([
+        supabase.from('profiles').select('role').eq('id', user.id).single(),
+        supabase.from('organizers').select('id').eq('tournament_id', tournament.id).eq('user_id', user.id).maybeSingle(),
+      ]);
+      const isGlobalAdmin = profileRes.data?.role === 'admin' || profileRes.data?.role === 'superadmin';
+      const isOrganizer = !!organizerRes.data;
+      setCanDeleteAllMedia(isGlobalAdmin || isOrganizer);
     });
-  }, []);
+  }, [tournament?.id]);
 
   if (tLoading || !tournament) {
     return (
@@ -478,6 +493,7 @@ export default function MatchDetail({
                 tournamentId={tournament.id}
                 matchId={matchId}
                 currentUserId={currentUserId}
+                canDeleteAll={canDeleteAllMedia}
               />
 
               {/* Player links */}
