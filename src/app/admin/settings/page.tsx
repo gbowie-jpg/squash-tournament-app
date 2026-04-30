@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/useAuth';
+import { GRADIENT_PRESETS, TEXT_COLOR_PRESETS, heroBackground, getTextColors } from '@/lib/gradients';
 
 function SettingsSkeleton() {
   return (
@@ -146,7 +147,7 @@ export default function AdminSettings() {
         <StripeSettingsPanel />
 
         {/* Scholarship Applications */}
-        <ScholarshipTogglePanel />
+        <ScholarshipPanel />
 
         {/* Quick Links */}
         <div className="bg-card border border-border rounded-xl p-6">
@@ -303,63 +304,249 @@ function StripeSettingsPanel() {
   );
 }
 
-function ScholarshipTogglePanel() {
-  const [isOpen, setIsOpen] = useState<boolean | null>(null);
+function ScholarshipPanel() {
+  const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  const [isOpen, setIsOpen] = useState(false);
+  const [form, setForm] = useState({
+    scholarship_hero_gradient: 'navy',
+    scholarship_hero_text_color: 'white',
+    scholarship_hero_image_url: '',
+    scholarship_hero_overlay: 'true',
+    scholarship_hero_subtitle: 'Seattle Squash Racquets Association',
+  });
+
+  const set = (key: string, val: string) => setForm((f) => ({ ...f, [key]: val }));
 
   useEffect(() => {
     fetch('/api/site-settings')
       .then((r) => r.json())
-      .then((data) => setIsOpen(data.scholarship_open === 'true'));
+      .then((data: Record<string, string | null>) => {
+        setIsOpen(data.scholarship_open === 'true');
+        setForm({
+          scholarship_hero_gradient: data.scholarship_hero_gradient || 'navy',
+          scholarship_hero_text_color: data.scholarship_hero_text_color || 'white',
+          scholarship_hero_image_url: data.scholarship_hero_image_url || '',
+          scholarship_hero_overlay: data.scholarship_hero_overlay || 'true',
+          scholarship_hero_subtitle: data.scholarship_hero_subtitle || 'Seattle Squash Racquets Association',
+        });
+        setLoaded(true);
+      });
   }, []);
 
-  const toggle = async () => {
-    const next = !isOpen;
+  const handleSave = async () => {
     setSaving(true);
     setSaved(false);
     await fetch('/api/site-settings', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scholarship_open: next ? 'true' : 'false' }),
+      body: JSON.stringify({
+        scholarship_open: isOpen ? 'true' : 'false',
+        ...form,
+        scholarship_hero_image_url: form.scholarship_hero_image_url || null,
+      }),
     });
-    setIsOpen(next);
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };
 
-  if (isOpen === null) return null;
+  if (!loaded) return null;
+
+  const textColors = getTextColors(form.scholarship_hero_text_color);
 
   return (
-    <div className="bg-card border border-border rounded-xl p-6">
-      <div className="flex items-start justify-between gap-4">
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="px-6 py-4 border-b border-border flex items-center justify-between">
         <div>
-          <h2 className="font-semibold text-foreground">Scholarship Applications</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Controls whether the{' '}
+          <h2 className="font-semibold text-foreground">Scholarship Page</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
             <a href="/scholarship" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
               /scholarship ↗
-            </a>{' '}
-            page shows the application form or a &quot;closed&quot; notice.
+            </a>
+            {' '}— hero design + applications open/closed
           </p>
         </div>
-        <div className="flex items-center gap-3 shrink-0 mt-1">
-          {saved && <span className="text-xs text-green-600">✓ Saved</span>}
+      </div>
+
+      {/* Live preview */}
+      <div
+        className="h-32 flex items-end overflow-hidden"
+        style={{ background: heroBackground(form.scholarship_hero_image_url || null, form.scholarship_hero_gradient, form.scholarship_hero_overlay !== 'false') }}
+      >
+        <div className="px-5 pb-4">
+          <p className="text-xs font-semibold uppercase tracking-wider mb-0.5" style={{ color: textColors.accent }}>
+            2026 Scholarship Award
+          </p>
+          <p className="text-base font-bold" style={{ color: textColors.heading }}>
+            Seattle Squash Racquets Association
+          </p>
+          <p className="text-xs mt-0.5" style={{ color: textColors.body }}>
+            {form.scholarship_hero_subtitle || 'Subtitle preview'}
+          </p>
+        </div>
+      </div>
+
+      <div className="p-6 space-y-5">
+        {/* Applications open/closed toggle */}
+        <div className="flex items-center justify-between py-3 border border-border rounded-lg px-4">
+          <div>
+            <p className="text-sm font-medium text-foreground">Applications Open</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Show the form or a &quot;closed&quot; notice
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className={`text-xs font-medium ${isOpen ? 'text-green-600' : 'text-muted-foreground'}`}>
+              {isOpen ? 'Open' : 'Closed'}
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsOpen((v) => !v)}
+              role="switch"
+              aria-checked={isOpen}
+              className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors ${
+                isOpen ? 'bg-green-500' : 'bg-border'
+              }`}
+            >
+              <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${isOpen ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+        </div>
+
+        {/* Subtitle */}
+        <div>
+          <label className="block text-sm font-medium text-muted-foreground mb-1">Hero Subtitle</label>
+          <input
+            type="text"
+            value={form.scholarship_hero_subtitle}
+            onChange={(e) => set('scholarship_hero_subtitle', e.target.value)}
+            placeholder="Seattle Squash Racquets Association"
+            className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-surface text-foreground focus:outline-none focus:ring-2 focus:ring-zinc-900"
+          />
+        </div>
+
+        {/* Gradient picker */}
+        <div>
+          <label className="block text-sm font-medium text-muted-foreground mb-2">Background Gradient</label>
+          <div className="grid grid-cols-6 gap-2">
+            {GRADIENT_PRESETS.map((g) => (
+              <button
+                key={g.key}
+                type="button"
+                onClick={() => set('scholarship_hero_gradient', g.key)}
+                title={g.label}
+                className={`relative rounded-lg overflow-hidden h-10 transition-all ${
+                  form.scholarship_hero_gradient === g.key
+                    ? 'ring-2 ring-offset-2 ring-zinc-900 scale-105'
+                    : 'hover:scale-105 hover:shadow-md'
+                }`}
+                style={{ background: g.css }}
+              >
+                {form.scholarship_hero_gradient === g.key && (
+                  <span className="absolute inset-0 flex items-center justify-center text-white text-xs font-bold">✓</span>
+                )}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground mt-1.5">
+            {GRADIENT_PRESETS.find((g) => g.key === form.scholarship_hero_gradient)?.label ?? 'Navy Blue'} selected
+          </p>
+        </div>
+
+        {/* Text color picker */}
+        <div>
+          <label className="block text-sm font-medium text-muted-foreground mb-2">Text Color</label>
+          <div className="flex flex-wrap gap-2">
+            {TEXT_COLOR_PRESETS.map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => set('scholarship_hero_text_color', t.key)}
+                title={t.label}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                  form.scholarship_hero_text_color === t.key
+                    ? 'border-foreground bg-foreground text-background scale-105 shadow'
+                    : 'border-border bg-card text-foreground hover:opacity-80'
+                }`}
+              >
+                <span className="w-3 h-3 rounded-full border border-black/10 shrink-0" style={{ background: t.swatch }} />
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Hero background image */}
+        <div>
+          <label className="block text-sm font-medium text-muted-foreground mb-1">
+            Hero Background Image
+            <span className="text-xs font-normal ml-2">full-width photo — overrides gradient</span>
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={form.scholarship_hero_image_url}
+              onChange={(e) => set('scholarship_hero_image_url', e.target.value)}
+              placeholder="https://... (leave blank to use gradient)"
+              className="flex-1 border border-border rounded-lg px-3 py-2 text-sm bg-surface text-foreground focus:outline-none focus:ring-2 focus:ring-zinc-900"
+            />
+            {form.scholarship_hero_image_url && (
+              <button type="button" onClick={() => set('scholarship_hero_image_url', '')}
+                className="px-3 py-2 text-xs text-red-500 hover:text-red-700 border border-border rounded-lg">
+                Clear
+              </button>
+            )}
+          </div>
+          {form.scholarship_hero_image_url && (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={form.scholarship_hero_image_url} alt="Hero preview"
+              className="mt-2 w-full h-20 rounded-lg object-cover border border-border" />
+          )}
+        </div>
+
+        {/* Overlay toggle */}
+        {form.scholarship_hero_image_url && (
+          <div className="flex items-center justify-between py-3 border-t border-border">
+            <div>
+              <p className="text-sm font-medium text-foreground">Dark overlay over image</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {form.scholarship_hero_overlay !== 'false'
+                  ? 'On — dark tint keeps text readable'
+                  : 'Off — image shown as-is'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => set('scholarship_hero_overlay', form.scholarship_hero_overlay === 'false' ? 'true' : 'false')}
+              className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors ${
+                form.scholarship_hero_overlay !== 'false' ? 'bg-foreground' : 'bg-border'
+              }`}
+            >
+              <span className={`inline-block h-5 w-5 transform rounded-full bg-background shadow transition-transform ${
+                form.scholarship_hero_overlay !== 'false' ? 'translate-x-5' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+        )}
+
+        <div className="flex items-center gap-3 pt-1">
           <button
-            onClick={toggle}
+            type="button"
+            onClick={handleSave}
             disabled={saving}
-            role="switch"
-            aria-checked={isOpen}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
-              isOpen ? 'bg-green-500' : 'bg-border'
+            className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
+              saved ? 'bg-green-600 text-white' : 'bg-foreground text-background hover:opacity-90'
             }`}
           >
-            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${isOpen ? 'translate-x-6' : 'translate-x-1'}`} />
+            {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save Scholarship Settings'}
           </button>
-          <span className={`text-sm font-medium ${isOpen ? 'text-green-600' : 'text-muted-foreground'}`}>
-            {saving ? 'Saving…' : isOpen ? 'Open' : 'Closed'}
-          </span>
+          <a href="/scholarship" target="_blank" rel="noopener noreferrer"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            Preview page ↗
+          </a>
         </div>
       </div>
     </div>

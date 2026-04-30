@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import SiteNav from '@/components/layout/SiteNav';
 import SiteFooter from '@/components/layout/SiteFooter';
 import ScholarshipForm from './ScholarshipForm';
+import { heroBackground, getTextColors } from '@/lib/gradients';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,35 +13,57 @@ export const metadata = {
 
 export default async function ScholarshipPage() {
   const supabase = createAdminClient();
-  const { data } = await supabase
-    .from('site_settings')
-    .select('value')
-    .eq('key', 'scholarship_open')
-    .single();
 
-  const isOpen = data?.value === 'true';
+  // Fetch all scholarship-related settings in one query
+  const { data: rows } = await supabase
+    .from('site_settings')
+    .select('key, value')
+    .in('key', [
+      'scholarship_open',
+      'scholarship_hero_gradient',
+      'scholarship_hero_text_color',
+      'scholarship_hero_image_url',
+      'scholarship_hero_overlay',
+      'scholarship_hero_subtitle',
+    ]);
+
+  const s: Record<string, string | null> = {};
+  for (const row of rows ?? []) s[row.key] = row.value;
+
+  const isOpen    = s.scholarship_open === 'true';
+  const gradient  = s.scholarship_hero_gradient  || 'navy';
+  const textKey   = s.scholarship_hero_text_color || 'white';
+  const imageUrl  = s.scholarship_hero_image_url  || null;
+  const overlay   = s.scholarship_hero_overlay !== 'false';
+  const subtitle  = s.scholarship_hero_subtitle  || 'Seattle Squash Racquets Association';
+
+  const heroBg    = heroBackground(imageUrl, gradient, overlay);
+  const textColors = getTextColors(textKey);
 
   return (
     <div className="min-h-screen flex flex-col bg-[var(--surface)]">
       <SiteNav />
 
       {/* Hero */}
-      <div className="bg-gradient-to-r from-[#0f172a] to-[#1e3a5f] text-white py-14">
+      <div style={{ background: heroBg }} className="py-14">
         <div className="max-w-4xl mx-auto px-4">
           <div className="flex items-center gap-3 mb-3">
             <span className="text-3xl">🏆</span>
             <span
-              className={`text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wide ${
+              className={`text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wide border ${
                 isOpen
-                  ? 'bg-green-500/20 text-green-300 border border-green-500/30'
-                  : 'bg-white/10 text-white/60 border border-white/20'
+                  ? 'bg-green-500/20 text-green-300 border-green-500/30'
+                  : 'bg-white/10 border-white/20'
               }`}
+              style={isOpen ? undefined : { color: 'rgba(255,255,255,0.6)' }}
             >
               {isOpen ? 'Applications Open' : 'Applications Closed'}
             </span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">2026 Scholarship Award</h1>
-          <p className="text-blue-200 mt-2 text-lg">Seattle Squash Racquets Association</p>
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight" style={{ color: textColors.heading }}>
+            2026 Scholarship Award
+          </h1>
+          <p className="mt-2 text-lg" style={{ color: textColors.body }}>{subtitle}</p>
         </div>
       </div>
 
@@ -64,11 +87,11 @@ export default async function ScholarshipPage() {
                 <p className="text-xs text-muted-foreground mt-0.5">Eligible Divisions</p>
               </div>
               <div className="bg-[var(--surface)] rounded-lg px-4 py-3 text-center">
-                <p className="text-lg font-bold text-foreground">Middle & High</p>
+                <p className="text-lg font-bold text-foreground">Middle &amp; High</p>
                 <p className="text-xs text-muted-foreground mt-0.5">School Level</p>
               </div>
             </div>
-            <div className="bg-[var(--surface)] rounded-lg px-4 py-3 text-sm text-muted-foreground space-y-1">
+            <div className="bg-[var(--surface)] rounded-lg px-4 py-3 text-sm text-muted-foreground">
               <p className="font-medium text-foreground text-xs uppercase tracking-wide mb-2">Funds may be used for</p>
               <ul className="space-y-1 list-disc list-inside">
                 <li>Tournament entry fees &amp; registration</li>
