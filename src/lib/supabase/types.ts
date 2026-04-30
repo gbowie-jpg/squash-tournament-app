@@ -213,9 +213,33 @@ export type Database = {
         };
         Update: Partial<Database['public']['Tables']['organizers']['Insert']>;
       };
+      match_media: {
+        Row: {
+          id: string;
+          match_id: string | null;
+          tournament_id: string | null;
+          uploaded_by: string | null;
+          type: 'photo' | 'video';
+          url: string;
+          caption: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          match_id?: string | null;
+          tournament_id?: string | null;
+          uploaded_by?: string | null;
+          type: 'photo' | 'video';
+          url: string;
+          caption?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['match_media']['Insert']>;
+      };
     };
   };
 };
+
+export type MatchMedia = Database['public']['Tables']['match_media']['Row'];
 
 export type GameScore = { p1: number; p2: number };
 
