@@ -10,7 +10,7 @@ import type { MatchWithDetails, GameScore, Court } from '@/lib/supabase/types';
 type Params = { slug: string; matchId: string };
 type Step = 'confirm' | 'warmup' | 'scoring';
 
-// ── Scoring helpers ────────────────────────────────────────────────
+// ── Scoring helpers ────────────────────────────────────────────────────────
 function gameWinner(g: GameScore): 'p1' | 'p2' | null {
   if (g.p1 >= 11 && g.p1 - g.p2 >= 2) return 'p1';
   if (g.p2 >= 11 && g.p2 - g.p1 >= 2) return 'p2';
@@ -33,7 +33,7 @@ function fmt(seconds: number) {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
-// ── Component ──────────────────────────────────────────────────────
+// ── Component ──────────────────────────────────────────────────────────────
 export default function ScorePage({ params }: { params: Promise<Params> }) {
   const { slug, matchId } = use(params);
   const router = useRouter();
@@ -45,6 +45,7 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
   const [loading, setLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
   const [canScore, setCanScore] = useState(false);
+  const [scorerRole, setScorerRole] = useState<string | null>(null); // 'player' | 'organizer' | 'referee' | 'admin'
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -55,6 +56,9 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
   // Serve + side
   const [server, setServer] = useState<'p1' | 'p2' | null>(null);
   const [leftPlayer, setLeftPlayer] = useState<'p1' | 'p2'>('p1');
+
+  // Service box (L/R) — auto-calculated from server's score, manual override allowed
+  const [serviceBox, setServiceBox] = useState<'L' | 'R'>('R');
 
   // Warmup timer (5 min = 300s per US Squash Rule 4)
   const [warmupRunning, setWarmupRunning] = useState(false);
@@ -72,10 +76,13 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
   // Auto-detected match winner
   const [autoMatchWinner, setAutoMatchWinner] = useState<'p1' | 'p2' | null>(null);
 
+  // 10-minute correction mode
+  const [correcting, setCorrecting] = useState(false);
+
   // Ref for saveScores (used inside adjustScore without dependency chain)
   const saveRef = useRef<((s: GameScore[], status?: string, wid?: string) => void) | null>(null);
 
-  // ── Load match ──────────────────────────────────────────────────
+  // ── Load match ─────────────────────────────────────────────────────────
   useEffect(() => {
     const supabase = createClient();
     async function load() {
@@ -96,30 +103,36 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
       setCourts(courtList);
       setSelectedCourtId(data.court_id ?? '');
 
-      // Restore scores
       const existing: GameScore[] = Array.isArray(data.scores) && data.scores.length > 0
         ? data.scores : [{ p1: 0, p2: 0 }];
       setScores(existing);
       const last = existing.findIndex(g => !gameWinner(g));
       setCurrentGame(last >= 0 ? last : existing.length - 1);
 
-      // Skip setup if already in progress
       if (data.status === 'in_progress') setStep('scoring');
 
-      // Auth check
+      // Auth + scorer-lock check — use _check route (no side effects)
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setAuthChecked(true); setLoading(false); return; }
+
       const patchTest = await fetch(`/api/tournaments/${t.id}/matches/${matchId}/score`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ _check: true }),
       });
-      // 423 = scorer locked by someone else; 403/401 = not authorized
-      setCanScore(patchTest.status !== 403 && patchTest.status !== 401 && patchTest.status !== 423);
-      if (patchTest.status === 423) {
+
+      // Only grant canScore on explicit 200 success
+      setCanScore(patchTest.ok);
+      if (patchTest.ok) {
+        const d = await patchTest.json().catch(() => ({}));
+        setScorerRole(d.role ?? null);
+      } else if (patchTest.status === 423) {
         const d = await patchTest.json().catch(() => ({}));
         setError(d.error ?? 'This match is already being scored.');
+      } else if (patchTest.status === 403) {
+        setError('You are not authorized to score this match.');
       }
+
       setAuthChecked(true);
       setLoading(false);
     }
@@ -127,7 +140,7 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchId, slug]);
 
-  // ── Timers ──────────────────────────────────────────────────────
+  // ── Timers ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!warmupRunning || warmupSeconds <= 0) return;
     const t = setTimeout(() => setWarmupSeconds(s => s - 1), 1000);
@@ -140,13 +153,12 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
     return () => clearTimeout(t);
   }, [gameBreak, breakSeconds]);
 
-  // Auto-advance when break timer hits 0
   useEffect(() => {
     if (gameBreak && breakSeconds === 0) startNextGame();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameBreak, breakSeconds]);
 
-  // ── API helpers ────────────────────────────────────────────────
+  // ── API helpers ────────────────────────────────────────────────────────
   const saveScores = useCallback(async (
     newScores: GameScore[],
     status?: string,
@@ -168,12 +180,11 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
       const updated: MatchWithDetails = await res.json();
       setMatch(updated);
     } else {
-      const d = await res.json();
+      const d = await res.json().catch(() => ({}));
       setError(d.error ?? 'Save failed');
     }
   }, [tournamentId, matchId]);
 
-  // Keep ref fresh
   saveRef.current = saveScores;
 
   const doStartMatch = useCallback(async (courtOverride?: string) => {
@@ -194,10 +205,11 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
       setMatch(updated);
       setScores([{ p1: 0, p2: 0 }]);
       setCurrentGame(0);
+      setServiceBox('R'); // Score 0 → right box
     }
   }, [tournamentId, matchId, selectedCourtId]);
 
-  // ── Scoring logic ──────────────────────────────────────────────
+  // ── Scoring logic ──────────────────────────────────────────────────────
   function adjustScore(player: 'p1' | 'p2', delta: number) {
     if (!canScore) return;
     setScores(prev => {
@@ -205,21 +217,21 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
         i !== currentGame ? g : { ...g, [player]: Math.max(0, g[player] + delta) }
       );
 
-      // PAR: winner of rally serves
-      if (delta === 1) setServer(player);
-
-      // Check auto-detection after +1
       if (delta === 1) {
+        // Winner of rally becomes server; auto-update service box
+        setServer(player);
+        const newScore = updated[currentGame][player];
+        setServiceBox(newScore % 2 === 0 ? 'R' : 'L');
+
+        // Check for game/match completion
         const gw = gameWinner(updated[currentGame]);
         if (gw) {
           const mw = matchWinner(updated);
           if (mw) {
-            // Match over — save + auto-complete
             const wid = mw === 'p1' ? match?.player1_id : match?.player2_id;
             saveRef.current?.(updated, 'completed', wid ?? undefined);
             setAutoMatchWinner(mw);
           } else {
-            // Game over — save + start break
             saveRef.current?.(updated);
             setBreakWinner(gw);
             setBreakSeconds(90);
@@ -229,6 +241,11 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
           saveRef.current?.(updated);
         }
       } else {
+        // On -1, recalculate service box from corrected score
+        if (server) {
+          const correctedScore = updated[currentGame][server];
+          setServiceBox(correctedScore % 2 === 0 ? 'R' : 'L');
+        }
         saveRef.current?.(updated);
       }
 
@@ -240,20 +257,17 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
     setGameBreak(false);
     setBreakSeconds(90);
     setBreakWinner(null);
+    setServiceBox('R'); // Score 0 at game start → right box
     setScores(prev => {
       const newScores = [...prev, { p1: 0, p2: 0 }];
       setCurrentGame(newScores.length - 1);
       saveRef.current?.(newScores);
       return newScores;
     });
-    // Switch sides: opponent of last game winner opens new game serve
-    // (in practice, re-allow side selection — just swap leftPlayer)
-    setLeftPlayer(p => p === 'p1' ? 'p2' : 'p1');
+    setLeftPlayer(p => p === 'p1' ? 'p2' : 'p1'); // Switch sides each game
   }
 
-  // ─────────────────────────────────────────────────────────────────
-  // RENDER GATES
-  // ─────────────────────────────────────────────────────────────────
+  // ── RENDER GATES ───────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
@@ -287,12 +301,12 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
           )}
         </div>
         <h1 className="text-white text-xl font-bold">
-          {isLocked ? 'Match already in progress' : 'Sign in to score'}
+          {isLocked ? 'Match already in progress' : 'Access denied'}
         </h1>
         <p className="text-zinc-400 text-sm max-w-xs">
           {isLocked
             ? 'Another scorer has already claimed this match. Contact the tournament organizer if there is an issue.'
-            : 'You must be a player in this match, an assigned referee, or tournament organizer.'}
+            : error || 'You must be a player in this match, an assigned referee, or a tournament organizer.'}
         </p>
         {!isLocked && (
           <Link href={`/login?redirect=/t/${slug}/match/${matchId}/score`}
@@ -311,9 +325,13 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
   const p2GamesWon = gamesWon(scores, 'p2');
   const gs = scores[currentGame] ?? { p1: 0, p2: 0 };
   const isCompleted = match.status === 'completed' || match.status === 'walkover' || !!autoMatchWinner;
-  const isNotStarted = match.status === 'scheduled' || match.status === 'on_deck';
+  const isActiveScoring = !isCompleted || (correcting && isCompleted);
 
-  // ── STEP 1: Confirm players, court, server & sides ───────────────
+  // Can the scorer still correct? (10-min window)
+  const completedAt = match.completed_at ? new Date(match.completed_at).getTime() : null;
+  const withinCorrectionWindow = completedAt !== null && (Date.now() - completedAt) < 10 * 60 * 1000;
+
+  // ── STEP 1: Confirm players, court, server & sides ─────────────────────
   if (step === 'confirm') {
     return (
       <div className="min-h-screen bg-zinc-950 text-white flex flex-col select-none">
@@ -329,6 +347,16 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
         </div>
 
         <div className="flex-1 px-4 space-y-5 overflow-y-auto pb-6">
+          {/* Authorization indicator */}
+          {scorerRole && (
+            <div className="bg-green-900/30 border border-green-700/50 rounded-2xl px-4 py-3 flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
+              <p className="text-sm text-green-300">
+                Authorized as <span className="font-bold">{scorerRole}</span>
+              </p>
+            </div>
+          )}
+
           {/* Draw + Round */}
           {(match.draw || match.round) && (
             <div className="bg-zinc-800 rounded-2xl px-4 py-3 text-center">
@@ -403,11 +431,11 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
           {/* Court positions */}
           <div>
             <p className="text-xs text-zinc-500 font-semibold uppercase tracking-widest text-center mb-3">
-              Court Positions
+              Starting Court Positions
             </p>
             <div className="border-2 border-zinc-700 rounded-2xl overflow-hidden">
               <div className="bg-zinc-900 py-1.5 text-center border-b border-zinc-700">
-                <p className="text-[10px] text-zinc-600 font-semibold uppercase tracking-widest">Front Wall</p>
+                <p className="text-[10px] text-zinc-600 font-semibold uppercase tracking-widest">Front Wall ↑</p>
               </div>
               <div className="grid grid-cols-2">
                 <button onClick={() => setLeftPlayer('p1')}
@@ -428,7 +456,7 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
                 </button>
               </div>
               <div className="bg-zinc-900 py-1.5 text-center border-t border-zinc-700">
-                <p className="text-[10px] text-zinc-600 font-semibold uppercase tracking-widest">Back Wall</p>
+                <p className="text-[10px] text-zinc-600 font-semibold uppercase tracking-widest">Back Wall ↓</p>
               </div>
             </div>
             <p className="text-xs text-zinc-600 text-center mt-1.5">Tap to swap · sides switch each game</p>
@@ -442,7 +470,7 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
             className="w-full py-4 rounded-2xl text-lg font-bold text-white disabled:opacity-30 transition-opacity"
             style={{ background: server ? '#2563eb' : '#27272a' }}
           >
-            Confirm & Continue →
+            Confirm & Start Warm-up →
           </button>
           {!server && <p className="text-center text-xs text-zinc-600 mt-2">Select who serves first</p>}
         </div>
@@ -450,7 +478,7 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
     );
   }
 
-  // ── STEP 2: Warm-up timer ─────────────────────────────────────────
+  // ── STEP 2: Warm-up timer ──────────────────────────────────────────────
   if (step === 'warmup') {
     const warmupDone = warmupSeconds === 0;
     return (
@@ -467,9 +495,13 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center px-6 text-center gap-6">
-          {/* Timer */}
-          <div className="w-48 h-48 rounded-full border-4 border-zinc-700 flex flex-col items-center justify-center"
-            style={{ borderColor: warmupRunning && !warmupDone ? '#2563eb' : warmupDone ? '#16a34a' : '#3f3f46' }}>
+          {/* Timer ring */}
+          <div
+            className="w-48 h-48 rounded-full border-4 flex flex-col items-center justify-center"
+            style={{
+              borderColor: warmupDone ? '#16a34a' : warmupRunning ? '#2563eb' : '#3f3f46',
+            }}
+          >
             <p className="text-6xl font-black tabular-nums tracking-tight">
               {fmt(warmupSeconds)}
             </p>
@@ -483,7 +515,6 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
             <p className="text-zinc-600 text-xs mt-1">WSF Rule 4: Both players share the court</p>
           </div>
 
-          {/* Controls */}
           {!warmupRunning && !warmupDone && (
             <button
               onClick={() => setWarmupRunning(true)}
@@ -526,161 +557,241 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
     );
   }
 
-  // ── STEP 3: Scoring ───────────────────────────────────────────────
-  // PAR scoring service box: server's score even = right box, odd = left box
-  const serverScore = server ? gs[server] : 0;
-  const serviceBox = server ? (serverScore % 2 === 0 ? 'Right box' : 'Left box') : null;
+  // ── STEP 3: Scoring ────────────────────────────────────────────────────
+  // PAR scoring — server auto-updates on each point.
+  // The L/R box shows which service box the server should use,
+  // auto-calculated from their score (even=R, odd=L) but manually overridable.
 
   const p1Side = leftPlayer === 'p1' ? 'L' : 'R';
   const p2Side = leftPlayer === 'p2' ? 'L' : 'R';
+  const serverName = server === 'p1' ? (p1?.name ?? 'P1') : server === 'p2' ? (p2?.name ?? 'P2') : null;
+
+  const showScoring = isActiveScoring && !gameBreak;
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white flex flex-col select-none">
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-4 pt-6 pb-2">
+    <div className="min-h-screen bg-zinc-950 text-white flex flex-col select-none overflow-hidden">
+      {/* ── Nav bar ── */}
+      <div className="flex items-center justify-between px-4 pt-5 pb-2 shrink-0">
         <Link href={`/t/${slug}/match/${matchId}`} className="text-zinc-400 p-1 -ml-1">
           <ChevronLeft className="w-5 h-5" />
         </Link>
-        <div className="text-center">
-          <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">
+        <div className="text-center min-w-0 flex-1 mx-2">
+          <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider truncate">
             {[match.draw, match.round].filter(Boolean).join(' · ')}
           </p>
           {match.court?.name && (
-            <p className="text-xs text-zinc-600">{match.court.name}</p>
+            <p className="text-[11px] text-zinc-600">{match.court.name}</p>
           )}
         </div>
         <div className="w-7" />
       </div>
 
-      {/* ── Serve bar ── */}
-      {!isCompleted && (
-        <div className="mx-4 mb-3 space-y-1">
-          {/* Serving indicator */}
+      {/* ── Completed banner or correction prompt ── */}
+      {isCompleted && !correcting && (
+        <div className="mx-3 mb-2 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl px-4 py-3 text-center">
+          <Trophy className="w-5 h-5 text-yellow-400 mx-auto mb-1" />
+          <p className="font-bold text-yellow-400">
+            {(autoMatchWinner === 'p1' || match.winner_id === match.player1_id)
+              ? p1?.name : p2?.name} wins!
+          </p>
+          {withinCorrectionWindow && (
+            <button
+              onClick={() => setCorrecting(true)}
+              className="mt-2 text-xs text-zinc-400 underline underline-offset-2"
+            >
+              Correct a score (window open)
+            </button>
+          )}
+        </div>
+      )}
+
+      {correcting && (
+        <div className="mx-3 mb-2 bg-orange-900/20 border border-orange-700/50 rounded-xl px-3 py-2 flex items-center justify-between">
+          <p className="text-xs text-orange-300 font-semibold">Correction mode — 10 min window</p>
+          <button onClick={() => setCorrecting(false)} className="text-xs text-zinc-500 underline">Done</button>
+        </div>
+      )}
+
+      {/* ── 1. GAME SCORING PANELS (largest, top) ── */}
+      {showScoring && (
+        <div className="grid grid-cols-2 gap-2.5 px-3 pb-2 shrink-0">
+          {/* P1 panel — tap to set as server */}
           <button
-            onClick={() => setServer(s => s === 'p1' ? 'p2' : 'p1')}
-            className="w-full rounded-2xl overflow-hidden border border-zinc-700 h-14 grid grid-cols-2 cursor-pointer"
-            title="Tap to switch server"
+            onPointerDown={() => setServer('p1')}
+            className="rounded-2xl p-3 flex flex-col items-center gap-1 text-left"
+            style={{
+              background: server === 'p1' ? '#1e3a8a' : '#27272a',
+              border: server === 'p1' ? '2px solid #3b82f6' : '2px solid transparent',
+            }}
           >
-            {(['p1', 'p2'] as const).map((p, i) => {
+            <p className="text-[11px] text-zinc-400 truncate w-full text-center">{p1?.name ?? 'P1'}</p>
+            {server === 'p1' && (
+              <p className="text-[10px] font-bold" style={{ color: '#60a5fa' }}>● SERVING</p>
+            )}
+            <p className="text-7xl font-black tabular-nums leading-none my-1">{gs.p1}</p>
+            <div className="flex gap-1.5 w-full mt-1">
+              <button
+                onPointerDown={e => { e.stopPropagation(); adjustScore('p1', -1); }}
+                className="flex-1 rounded-xl py-3.5 text-xl font-bold"
+                style={{ background: '#3f3f46' }}
+              >−</button>
+              <button
+                onPointerDown={e => { e.stopPropagation(); adjustScore('p1', 1); }}
+                className="flex-1 rounded-xl py-3.5 text-xl font-bold"
+                style={{ background: '#2563eb' }}
+              >+</button>
+            </div>
+          </button>
+
+          {/* P2 panel */}
+          <button
+            onPointerDown={() => setServer('p2')}
+            className="rounded-2xl p-3 flex flex-col items-center gap-1 text-left"
+            style={{
+              background: server === 'p2' ? '#1e3a8a' : '#27272a',
+              border: server === 'p2' ? '2px solid #3b82f6' : '2px solid transparent',
+            }}
+          >
+            <p className="text-[11px] text-zinc-400 truncate w-full text-center">{p2?.name ?? 'P2'}</p>
+            {server === 'p2' && (
+              <p className="text-[10px] font-bold" style={{ color: '#60a5fa' }}>● SERVING</p>
+            )}
+            <p className="text-7xl font-black tabular-nums leading-none my-1">{gs.p2}</p>
+            <div className="flex gap-1.5 w-full mt-1">
+              <button
+                onPointerDown={e => { e.stopPropagation(); adjustScore('p2', -1); }}
+                className="flex-1 rounded-xl py-3.5 text-xl font-bold"
+                style={{ background: '#3f3f46' }}
+              >−</button>
+              <button
+                onPointerDown={e => { e.stopPropagation(); adjustScore('p2', 1); }}
+                className="flex-1 rounded-xl py-3.5 text-xl font-bold"
+                style={{ background: '#2563eb' }}
+              >+</button>
+            </div>
+          </button>
+        </div>
+      )}
+
+      {/* ── 2. MATCH SCORE (games won) — half height ── */}
+      <div className="grid grid-cols-2 gap-2.5 px-3 pb-2 shrink-0">
+        <div
+          className="rounded-xl py-1.5 px-2 flex items-center justify-between"
+          style={{
+            background: (autoMatchWinner === 'p1' || match.winner_id === match.player1_id)
+              ? 'rgba(234,179,8,0.15)' : '#1c1c1e',
+          }}
+        >
+          <p className="text-xs text-zinc-500 truncate mr-2">{p1?.name ?? 'P1'}</p>
+          <div className="flex items-baseline gap-1">
+            <p className="text-2xl font-black tabular-nums">{p1GamesWon}</p>
+            <p className="text-[10px] text-zinc-600">games</p>
+          </div>
+        </div>
+        <div
+          className="rounded-xl py-1.5 px-2 flex items-center justify-between"
+          style={{
+            background: (autoMatchWinner === 'p2' || match.winner_id === match.player2_id)
+              ? 'rgba(234,179,8,0.15)' : '#1c1c1e',
+          }}
+        >
+          <p className="text-xs text-zinc-500 truncate mr-2">{p2?.name ?? 'P2'}</p>
+          <div className="flex items-baseline gap-1">
+            <p className="text-2xl font-black tabular-nums">{p2GamesWon}</p>
+            <p className="text-[10px] text-zinc-600">games</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 3 + 4. SERVER SELECT + SERVICE BOX (combined row) ── */}
+      {showScoring && (
+        <div className="px-3 pb-2 shrink-0 space-y-1.5">
+          {/* Server buttons (tap to change who's serving) */}
+          <div className="grid grid-cols-2 gap-2">
+            {(['p1', 'p2'] as const).map(p => {
               const isServing = server === p;
               const name = p === 'p1' ? (p1?.name ?? 'P1') : (p2?.name ?? 'P2');
               const side = p === 'p1' ? p1Side : p2Side;
               return (
-                <div key={p}
-                  className={`flex flex-col items-center justify-center h-full transition-colors ${i === 1 ? 'border-l border-zinc-700' : ''}`}
-                  style={{ background: isServing ? '#1d4ed8' : '#1c1c1e' }}>
-                  <span className="text-xs font-bold truncate px-2 max-w-full"
-                    style={{ color: isServing ? '#fff' : '#71717a' }}>
+                <button
+                  key={p}
+                  onClick={() => setServer(p)}
+                  className="rounded-xl py-2.5 px-3 flex items-center justify-between transition-colors"
+                  style={{
+                    background: isServing ? '#1d4ed8' : '#27272a',
+                    border: isServing ? '1.5px solid #60a5fa' : '1.5px solid transparent',
+                  }}
+                >
+                  <span className="text-xs font-bold truncate" style={{ color: isServing ? '#fff' : '#71717a' }}>
                     {isServing ? '● ' : ''}{name}
                   </span>
-                  <span className="text-[10px] mt-0.5 font-semibold"
-                    style={{ color: isServing ? '#93c5fd' : '#52525b' }}>
-                    {isServing ? `Serving · ${serviceBox}` : `${side} side`}
+                  <span className="text-[10px] font-semibold shrink-0 ml-1" style={{ color: isServing ? '#bfdbfe' : '#52525b' }}>
+                    {side} side
                   </span>
-                </div>
+                </button>
               );
             })}
-          </button>
-          <p className="text-center text-[10px] text-zinc-700">Tap bar to switch server</p>
-        </div>
-      )}
+          </div>
 
-      {/* Completed banner */}
-      {isCompleted && (
-        <div className="mx-4 mb-3 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl px-4 py-3 text-center">
-          <Trophy className="w-5 h-5 text-yellow-400 mx-auto mb-1" />
-          <p className="font-bold text-yellow-400">
-            {(autoMatchWinner === 'p1' || match.winner_id === match.player1_id) ? p1?.name : p2?.name} wins!
-          </p>
-          <p className="text-xs text-zinc-500 mt-0.5">Match complete</p>
-        </div>
-      )}
-
-      {/* Game score + player summary */}
-      <div className="grid grid-cols-2 gap-2 px-4 mb-3">
-        <div className="rounded-2xl p-3 text-center"
-          style={{ background: (autoMatchWinner === 'p1' || match.winner_id === match.player1_id) ? 'rgba(234,179,8,0.15)' : '#27272a' }}>
-          <p className="text-xs text-zinc-400 truncate">{p1?.name ?? 'Player 1'}</p>
-          <p className="text-5xl font-black tabular-nums">{p1GamesWon}</p>
-          <p className="text-[10px] text-zinc-500">games</p>
-        </div>
-        <div className="rounded-2xl p-3 text-center"
-          style={{ background: (autoMatchWinner === 'p2' || match.winner_id === match.player2_id) ? 'rgba(234,179,8,0.15)' : '#27272a' }}>
-          <p className="text-xs text-zinc-400 truncate">{p2?.name ?? 'Player 2'}</p>
-          <p className="text-5xl font-black tabular-nums">{p2GamesWon}</p>
-          <p className="text-[10px] text-zinc-500">games</p>
-        </div>
-      </div>
-
-      {/* Live game scoring */}
-      {!isCompleted && (
-        <>
-          {/* Game tabs */}
-          <div className="flex items-center gap-2 px-4 mb-3 overflow-x-auto">
-            {scores.map((g, i) => (
-              <button key={i} onClick={() => setCurrentGame(i)}
-                className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+          {/* L / R service box buttons */}
+          <div>
+            <p className="text-[10px] text-zinc-600 text-center mb-1">
+              {serverName ? `${serverName} serves from` : 'Service box'}
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setServiceBox('L')}
+                className="rounded-xl py-2.5 text-lg font-black transition-colors"
                 style={{
-                  background: currentGame === i ? '#fff' : '#27272a',
-                  color: currentGame === i ? '#09090b' : gameWinner(g) ? '#4ade80' : '#a1a1aa',
-                }}>
-                G{i + 1}: {g.p1}–{g.p2}
-                {gameWinner(g) === 'p1' ? ' ✓' : gameWinner(g) === 'p2' ? ' ✓' : ''}
+                  background: serviceBox === 'L' ? '#1d4ed8' : '#27272a',
+                  border: serviceBox === 'L' ? '1.5px solid #60a5fa' : '1.5px solid transparent',
+                  color: serviceBox === 'L' ? '#fff' : '#52525b',
+                }}
+              >
+                L
               </button>
-            ))}
-          </div>
-
-          {/* +/- scoring panels */}
-          <div className="grid grid-cols-2 gap-3 px-4 mb-3">
-            {/* P1 */}
-            <div className="rounded-2xl p-4 flex flex-col items-center gap-3"
-              style={{ background: server === 'p1' ? '#1e2d4a' : '#27272a', outline: server === 'p1' ? '2px solid #3b82f6' : 'none' }}>
-              <p className="text-xs text-zinc-400 truncate w-full text-center">{p1?.name ?? 'P1'}</p>
-              {server === 'p1' && (
-                <p className="text-[10px] font-bold -mt-2" style={{ color: '#60a5fa' }}>● SERVING</p>
-              )}
-              <p className="text-7xl font-black tabular-nums">{gs.p1}</p>
-              <div className="flex gap-2 w-full">
-                <button onPointerDown={() => adjustScore('p1', -1)}
-                  className="flex-1 rounded-xl py-3.5 text-xl font-bold"
-                  style={{ background: '#3f3f46' }}>−</button>
-                <button onPointerDown={() => adjustScore('p1', 1)}
-                  className="flex-1 rounded-xl py-3.5 text-xl font-bold"
-                  style={{ background: '#2563eb' }}>+</button>
-              </div>
-            </div>
-
-            {/* P2 */}
-            <div className="rounded-2xl p-4 flex flex-col items-center gap-3"
-              style={{ background: server === 'p2' ? '#1e2d4a' : '#27272a', outline: server === 'p2' ? '2px solid #3b82f6' : 'none' }}>
-              <p className="text-xs text-zinc-400 truncate w-full text-center">{p2?.name ?? 'P2'}</p>
-              {server === 'p2' && (
-                <p className="text-[10px] font-bold -mt-2" style={{ color: '#60a5fa' }}>● SERVING</p>
-              )}
-              <p className="text-7xl font-black tabular-nums">{gs.p2}</p>
-              <div className="flex gap-2 w-full">
-                <button onPointerDown={() => adjustScore('p2', -1)}
-                  className="flex-1 rounded-xl py-3.5 text-xl font-bold"
-                  style={{ background: '#3f3f46' }}>−</button>
-                <button onPointerDown={() => adjustScore('p2', 1)}
-                  className="flex-1 rounded-xl py-3.5 text-xl font-bold"
-                  style={{ background: '#2563eb' }}>+</button>
-              </div>
+              <button
+                onClick={() => setServiceBox('R')}
+                className="rounded-xl py-2.5 text-lg font-black transition-colors"
+                style={{
+                  background: serviceBox === 'R' ? '#1d4ed8' : '#27272a',
+                  border: serviceBox === 'R' ? '1.5px solid #60a5fa' : '1.5px solid transparent',
+                  color: serviceBox === 'R' ? '#fff' : '#52525b',
+                }}
+              >
+                R
+              </button>
             </div>
           </div>
-        </>
+        </div>
       )}
 
-      {/* Completed: final scores summary */}
-      {isCompleted && scores.some(g => g.p1 > 0 || g.p2 > 0) && (
-        <div className="px-4 mb-3">
+      {/* ── Game tabs ── */}
+      {!isCompleted && (
+        <div className="flex items-center gap-2 px-3 pb-2 overflow-x-auto shrink-0">
+          {scores.map((g, i) => (
+            <button key={i} onClick={() => setCurrentGame(i)}
+              className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+              style={{
+                background: currentGame === i ? '#fff' : '#27272a',
+                color: currentGame === i ? '#09090b' : gameWinner(g) ? '#4ade80' : '#a1a1aa',
+              }}>
+              G{i + 1}: {g.p1}–{g.p2}
+              {gameWinner(g) === 'p1' || gameWinner(g) === 'p2' ? ' ✓' : ''}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ── Completed: final scores summary ── */}
+      {isCompleted && !correcting && scores.some(g => g.p1 > 0 || g.p2 > 0) && (
+        <div className="px-3 pb-3 shrink-0">
           <div className="bg-zinc-900 rounded-2xl p-4">
             <p className="text-xs text-zinc-500 mb-2 font-semibold uppercase tracking-wider">Final Scores</p>
             {scores.map((g, i) => (
               <div key={i} className="flex justify-between text-sm py-0.5">
                 <span className="text-zinc-500">Game {i + 1}</span>
-                <span className="font-mono font-bold"
-                  style={{ color: gameWinner(g) ? '#4ade80' : '#a1a1aa' }}>
+                <span className="font-mono font-bold" style={{ color: gameWinner(g) ? '#4ade80' : '#a1a1aa' }}>
                   {g.p1} – {g.p2}
                 </span>
               </div>
@@ -689,8 +800,8 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
         </div>
       )}
 
-      {/* Footer actions */}
-      <div className="px-4 pb-10 pt-2 mt-auto space-y-2">
+      {/* ── Footer ── */}
+      <div className="px-3 pb-10 pt-1 mt-auto shrink-0 space-y-2">
         {error && (
           <div className="bg-red-900/50 border border-red-700 rounded-xl px-3 py-2 text-sm text-red-300 text-center">
             {error}
@@ -698,7 +809,7 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
         )}
         {saving && <p className="text-center text-xs text-zinc-600">Saving…</p>}
 
-        {isCompleted && (
+        {isCompleted && !correcting && (
           <Link href={`/t/${slug}/match/${matchId}`}
             className="block w-full bg-zinc-800 text-white text-center font-semibold py-4 rounded-2xl">
             Back to Match
@@ -717,7 +828,6 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
             {p1?.name ?? 'P1'} {p1GamesWon} – {p2GamesWon} {p2?.name ?? 'P2'}
           </p>
 
-          {/* Countdown */}
           <div className="w-32 h-32 rounded-full border-4 flex items-center justify-center mb-6"
             style={{ borderColor: breakSeconds > 20 ? '#2563eb' : '#dc2626' }}>
             <p className="text-4xl font-black tabular-nums">{fmt(breakSeconds)}</p>
@@ -731,7 +841,6 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
           >
             Start Game {currentGame + 2}
           </button>
-          {/* Side swap reminder */}
           <p className="text-xs text-zinc-600 mt-3">Players change ends for game {currentGame + 2}</p>
         </div>
       )}

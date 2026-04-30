@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Bracket from '@/components/tournament/Bracket';
 import type { BracketMatch } from '@/components/tournament/Bracket';
+import ZoomableBracket from '@/components/ZoomableBracket';
 import type { GameScore } from '@/lib/supabase/types';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -118,7 +119,9 @@ export default function DrawsClient({ slug, drawNames, matches, upcoming, defaul
             <h2 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-4">
               {activeDraw} Draw
             </h2>
-            <Bracket matches={drawMatches} slug={slug} />
+            <ZoomableBracket>
+              <Bracket matches={drawMatches} slug={slug} />
+            </ZoomableBracket>
           </div>
 
           {/* Results for this draw */}

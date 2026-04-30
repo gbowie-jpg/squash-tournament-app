@@ -5,6 +5,140 @@ import { rateLimit, limits } from '@/lib/rateLimit';
 
 type Params = { params: Promise<{ id: string; matchId: string }> };
 
+// ── Round ordering (matches Bracket.tsx) ────────────────────────────────────
+const NAMED_ORDER: Record<string, number> = { F: 100, SF: 90, QF: 80 };
+function roundOrderVal(r: string): number {
+  if (NAMED_ORDER[r] !== undefined) return NAMED_ORDER[r];
+  const m = r.match(/^R(\d+)$/);
+  return m ? parseInt(m[1]) : 50;
+}
+
+// ── Bracket advancement ──────────────────────────────────────────────────────
+// After a match completes:
+//   • Advance the WINNER to the next round in the same draw.
+//   • If it is the FIRST round and a consolation draw exists (any draw name
+//     containing "plate" or "consolation"), place the LOSER there.
+async function advanceBracket(
+  supabase: ReturnType<typeof createAdminClient>,
+  tournamentId: string,
+  completedMatchId: string,
+  draw: string | null,
+  winnerId: string,
+  loserId: string | null,
+) {
+  if (!draw) return;
+
+  // Fetch all matches in the same draw
+  const { data: drawMatches } = await supabase
+    .from('matches')
+    .select('id, round, match_number, sort_order, player1_id, player2_id')
+    .eq('tournament_id', tournamentId)
+    .eq('draw', draw)
+    .not('round', 'is', null);
+
+  if (!drawMatches?.length) return;
+
+  // Sort rounds early → late
+  const rounds = [...new Set(drawMatches.map((m) => m.round as string))].sort(
+    (a, b) => roundOrderVal(a) - roundOrderVal(b),
+  );
+
+  const completedRound = drawMatches.find((m) => m.id === completedMatchId)?.round ?? '';
+  const currentRoundIdx = rounds.indexOf(completedRound);
+  if (currentRoundIdx === -1 || currentRoundIdx >= rounds.length - 1) {
+    // Already in the final round — no advancement needed
+  } else {
+    const nextRound = rounds[currentRoundIdx + 1];
+
+    // Matches in the current round, sorted by sort_order then match_number
+    const currentRoundMatches = drawMatches
+      .filter((m) => m.round === completedRound)
+      .sort((a, b) =>
+        (a.sort_order ?? 0) !== (b.sort_order ?? 0)
+          ? (a.sort_order ?? 0) - (b.sort_order ?? 0)
+          : (a.match_number ?? 0) - (b.match_number ?? 0),
+      );
+
+    const posInRound = currentRoundMatches.findIndex((m) => m.id === completedMatchId);
+    if (posInRound !== -1) {
+      const nextRoundMatches = drawMatches
+        .filter((m) => m.round === nextRound)
+        .sort((a, b) =>
+          (a.sort_order ?? 0) !== (b.sort_order ?? 0)
+            ? (a.sort_order ?? 0) - (b.sort_order ?? 0)
+            : (a.match_number ?? 0) - (b.match_number ?? 0),
+        );
+
+      const targetIdx = Math.floor(posInRound / 2);
+      const targetMatch = nextRoundMatches[targetIdx];
+      if (targetMatch) {
+        // Even position (0,2,4…) → player1 slot; odd (1,3,5…) → player2 slot
+        const slot = posInRound % 2 === 0 ? 'player1_id' : 'player2_id';
+        await supabase.from('matches').update({ [slot]: winnerId }).eq('id', targetMatch.id);
+      }
+    }
+  }
+
+  // ── Consolation/Plate loser placement ────────────────────────────────────
+  // Only for the first round of the main draw so every player gets ≥ 3 matches.
+  if (currentRoundIdx === 0 && loserId) {
+    // Look for a consolation draw in this tournament (plate / consolation in name)
+    const { data: allDraws } = await supabase
+      .from('matches')
+      .select('draw')
+      .eq('tournament_id', tournamentId)
+      .not('draw', 'eq', draw)
+      .not('round', 'is', null);
+
+    if (allDraws?.length) {
+      const consolationDrawName = [
+        ...new Set(allDraws.map((m) => m.draw as string)),
+      ].find(
+        (d) =>
+          d.toLowerCase().includes('plate') ||
+          d.toLowerCase().includes('consolation') ||
+          d.toLowerCase() === (draw.toLowerCase() + ' b'),
+      );
+
+      if (consolationDrawName) {
+        const { data: consolationMatches } = await supabase
+          .from('matches')
+          .select('id, round, match_number, sort_order, player1_id, player2_id')
+          .eq('tournament_id', tournamentId)
+          .eq('draw', consolationDrawName)
+          .not('round', 'is', null);
+
+        if (consolationMatches?.length) {
+          // First round of the consolation draw
+          const consolRounds = [
+            ...new Set(consolationMatches.map((m) => m.round as string)),
+          ].sort((a, b) => roundOrderVal(a) - roundOrderVal(b));
+
+          const firstConsRound = consolRounds[0];
+          const firstRoundMatches = consolationMatches
+            .filter((m) => m.round === firstConsRound)
+            .sort((a, b) =>
+              (a.sort_order ?? 0) !== (b.sort_order ?? 0)
+                ? (a.sort_order ?? 0) - (b.sort_order ?? 0)
+                : (a.match_number ?? 0) - (b.match_number ?? 0),
+            );
+
+          // Find first match with an empty slot
+          for (const cm of firstRoundMatches) {
+            if (!cm.player1_id) {
+              await supabase.from('matches').update({ player1_id: loserId }).eq('id', cm.id);
+              break;
+            } else if (!cm.player2_id) {
+              await supabase.from('matches').update({ player2_id: loserId }).eq('id', cm.id);
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 /** GET: Fetch a single match with player/court details. Public. */
 export async function GET(_req: NextRequest, { params }: Params) {
   const { id, matchId } = await params;
@@ -27,6 +161,13 @@ export async function GET(_req: NextRequest, { params }: Params) {
  *   1. An organizer (admin/scorer) for this tournament, OR
  *   2. A player in this match (email matches), OR
  *   3. The assigned referee (volunteer) for this match
+ *   4. A global admin/superadmin
+ *
+ * Scorer lock: once a scorer claims the match (in_progress), only they can
+ * continue (plus organizers/admins).
+ *
+ * Correction window: after a match completes, non-admins may only correct
+ * scores within 10 minutes, and only if they are the original scorer.
  */
 export async function PATCH(req: NextRequest, { params }: Params) {
   const limited = rateLimit(req, limits.scoring);
@@ -48,7 +189,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   if (!match) return NextResponse.json({ error: 'Match not found' }, { status: 404 });
 
-  // Scorer lock: if scorer_user_id is already set, only that scorer (or organizer/admin) may proceed
   const existingScorerId = (match.scorer_user_id as string | null) ?? null;
 
   // Check permissions
@@ -64,9 +204,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     (match.player1 as { email?: string } | null)?.email,
     (match.player2 as { email?: string } | null)?.email,
   ].filter(Boolean);
-  const isPlayer = playerEmails.includes(auth.user.email);
+  const isPlayer = !!(auth.user.email && playerEmails.includes(auth.user.email));
 
-  // Check if user is the assigned referee (volunteer with same user_id via auth email)
   const isReferee = !!(match.referee as { id: string } | null)?.id && await supabase
     .from('volunteers')
     .select('id')
@@ -75,7 +214,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     .maybeSingle()
     .then(({ data }) => !!data);
 
-  // Also allow global admin/superadmin
   const { data: profile } = await supabase
     .from('profiles')
     .select('role')
@@ -92,10 +230,36 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'This match is already being scored by someone else' }, { status: 423 });
   }
 
+  // ── 10-minute correction window ─────────────────────────────────────────
+  // Organizers and admins can always edit. Regular users can only correct within
+  // 10 minutes of completion and must be the original scorer.
+  const isCompleted = match.status === 'completed' || match.status === 'walkover';
+  if (isCompleted && !isOrganizer && !isAdmin) {
+    const completedAt = match.completed_at ? new Date(match.completed_at).getTime() : null;
+    const withinWindow = completedAt !== null && (Date.now() - completedAt) < 10 * 60 * 1000;
+    if (!withinWindow) {
+      return NextResponse.json(
+        { error: 'The 10-minute correction window has expired' },
+        { status: 403 },
+      );
+    }
+    if (existingScorerId && existingScorerId !== auth.user.id) {
+      return NextResponse.json(
+        { error: 'Only the original scorer can correct this match' },
+        { status: 403 },
+      );
+    }
+  }
+
   const body = await req.json();
+
+  // ── _check: just validate auth, don't modify ────────────────────────────
+  if (body._check === true) {
+    return NextResponse.json({ ok: true, role: isOrganizer ? 'organizer' : isPlayer ? 'player' : isReferee ? 'referee' : 'admin' });
+  }
+
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
-  // Allow court_id to be set/changed
   if ('court_id' in body) {
     updates.court_id = body.court_id ?? null;
   }
@@ -105,7 +269,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (!Array.isArray(scores)) {
       return NextResponse.json({ error: 'scores must be an array' }, { status: 400 });
     }
-    // US Squash PAR scoring: best of 3 or 5, so max 5 games
     if (scores.length > 5) {
       return NextResponse.json({ error: 'Squash is best of 5 — cannot have more than 5 games' }, { status: 400 });
     }
@@ -127,16 +290,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         return NextResponse.json({ error: `Game ${i + 1}: p2 must be a non-negative integer` }, { status: 400 });
       }
 
-      // A completed game: one player must have won
-      // Win condition: reach 11, OR if 10-all win by 2 (PAR scoring)
       const isCompletedGame = (p1 !== p2) && (
-        (p1 >= 11 || p2 >= 11) &&                         // someone reached 11+
-        (Math.max(p1, p2) >= 11) &&                       // winner has at least 11
-        (Math.max(p1, p2) - Math.min(p1, p2) >= 1) &&    // someone is ahead
-        !(Math.min(p1, p2) >= 10 && Math.max(p1, p2) - Math.min(p1, p2) < 2) // if 10+ each, must win by 2
+        (p1 >= 11 || p2 >= 11) &&
+        (Math.max(p1, p2) >= 11) &&
+        (Math.max(p1, p2) - Math.min(p1, p2) >= 1) &&
+        !(Math.min(p1, p2) >= 10 && Math.max(p1, p2) - Math.min(p1, p2) < 2)
       );
 
-      // Allow in-progress game scores (last game may be incomplete)
       const isLastGame = i === scores.length - 1;
       if (!isLastGame && !isCompletedGame) {
         return NextResponse.json({
@@ -148,7 +308,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       if (p1 > p2) p1GamesWon++;
       else if (p2 > p1) p2GamesWon++;
 
-      // Make sure match hasn't already been decided before this game
       if (i < scores.length - 1) {
         if (p1GamesWon === 3 || p2GamesWon === 3) {
           return NextResponse.json({
@@ -169,7 +328,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     updates.status = body.status;
     if (body.status === 'in_progress') {
       if (!match.started_at) updates.started_at = new Date().toISOString();
-      // Claim scorer lock for whoever starts the match
       if (!existingScorerId) updates.scorer_user_id = auth.user.id;
     }
     if (body.status === 'completed' || body.status === 'walkover') {
@@ -178,8 +336,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 
   if ('winner_id' in body) {
-    // winner_id must be null or one of the two players in this match
-    // Use the FK columns directly — the join only selects (email) so .id would be undefined
     const validWinners = [match.player1_id, match.player2_id, null];
     if (!validWinners.includes(body.winner_id)) {
       return NextResponse.json({ error: 'winner_id must be a player in this match' }, { status: 400 });
@@ -196,7 +352,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Update court status when match starts or ends
+  // ── Court status ─────────────────────────────────────────────────────────
   const courtId = data.court_id ?? match.court_id;
   if (courtId) {
     if (body.status === 'in_progress') {
@@ -206,7 +362,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     }
   }
 
-  // On Deck logic: when a match starts, mark next match on that court as on_deck
+  // ── On-Deck logic ────────────────────────────────────────────────────────
   if (body.status === 'in_progress' && data.court_id) {
     const { data: nextMatch } = await supabase
       .from('matches')
@@ -221,6 +377,26 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (nextMatch) {
       await supabase.from('matches').update({ status: 'on_deck' }).eq('id', nextMatch.id);
     }
+  }
+
+  // ── Bracket advancement ──────────────────────────────────────────────────
+  const winnerIdFinal = (body.winner_id ?? data.winner_id) as string | null;
+  if (
+    (body.status === 'completed' || body.status === 'walkover') &&
+    winnerIdFinal
+  ) {
+    const loserIdFinal = (
+      winnerIdFinal === data.player1_id ? data.player2_id : data.player1_id
+    ) as string | null;
+
+    await advanceBracket(
+      supabase,
+      id,
+      matchId,
+      data.draw,
+      winnerIdFinal,
+      loserIdFinal,
+    );
   }
 
   return NextResponse.json(data);
