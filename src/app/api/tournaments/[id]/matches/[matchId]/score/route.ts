@@ -164,11 +164,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   if ('winner_id' in body) {
     // winner_id must be null or one of the two players in this match
-    const validWinners = [
-      (match.player1 as { id?: string } | null)?.id,
-      (match.player2 as { id?: string } | null)?.id,
-      null,
-    ];
+    // Use the FK columns directly — the join only selects (email) so .id would be undefined
+    const validWinners = [match.player1_id, match.player2_id, null];
     if (!validWinners.includes(body.winner_id)) {
       return NextResponse.json({ error: 'winner_id must be a player in this match' }, { status: 400 });
     }
