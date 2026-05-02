@@ -351,17 +351,72 @@ Migration: `supabase/player-videos-migration.sql`
 - [x] Dark/light theme system (all pages)
 - [x] Navigation loading bar
 - [x] Pull-to-refresh on mobile
-- [x] Password reset flow (email → `/account/reset-password`)
+- [x] Password reset flow (email → `/auth/callback?next=/account/reset-password` → reset form)
 - [x] Change password from account profile
 - [x] Player video uploads with admin approval
+
+## Club Locker API (US Squash)
+
+Club Locker has no public API and no bulk upload option, but the Angular app talks to a real REST API at `api.ussquash.com`. Discovered by inspecting network requests via the Chrome Performance API.
+
+### Auth
+- Token stored in browser localStorage: `localStorage.getItem('token_usq-clublocker')`
+- Use as `Authorization: Bearer <token>` header
+- Token expires — **must be grabbed from a live browser session**; stale tokens return empty match results (`{numberOfWeeksBackAllowed: 0, matches: []}`)
+- No known programmatic refresh mechanism — scraping must be done in-browser or with a freshly grabbed token
+
+### API Base
+```
+https://api.ussquash.com/resources/
+```
+
+### Key Endpoints
+
+| Purpose | Endpoint |
+|---------|----------|
+| Rankings (paginated) | `GET /rankings/{groupId}/current?divisions={divId}&pageNumber={n}` |
+| Player match history | `GET /res/user/{playerId}/matches_profile/page/{n}?pageSize=50` |
+| Player profile | `GET /res/user/{playerId}` |
+
+### SSRA-Specific IDs
+- **Org ID:** 18
+- **Rankings group ID:** 165 (International Singles)
+- **Division IDs:** 1 = All Women, 2 = All Men
+- Rankings return 50 players/page; iterate until empty page
+
+### Match History Fields
+`playerId, playerName, playerRating, division, date, result, opponentName, opponentId, score, matchType, eventName, ratingChange, newRating`
+
+### Scraped Data (2025-04-30)
+- **`~/Desktop/ssra_data/players.csv`** — 297 SSRA players (84 Women, 213 Men). Fields: `playerId, firstName, lastName, division, rating, ranking, city, state, homeClub, email, dob, age`
+- **`~/Downloads/ssra_matches.csv`** — 28,809 match records for all 297 players
+
+### In-Browser Scraper Approach
+Because tokens expire, run scraping as JavaScript injected into a logged-in Club Locker tab (via Chrome DevTools or Claude's browser JS tool). Download results via Blob URL:
+```javascript
+const csv = '...';
+const a = document.createElement('a');
+a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
+a.download = 'filename.csv';
+a.click();
+```
+The Chrome extension blocks JS return values containing sensitive data but does **not** block Blob downloads.
+
+### Data Update Strategy
+- **Targeted sync at import time:** When importing a CSV of tournament players, look up each player's current Club Locker rating/ranking and attach it. Covers out-of-region players without needing a full sync.
+- **Periodic SSRA member refresh (future):** ~297 players, ~5 min. Needs token refresh mechanism or service-account login.
+- **Not worth a full real-time sync** — Club Locker owns ratings; this app should read and display them, not try to replicate them.
+
+---
 
 ## Pending / Wishlist
 
 - [ ] Resend domain verification (seattlesquash.com) so emails reach any recipient
-- [ ] ClubLocker CSV player import
+- [ ] ClubLocker CSV player import (with optional live rating lookup at import time)
 - [ ] CSV export for players/results
 - [ ] Bracket visualization
 - [ ] Custom Vercel domain (seattlesquash.com)
 - [ ] Referee auto-assign algorithm (assign refs to matches by round priority)
 - [ ] Drag-to-reorder match scheduling
+- [ ] "Sync from Club Locker" button on player import — for each player with a Club Locker ID, fetch current rating/ranking from `api.ussquash.com` and populate fields
 - [ ] Post-tournament survey — auto-send a feedback survey to all registered players after a tournament ends (trigger: status → completed). Questions: overall experience, venue rating, court quality, organisation, NPS score, open comments. Results visible to organiser in tournament admin dashboard. Could use site_settings for default question set and allow per-tournament customisation.
