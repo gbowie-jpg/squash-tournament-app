@@ -1,14 +1,28 @@
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'Seattle Squash <onboarding@resend.dev>';
 
+export type BlockType = 'paragraph' | 'heading' | 'subheading' | 'bullets' | 'button' | 'image' | 'divider';
+
+export interface Block {
+  id: string;
+  type: BlockType;
+  text?: string;
+  items?: string[];
+  label?: string;
+  url?: string;
+  alt?: string;
+}
+
 export async function sendEmail({
   to,
   subject,
   html,
+  attachment,
 }: {
   to: string;
   subject: string;
   html: string;
+  attachment?: { name: string; content: string; mimeType: string };
 }) {
   if (!RESEND_API_KEY) {
     console.warn('RESEND_API_KEY not set — skipping email send');
@@ -21,7 +35,15 @@ export async function sendEmail({
       Authorization: `Bearer ${RESEND_API_KEY}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ from: FROM_EMAIL, to, subject, html }),
+    body: JSON.stringify({
+      from: FROM_EMAIL,
+      to,
+      subject,
+      html,
+      ...(attachment ? {
+        attachments: [{ filename: attachment.name, content: attachment.content }],
+      } : {}),
+    }),
   });
 
   if (!res.ok) {
@@ -214,21 +236,25 @@ export function buildCampaignHtml({
   const headerBg   = template.headerBg   || '#0f172a';
   const footerText = template.footerText || 'Seattle Squash Racquets Association &nbsp;·&nbsp; P.O. Box 665, Seattle, WA 98111';
 
-  // Convert newlines → paragraphs; [[image:URL]] → inline image; [[button:Label|URL]] → CTA
-  const paragraphs = body
-    .split(/\n\n+/)
-    .map((p) => {
-      const imageMatch = p.trim().match(/^\[\[image:(.*?)\]\]$/);
-      if (imageMatch) {
-        return `<p style="margin:0 0 20px 0;text-align:center;"><img src="${imageMatch[1]}" alt="" style="max-width:100%;height:auto;border-radius:8px;" /></p>`;
-      }
-      const btnMatch = p.trim().match(/^\[\[button:(.*?)\|(.*?)\]\]$/);
-      if (btnMatch) {
-        return `<p style="margin:0 0 24px 0;text-align:center;"><a href="${btnMatch[2]}" style="display:inline-block;background:#0f172a;color:#ffffff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;letter-spacing:0.01em;">${btnMatch[1]}</a></p>`;
-      }
-      return `<p style="margin:0 0 18px 0;line-height:1.7;color:#1e293b;">${p.replace(/\n/g, '<br/>')}</p>`;
-    })
-    .join('');
+  // If body is already HTML (from block editor), use it directly.
+  // Otherwise run through the legacy text→HTML conversion (backward-compat for old campaigns).
+  const isHtml = body.trimStart().startsWith('<');
+  const paragraphs = isHtml
+    ? body
+    : body
+        .split(/\n\n+/)
+        .map((p) => {
+          const imageMatch = p.trim().match(/^\[\[image:(.*?)\]\]$/);
+          if (imageMatch) {
+            return `<p style="margin:0 0 20px 0;text-align:center;"><img src="${imageMatch[1]}" alt="" style="max-width:100%;height:auto;border-radius:8px;" /></p>`;
+          }
+          const btnMatch = p.trim().match(/^\[\[button:(.*?)\|(.*?)\]\]$/);
+          if (btnMatch) {
+            return `<p style="margin:0 0 24px 0;text-align:center;"><a href="${btnMatch[2]}" style="display:inline-block;background:#0f172a;color:#ffffff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;letter-spacing:0.01em;">${btnMatch[1]}</a></p>`;
+          }
+          return `<p style="margin:0 0 18px 0;line-height:1.7;color:#1e293b;">${p.replace(/\n/g, '<br/>')}</p>`;
+        })
+        .join('');
 
   const footerHtml = `
     <p style="margin:0 0 6px;color:#64748b;font-size:12px;line-height:1.6;">${footerText}</p>

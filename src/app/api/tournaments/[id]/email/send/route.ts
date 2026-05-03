@@ -13,7 +13,7 @@ export async function POST(
   if (auth.error) return auth.error;
   const supabase = createAdminClient();
   const reqBody = await req.json();
-  const { campaignId, tags: filterTags, segment: bodySegment } = reqBody;
+  const { campaignId, tags: filterTags, segment: bodySegment, attachment } = reqBody;
 
   // Optional filters passed from compose form
   const segment = req.nextUrl.searchParams.get('segment') || bodySegment;
@@ -90,6 +90,7 @@ export async function POST(
       to: recipient.email,
       subject: campaign.subject,
       html,
+      attachment: attachment ?? undefined,
     });
 
     await supabase.from('email_sends').insert({
