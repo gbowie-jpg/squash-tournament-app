@@ -15,14 +15,14 @@ export async function POST(req: NextRequest) {
 
   const supabase = createAdminClient();
 
-  let payload: { to?: string; subject?: string; body?: string };
+  let payload: { to?: string; subject?: string; body?: string; attachment?: { name: string; content: string; mimeType: string } };
   try {
     payload = await req.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const { to, subject, body } = payload;
+  const { to, subject, body, attachment } = payload;
 
   if (!to || !to.includes('@')) {
     return NextResponse.json({ error: 'A valid "to" email address is required' }, { status: 400 });
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     // No unsubscribe link for manual/test sends
   });
 
-  const result = await sendEmail({ to: to.trim().toLowerCase(), subject, html });
+  const result = await sendEmail({ to: to.trim().toLowerCase(), subject, html, attachment: attachment ?? undefined });
 
   if (!result.success) {
     return NextResponse.json({ error: result.error ?? 'Send failed' }, { status: 502 });

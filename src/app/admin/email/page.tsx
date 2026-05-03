@@ -1,7 +1,273 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
+
+// ─── Block editor types ──────────────────────────────────────────────────────
+
+type BlockType = 'paragraph' | 'heading' | 'subheading' | 'bullets' | 'button' | 'image' | 'divider';
+
+interface Block {
+  id: string;
+  type: BlockType;
+  text?: string;
+  items?: string[];
+  label?: string;
+  url?: string;
+  alt?: string;
+}
+
+function newBlock(type: BlockType): Block {
+  const id = typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : Date.now().toString();
+  switch (type) {
+    case 'paragraph':   return { id, type, text: '' };
+    case 'heading':     return { id, type, text: '' };
+    case 'subheading':  return { id, type, text: '' };
+    case 'bullets':     return { id, type, items: [''] };
+    case 'button':      return { id, type, label: '', url: '' };
+    case 'image':       return { id, type, url: '', alt: '' };
+    case 'divider':     return { id, type };
+  }
+}
+
+/** Serialize blocks → HTML body (inner content only, no wrapper). */
+function blocksToHtml(blocks: Block[]): string {
+  return blocks.map((b) => {
+    switch (b.type) {
+      case 'paragraph':
+        return `<p style="margin:0 0 18px 0;line-height:1.7;color:#1e293b;">${(b.text || '').replace(/\n/g, '<br/>')}</p>`;
+      case 'heading':
+        return `<h2 style="margin:0 0 12px 0;font-size:20px;font-weight:700;color:#0f172a;line-height:1.3;">${b.text || ''}</h2>`;
+      case 'subheading':
+        return `<h3 style="margin:0 0 10px 0;font-size:16px;font-weight:600;color:#334155;line-height:1.4;">${b.text || ''}</h3>`;
+      case 'bullets': {
+        const items = (b.items || []).filter(Boolean).map(
+          (item) => `<li style="margin:0 0 6px 0;color:#1e293b;line-height:1.6;">${item}</li>`
+        ).join('');
+        return `<ul style="margin:0 0 18px 0;padding-left:20px;">${items}</ul>`;
+      }
+      case 'button':
+        return `<p style="margin:0 0 24px 0;text-align:center;"><a href="${b.url || '#'}" style="display:inline-block;background:#0f172a;color:#ffffff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;letter-spacing:0.01em;">${b.label || 'Click here'}</a></p>`;
+      case 'image':
+        return `<p style="margin:0 0 20px 0;text-align:center;"><img src="${b.url || ''}" alt="${b.alt || ''}" style="max-width:100%;height:auto;border-radius:8px;" /></p>`;
+      case 'divider':
+        return `<hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;" />`;
+      default:
+        return '';
+    }
+  }).join('');
+}
+
+// ─── Block editor components ─────────────────────────────────────────────────
+
+const BLOCK_LABELS: Record<BlockType, string> = {
+  paragraph: 'Text', heading: 'Heading', subheading: 'Subheading',
+  bullets: 'Bullets', button: 'Button', image: 'Image', divider: 'Divider',
+};
+const BLOCK_ICONS: Record<BlockType, string> = {
+  paragraph: '¶', heading: 'H', subheading: 'h', bullets: '•',
+  button: '⊞', image: '🖼', divider: '—',
+};
+
+function BlockCard({
+  block, index, total,
+  onChange, onRemove, onMove,
+}: {
+  block: Block;
+  index: number;
+  total: number;
+  onChange: (updated: Block) => void;
+  onRemove: () => void;
+  onMove: (dir: 'up' | 'down') => void;
+}) {
+  const inputClass = 'w-full border border-border rounded-lg px-3 py-2 text-sm bg-surface text-foreground focus:outline-none focus:ring-1 focus:ring-zinc-400';
+
+  return (
+    <div
+      className="group bg-card border border-border rounded-xl p-4 space-y-3"
+      style={{ transition: 'box-shadow 0.15s' }}
+    >
+      {/* Header row */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          {BLOCK_ICONS[block.type]} {BLOCK_LABELS[block.type]}
+        </span>
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={() => onMove('up')} disabled={index === 0}
+            className="w-6 h-6 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
+            title="Move up"
+          >↑</button>
+          <button
+            onClick={() => onMove('down')} disabled={index === total - 1}
+            className="w-6 h-6 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
+            title="Move down"
+          >↓</button>
+          <button
+            onClick={onRemove}
+            className="w-6 h-6 rounded text-xs text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center justify-center"
+            title="Remove block"
+          >×</button>
+        </div>
+      </div>
+
+      {/* Editors */}
+      {block.type === 'paragraph' && (
+        <textarea
+          rows={3} value={block.text || ''}
+          onChange={(e) => onChange({ ...block, text: e.target.value })}
+          placeholder="Write your paragraph…"
+          className={inputClass}
+        />
+      )}
+      {block.type === 'heading' && (
+        <input type="text" value={block.text || ''}
+          onChange={(e) => onChange({ ...block, text: e.target.value })}
+          placeholder="Section heading…"
+          className={inputClass}
+        />
+      )}
+      {block.type === 'subheading' && (
+        <input type="text" value={block.text || ''}
+          onChange={(e) => onChange({ ...block, text: e.target.value })}
+          placeholder="Subheading…"
+          className={inputClass}
+        />
+      )}
+      {block.type === 'bullets' && (
+        <div className="space-y-2">
+          {(block.items || []).map((item, i) => (
+            <div key={i} className="flex gap-2 items-center">
+              <span className="text-muted-foreground text-sm shrink-0">•</span>
+              <input type="text" value={item}
+                onChange={(e) => {
+                  const items = [...(block.items || [])];
+                  items[i] = e.target.value;
+                  onChange({ ...block, items });
+                }}
+                placeholder={`Item ${i + 1}…`}
+                className={inputClass}
+              />
+              {(block.items || []).length > 1 && (
+                <button
+                  onClick={() => {
+                    const items = (block.items || []).filter((_, j) => j !== i);
+                    onChange({ ...block, items });
+                  }}
+                  className="text-xs text-red-400 hover:text-red-600 shrink-0"
+                >×</button>
+              )}
+            </div>
+          ))}
+          <button
+            onClick={() => onChange({ ...block, items: [...(block.items || []), ''] })}
+            className="text-xs text-muted-foreground hover:text-foreground underline"
+          >+ Add item</button>
+        </div>
+      )}
+      {block.type === 'button' && (
+        <div className="flex gap-2">
+          <input type="text" value={block.label || ''}
+            onChange={(e) => onChange({ ...block, label: e.target.value })}
+            placeholder="Button label"
+            className={inputClass}
+          />
+          <input type="url" value={block.url || ''}
+            onChange={(e) => onChange({ ...block, url: e.target.value })}
+            placeholder="https://…"
+            className={inputClass}
+          />
+        </div>
+      )}
+      {block.type === 'image' && (
+        <div className="space-y-2">
+          <input type="url" value={block.url || ''}
+            onChange={(e) => onChange({ ...block, url: e.target.value })}
+            placeholder="Image URL (https://…)"
+            className={inputClass}
+          />
+          <input type="text" value={block.alt || ''}
+            onChange={(e) => onChange({ ...block, alt: e.target.value })}
+            placeholder="Alt text"
+            className={inputClass}
+          />
+        </div>
+      )}
+      {block.type === 'divider' && (
+        <div className="text-center text-muted-foreground text-sm py-1 select-none">— Divider —</div>
+      )}
+    </div>
+  );
+}
+
+/** Simplified live preview of how the email will look. */
+function EmailPreview({ blocks }: { blocks: Block[] }) {
+  return (
+    <div className="rounded-xl overflow-hidden border border-border text-sm" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+      {/* Header */}
+      <div style={{ background: '#0f172a', padding: '24px 28px', textAlign: 'center' }}>
+        <div style={{ fontSize: 22, fontWeight: 700, color: '#ffffff', marginBottom: 4 }}>Seattle Squash</div>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Seattle Squash Racquets Association</div>
+      </div>
+      {/* Accent bar */}
+      <div style={{ height: 4, background: 'linear-gradient(90deg,#3b82f6,#8b5cf6,#ec4899)' }} />
+      {/* Body */}
+      <div style={{ background: '#ffffff', padding: '28px 28px 20px', minHeight: 80 }}>
+        {blocks.length === 0 ? (
+          <p style={{ color: '#94a3b8', textAlign: 'center', margin: '20px 0', fontSize: 13 }}>Add blocks to see a preview…</p>
+        ) : blocks.map((b) => {
+          switch (b.type) {
+            case 'paragraph':
+              return <p key={b.id} style={{ margin: '0 0 16px', lineHeight: 1.7, color: '#1e293b', fontSize: 14 }}>{b.text || <span style={{ color: '#cbd5e1' }}>Empty paragraph</span>}</p>;
+            case 'heading':
+              return <h2 key={b.id} style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 700, color: '#0f172a' }}>{b.text || <span style={{ color: '#cbd5e1', fontWeight: 400 }}>Heading</span>}</h2>;
+            case 'subheading':
+              return <h3 key={b.id} style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 600, color: '#334155' }}>{b.text || <span style={{ color: '#cbd5e1', fontWeight: 400 }}>Subheading</span>}</h3>;
+            case 'bullets':
+              return (
+                <ul key={b.id} style={{ margin: '0 0 16px', paddingLeft: 20 }}>
+                  {(b.items || []).map((item, i) => (
+                    <li key={i} style={{ marginBottom: 4, color: '#1e293b', lineHeight: 1.6, fontSize: 14 }}>{item || <span style={{ color: '#cbd5e1' }}>Item</span>}</li>
+                  ))}
+                </ul>
+              );
+            case 'button':
+              return (
+                <div key={b.id} style={{ textAlign: 'center', margin: '0 0 20px' }}>
+                  <span style={{ display: 'inline-block', background: '#0f172a', color: '#ffffff', padding: '10px 24px', borderRadius: 8, fontSize: 14, fontWeight: 700 }}>
+                    {b.label || 'Button'}
+                  </span>
+                </div>
+              );
+            case 'image':
+              return b.url
+                ? <div key={b.id} style={{ textAlign: 'center', margin: '0 0 16px' }}><img src={b.url} alt={b.alt || ''} style={{ maxWidth: '100%', borderRadius: 8 }} /></div>
+                : <div key={b.id} style={{ textAlign: 'center', margin: '0 0 16px', color: '#cbd5e1', fontSize: 13 }}>[ Image: no URL set ]</div>;
+            case 'divider':
+              return <hr key={b.id} style={{ border: 'none', borderTop: '1px solid #e2e8f0', margin: '20px 0' }} />;
+            default:
+              return null;
+          }
+        })}
+      </div>
+      {/* Footer */}
+      <div style={{ background: '#f8fafc', padding: '16px 28px', textAlign: 'center', borderTop: '1px solid #e2e8f0' }}>
+        <p style={{ margin: 0, color: '#94a3b8', fontSize: 11 }}>Seattle Squash Racquets Association · P.O. Box 665, Seattle, WA 98111</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Attachment state type ───────────────────────────────────────────────────
+
+interface AttachmentState {
+  name: string;
+  size: number;
+  base64: string;
+  mimeType: string;
+}
 
 type Recipient = {
   id: string;
@@ -93,7 +359,11 @@ export default function GlobalEmail() {
 
   // Compose
   const [subject, setSubject] = useState('');
-  const [body, setBody] = useState('');
+  const [blocks, setBlocks] = useState<Block[]>([{ id: '1', type: 'paragraph', text: '' }]);
+  const [previewTab, setPreviewTab] = useState<'edit' | 'preview'>('edit');
+  const [attachment, setAttachment] = useState<AttachmentState | null>(null);
+  const [attachWarning, setAttachWarning] = useState<string>('');
+  const attachInputRef = useRef<HTMLInputElement>(null);
   const [sendTags, setSendTags] = useState<string[]>([]);
   const [sendMode, setSendMode] = useState<'all' | 'single'>('all');
   const [singleEmail, setSingleEmail] = useState('');
@@ -321,19 +591,76 @@ export default function GlobalEmail() {
     setTimeout(() => setCsvSuccess(''), 5000);
   };
 
+  // ── Block editor handlers ──
+  const updateBlock = useCallback((updated: Block) => {
+    setBlocks((prev) => prev.map((b) => b.id === updated.id ? updated : b));
+  }, []);
+
+  const removeBlock = useCallback((id: string) => {
+    setBlocks((prev) => prev.filter((b) => b.id !== id));
+  }, []);
+
+  const moveBlock = useCallback((id: string, dir: 'up' | 'down') => {
+    setBlocks((prev) => {
+      const idx = prev.findIndex((b) => b.id === id);
+      if (idx === -1) return prev;
+      const next = [...prev];
+      const swapIdx = dir === 'up' ? idx - 1 : idx + 1;
+      if (swapIdx < 0 || swapIdx >= next.length) return prev;
+      [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+      return next;
+    });
+  }, []);
+
+  const addBlock = useCallback((type: BlockType) => {
+    setBlocks((prev) => [...prev, newBlock(type)]);
+  }, []);
+
+  // ── Attachment handler ──
+  const handleAttachFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAttachWarning('');
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 15 * 1024 * 1024) {
+      setAttachWarning('File is too large (max 15 MB). Please choose a smaller file.');
+      if (attachInputRef.current) attachInputRef.current.value = '';
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setAttachWarning('Large attachments (>5 MB) may be blocked by some email providers.');
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const base64 = dataUrl.split(',')[1] ?? dataUrl;
+      setAttachment({ name: file.name, size: file.size, base64, mimeType: file.type || 'application/octet-stream' });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeAttachment = () => {
+    setAttachment(null);
+    setAttachWarning('');
+    if (attachInputRef.current) attachInputRef.current.value = '';
+  };
+
   const toggleSendTag = (tag: string) => {
     setSendTags((prev) => prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]);
   };
 
   const sendTest = async () => {
-    if (!subject || !body || !testEmail) return;
+    const bodyHtml = blocksToHtml(blocks);
+    if (!subject || !bodyHtml.trim() || !testEmail) return;
     setTestSending(true);
     setTestResult(null);
     try {
       const res = await fetch('/api/admin/email/test-send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: testEmail, subject, body }),
+        body: JSON.stringify({
+          to: testEmail, subject, body: bodyHtml,
+          attachment: attachment ? { name: attachment.name, content: attachment.base64, mimeType: attachment.mimeType } : undefined,
+        }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -348,7 +675,8 @@ export default function GlobalEmail() {
   };
 
   const sendCampaign = async () => {
-    if (!subject || !body) return;
+    const bodyHtml = blocksToHtml(blocks);
+    if (!subject || !bodyHtml.trim()) return;
     setSending(true);
     setSendResult(null);
 
@@ -359,12 +687,16 @@ export default function GlobalEmail() {
         const res = await fetch('/api/admin/email/test-send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ to: singleEmail, subject, body }),
+          body: JSON.stringify({
+            to: singleEmail, subject, body: bodyHtml,
+            attachment: attachment ? { name: attachment.name, content: attachment.base64, mimeType: attachment.mimeType } : undefined,
+          }),
         });
         const data = await res.json();
         if (res.ok) {
           setSendResult({ ok: true, msg: `✓ Sent to ${data.to}` });
-          setSubject(''); setBody(''); setSingleEmail(''); setSendMode('all');
+          setSubject(''); setBlocks([{ id: '1', type: 'paragraph', text: '' }]);
+          setAttachment(null); setAttachWarning(''); setSingleEmail(''); setSendMode('all');
         } else {
           setSendResult({ ok: false, msg: data.error || 'Send failed' });
         }
@@ -379,7 +711,7 @@ export default function GlobalEmail() {
     const createRes = await fetch('/api/admin/email/campaigns', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subject, body, tags: sendTags }),
+      body: JSON.stringify({ subject, body: bodyHtml, tags: sendTags }),
     });
     if (!createRes.ok) { setSendResult({ ok: false, msg: 'Failed to create campaign' }); setSending(false); return; }
     const campaign = await createRes.json();
@@ -387,13 +719,18 @@ export default function GlobalEmail() {
     const sendRes = await fetch('/api/admin/email/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ campaignId: campaign.id, tags: sendTags.length > 0 ? sendTags : undefined }),
+      body: JSON.stringify({
+        campaignId: campaign.id,
+        tags: sendTags.length > 0 ? sendTags : undefined,
+        attachment: attachment ? { name: attachment.name, content: attachment.base64, mimeType: attachment.mimeType } : undefined,
+      }),
     });
 
     if (sendRes.ok) {
       const result = await sendRes.json();
       setSendResult({ ok: true, msg: `Sent to ${result.sent} recipients${result.failed > 0 ? `, ${result.failed} failed` : ''}` });
-      setSubject(''); setBody(''); setSendTags([]);
+      setSubject(''); setBlocks([{ id: '1', type: 'paragraph', text: '' }]);
+      setAttachment(null); setAttachWarning(''); setSendTags([]);
       await refresh();
     } else {
       const err = await sendRes.json();
@@ -716,11 +1053,86 @@ export default function GlobalEmail() {
                 placeholder="e.g. Seattle Squash — Spring Season Update"
                 className="w-full border border-border rounded-lg px-3 py-2.5 text-sm" />
             </div>
-            <div>
-              <label htmlFor="compose-body" className="block text-sm font-medium mb-1">Message</label>
-              <textarea id="compose-body" value={body} onChange={(e) => setBody(e.target.value)} rows={12}
-                placeholder="Write your message here. Blank lines become paragraph breaks."
-                className="w-full border border-border rounded-lg px-3 py-2.5 text-sm font-mono" />
+
+            {/* Block editor header */}
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">Message</label>
+              {/* Mobile tab toggle */}
+              <div className="flex md:hidden gap-1 bg-surface border border-border rounded-lg p-0.5 text-xs">
+                <button onClick={() => setPreviewTab('edit')}
+                  className={`px-3 py-1 rounded-md font-medium transition-colors ${previewTab === 'edit' ? 'bg-foreground text-background' : 'text-muted-foreground'}`}>
+                  Edit
+                </button>
+                <button onClick={() => setPreviewTab('preview')}
+                  className={`px-3 py-1 rounded-md font-medium transition-colors ${previewTab === 'preview' ? 'bg-foreground text-background' : 'text-muted-foreground'}`}>
+                  Preview
+                </button>
+              </div>
+            </div>
+
+            {/* Two-column layout on md+, single-column on mobile */}
+            <div className="md:grid md:grid-cols-2 md:gap-4">
+              {/* Editor column */}
+              <div className={`space-y-3 ${previewTab === 'preview' ? 'hidden md:block' : ''}`}>
+                {blocks.map((block, index) => (
+                  <BlockCard
+                    key={block.id}
+                    block={block}
+                    index={index}
+                    total={blocks.length}
+                    onChange={updateBlock}
+                    onRemove={() => removeBlock(block.id)}
+                    onMove={(dir) => moveBlock(block.id, dir)}
+                  />
+                ))}
+
+                {/* Add block toolbar */}
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {(['paragraph', 'heading', 'subheading', 'bullets', 'button', 'image', 'divider'] as BlockType[]).map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => addBlock(type)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border border-border bg-surface text-muted-foreground hover:text-foreground hover:border-zinc-400 transition-colors"
+                      title={`Add ${BLOCK_LABELS[type]} block`}
+                    >
+                      <span>{BLOCK_ICONS[type]}</span>
+                      <span>{BLOCK_LABELS[type]}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Preview column */}
+              <div className={`md:max-h-[600px] md:overflow-y-auto ${previewTab === 'edit' ? 'hidden md:block' : ''}`}>
+                <div className="sticky top-0 hidden md:block pb-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Preview</p>
+                </div>
+                <EmailPreview blocks={blocks} />
+              </div>
+            </div>
+
+            {/* Attachment */}
+            <div className="border-t border-border pt-4 space-y-2">
+              <p className="text-sm font-medium">📎 Attach a file</p>
+              {attachment ? (
+                <div className="flex items-center gap-3 bg-surface border border-border rounded-lg px-3 py-2.5 text-sm">
+                  <span className="text-foreground font-medium truncate flex-1">{attachment.name}</span>
+                  <span className="text-muted-foreground whitespace-nowrap text-xs">{(attachment.size / 1024).toFixed(1)} KB</span>
+                  <button onClick={removeAttachment} className="text-red-400 hover:text-red-600 text-base leading-none shrink-0" title="Remove attachment">×</button>
+                </div>
+              ) : (
+                <input
+                  ref={attachInputRef}
+                  type="file"
+                  onChange={handleAttachFile}
+                  className="block text-sm text-foreground file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-card file:text-foreground file:cursor-pointer hover:file:opacity-80 border border-border rounded-lg p-1"
+                />
+              )}
+              {attachWarning && (
+                <p className={`text-xs rounded-lg px-3 py-2 ${attachWarning.startsWith('Large') ? 'bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400' : 'bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400'}`}>
+                  {attachWarning}
+                </p>
+              )}
             </div>
 
             {sendMode === 'all' && (
@@ -738,7 +1150,7 @@ export default function GlobalEmail() {
             <button
               onClick={sendCampaign}
               disabled={
-                sending || !subject || !body ||
+                sending || !subject || blocks.every((b) => !blocksToHtml([b]).trim()) ||
                 (sendMode === 'all' && sendTargetCount === 0) ||
                 (sendMode === 'single' && !singleEmail)
               }
@@ -765,7 +1177,7 @@ export default function GlobalEmail() {
                 />
                 <button
                   onClick={sendTest}
-                  disabled={testSending || !subject || !body || !testEmail}
+                  disabled={testSending || !subject || blocks.every((b) => !blocksToHtml([b]).trim()) || !testEmail}
                   className="whitespace-nowrap bg-surface border border-border text-foreground px-4 py-2 rounded-lg text-sm font-medium hover:opacity-80 disabled:opacity-50 transition-opacity"
                 >
                   {testSending ? 'Sending…' : 'Send Test →'}
@@ -776,7 +1188,7 @@ export default function GlobalEmail() {
                   {testResult.msg}
                 </p>
               )}
-              <p className="text-xs text-muted-foreground mt-1.5">Uses current subject + body. No campaign record — just a preview in your inbox.</p>
+              <p className="text-xs text-muted-foreground mt-1.5">Uses current subject + message blocks. No campaign record — just a preview in your inbox.</p>
             </div>
           </div>
         ) : tab === 'history' ? (

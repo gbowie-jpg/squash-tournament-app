@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   if (auth.error) return auth.error;
 
   const supabase = createAdminClient();
-  const { campaignId, tags } = await req.json();
+  const { campaignId, tags, attachment } = await req.json();
 
   if (!campaignId) return NextResponse.json({ error: 'campaignId required' }, { status: 400 });
 
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
   for (const recipient of recipients) {
     const unsubscribeUrl = `${siteUrl}/api/unsubscribe?token=${recipient.unsubscribe_token}`;
     const html = buildCampaignHtml({ body: campaign.body, tournamentName: 'Seattle Squash', template, unsubscribeUrl });
-    const result = await sendEmail({ to: recipient.email, subject: campaign.subject, html });
+    const result = await sendEmail({ to: recipient.email, subject: campaign.subject, html, attachment: attachment ?? undefined });
 
     await supabase.from('global_email_sends').insert({
       campaign_id: campaignId,
