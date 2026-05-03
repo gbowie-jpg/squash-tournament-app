@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { CheckCircle, KeyRound } from 'lucide-react';
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -14,29 +15,31 @@ export default function ResetPasswordPage() {
   const [done, setDone] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
 
-  // Supabase embeds the recovery token in the URL hash.
-  // We need to wait for the client to exchange it for a session.
+  // Supabase sends the reset email with ?token_hash=...&type=recovery in the URL.
+  // We call verifyOtp() with those params to establish a session — no PKCE needed,
+  // so the link works regardless of which browser or device the user opens it on.
   useEffect(() => {
     const supabase = createClient();
+    const tokenHash = searchParams.get('token_hash');
+    const type = searchParams.get('type');
 
-    // onAuthStateChange fires with SIGNED_IN (type=recovery) when
-    // the user lands here via the password-reset email link.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event) => {
-        if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
-          setSessionReady(true);
-        }
-      },
-    );
+    if (tokenHash && type === 'recovery') {
+      supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' })
+        .then(({ error }) => {
+          if (error) {
+            setError('Reset link is invalid or has expired. Please request a new one.');
+          } else {
+            setSessionReady(true);
+          }
+        });
+      return;
+    }
 
-    // Also check if there's already an active session (in case the
-    // page is reloaded after the token was already exchanged).
+    // Fallback: check for an already-active session (e.g. page reload after token exchange).
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) setSessionReady(true);
     });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,5 +146,13 @@ export default function ResetPasswordPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen text-[var(--text-muted)]">Loading…</div>}>
+      <ResetPasswordForm />
+    </Suspense>
   );
 }

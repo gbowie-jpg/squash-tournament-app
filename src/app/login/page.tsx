@@ -56,7 +56,7 @@ function LoginForm() {
       } else if (mode === 'reset') {
         const origin = window.location.origin;
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${origin}/auth/callback?next=/account/reset-password`,
+          redirectTo: `${origin}/account/reset-password`,
         });
         if (error) { setError(error.message); return; }
         setMessage('Password reset email sent — check your inbox and click the link to set a new password.');
