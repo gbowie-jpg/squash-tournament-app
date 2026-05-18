@@ -276,6 +276,137 @@ interface AttachmentState {
   mimeType: string;
 }
 
+// ─── Email playbook templates ────────────────────────────────────────────────
+
+type TemplateBlock = Omit<Block, 'id'>;
+
+type EmailTemplate = {
+  id: string;
+  name: string;
+  emoji: string;
+  hint: string;
+  subject: string;
+  blocks: TemplateBlock[];
+};
+
+function getTemplates(tournamentName: string, slug: string): EmailTemplate[] {
+  const base = `https://app.seattlesquash.com/t/${slug}`;
+  return [
+    {
+      id: 'invitation',
+      name: 'Invitation',
+      emoji: '✉️',
+      hint: 'Send now to your invite list',
+      subject: `You're Invited: ${tournamentName}`,
+      blocks: [
+        { type: 'heading',    text: "You're in the draw." },
+        { type: 'paragraph',  text: `${tournamentName} runs May 29–31 at the Seattle Athletic Club. We're excited to have you competing this year.` },
+        { type: 'subheading', text: 'What to expect' },
+        { type: 'bullets',    items: [
+          '3 days of competition across multiple draws',
+          'Live court assignments and real-time bracket updates in the app',
+          'Referees, scorers, and a full tournament experience',
+        ]},
+        { type: 'paragraph',  text: 'Track your matches, check the court board, and follow the live bracket on the tournament app.' },
+        { type: 'button',     label: 'View Tournament Page', url: base },
+        { type: 'paragraph',  text: "Questions? Reply to this email — we're happy to help." },
+      ],
+    },
+    {
+      id: 'draws-live',
+      name: 'Draws Live',
+      emoji: '🎯',
+      hint: 'Send when draws are generated',
+      subject: `${tournamentName} — Draws Are Live`,
+      blocks: [
+        { type: 'heading',   text: 'The draws are set.' },
+        { type: 'paragraph', text: `The ${tournamentName} bracket is live. See your first-round match, scheduled times, and your path to the final on the tournament app.` },
+        { type: 'button',    label: 'View Your Draw', url: `${base}/players` },
+        { type: 'divider' },
+        { type: 'paragraph', text: "Court assignments will post as the tournament gets underway. We'll be in touch the night before with everything you need for Day 1. See you on court." },
+      ],
+    },
+    {
+      id: 'starts-tomorrow',
+      name: 'Starts Tomorrow',
+      emoji: '🌅',
+      hint: 'Send the night before Day 1',
+      subject: `${tournamentName} Starts Tomorrow — Here's What You Need to Know`,
+      blocks: [
+        { type: 'heading',    text: 'See you tomorrow.' },
+        { type: 'subheading', text: 'Venue' },
+        { type: 'paragraph',  text: 'Seattle Athletic Club — [address]. Doors open at [time].' },
+        { type: 'subheading', text: 'Your matches' },
+        { type: 'paragraph',  text: 'Check the app for your draw, scheduled times, and court assignments. Live updates will post throughout the day.' },
+        { type: 'button',     label: 'Open the Tournament App', url: base },
+        { type: 'subheading', text: 'Day-of reminders' },
+        { type: 'bullets',    items: [
+          'Arrive at least 15 minutes before your match',
+          'Check in at the front desk on arrival',
+          'Court assignments are live — check the board or the app',
+          'Bring your racquets, non-marking shoes, and water',
+        ]},
+        { type: 'divider' },
+        { type: 'paragraph',  text: "Questions? Find us at the front desk. Let's have a great tournament." },
+      ],
+    },
+    {
+      id: 'party',
+      name: 'Party RSVP',
+      emoji: '🥂',
+      hint: 'Send 3–5 days before the social',
+      subject: `Join Us for the ${tournamentName} Social — [DATE]`,
+      blocks: [
+        { type: 'heading',    text: 'The after-party.' },
+        { type: 'paragraph',  text: `Win or lose, everyone's invited. Join us for the ${tournamentName} social dinner on [DATE] at [VENUE].` },
+        { type: 'subheading', text: 'Details' },
+        { type: 'bullets',    items: [
+          'When: [DATE] at [TIME]',
+          'Where: [VENUE — address]',
+          'Tickets: $[XX] per person',
+        ]},
+        { type: 'paragraph',  text: 'Grab your spot now — seats are limited.' },
+        { type: 'button',     label: 'RSVP & Buy Tickets', url: `${base}/party` },
+        { type: 'divider' },
+        { type: 'paragraph',  text: 'A great night of food, drinks, and squash talk. Hope to see you there.' },
+      ],
+    },
+    {
+      id: 'thank-you',
+      name: 'Thank You + Survey',
+      emoji: '🙌',
+      hint: 'Send 1–2 days after the tournament',
+      subject: `Thanks for Playing — ${tournamentName}`,
+      blocks: [
+        { type: 'heading',    text: 'What a tournament.' },
+        { type: 'paragraph',  text: `Thank you for playing in ${tournamentName}. We had an incredible weekend of squash — great matches, great players, great energy on the courts.` },
+        { type: 'subheading', text: 'Results' },
+        { type: 'paragraph',  text: 'Full results and the complete bracket are live on the app. Check your match history on your player profile.' },
+        { type: 'button',     label: 'View Final Results', url: base },
+        { type: 'divider' },
+        { type: 'subheading', text: "How'd we do?" },
+        { type: 'paragraph',  text: "We'd love your feedback — it takes 2 minutes and helps us make next year even better." },
+        { type: 'button',     label: 'Take the Survey', url: '[SURVEY LINK]' },
+        { type: 'divider' },
+        { type: 'paragraph',  text: 'See you next year. — The Seattle Squash Team' },
+      ],
+    },
+  ];
+}
+
+function uid() {
+  return typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random()}`;
+}
+
+function applyTemplate(t: EmailTemplate): { subject: string; blocks: Block[] } {
+  return {
+    subject: t.subject,
+    blocks: t.blocks.map((b) => ({ ...b, id: uid() } as Block)),
+  };
+}
+
 const SEGMENT_LABELS: Record<Segment, string> = {
   all: 'All', player: 'Players', volunteer: 'Volunteers', invitee: 'Invitees', other: 'Other',
 };
@@ -415,6 +546,7 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
   const [sendTags, setSendTags] = useState<string[]>([]);
   const [subscribedOnly, setSubscribedOnly] = useState(true);
   const [subject, setSubject] = useState('');
+  const [templateOpen, setTemplateOpen] = useState(false);
   // Block editor state
   const [blocks, setBlocks] = useState<Block[]>([{ id: '1', type: 'paragraph', text: '' }]);
   const [previewTab, setPreviewTab] = useState<'edit' | 'preview'>('edit');
@@ -653,6 +785,21 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
       setCsvImporting(false);
     }
   };
+
+  // ── Template loader ──
+  const loadTemplate = useCallback((tmpl: EmailTemplate) => {
+    const hasContent = !!(subject.trim()) || blocks.some((b) => {
+      if (b.type === 'paragraph' || b.type === 'heading' || b.type === 'subheading') return !!b.text?.trim();
+      if (b.type === 'bullets') return (b.items ?? []).some((i) => i.trim());
+      if (b.type === 'button') return !!(b.label?.trim() || b.url?.trim());
+      return false;
+    });
+    if (hasContent && !window.confirm(`Load "${tmpl.name}" template? This will replace your current draft.`)) return;
+    const applied = applyTemplate(tmpl);
+    setSubject(applied.subject);
+    setBlocks(applied.blocks);
+    setTemplateOpen(false);
+  }, [subject, blocks]);
 
   // ── Block editor handlers ──
   const updateBlock = useCallback((updated: Block) => {
@@ -1141,6 +1288,38 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
                   </>
                 }
               </div>
+            </div>
+
+            {/* Playbook templates */}
+            <div className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl overflow-hidden">
+              <button
+                onClick={() => setTemplateOpen((o) => !o)}
+                className="w-full flex items-center justify-between px-5 py-3.5 text-sm font-medium hover:bg-[var(--surface)] transition-colors"
+              >
+                <span className="flex items-center gap-2">
+                  <span>📋</span>
+                  <span>Playbook Templates</span>
+                  <span className="text-xs font-normal text-[var(--text-muted)]">5 pre-written emails</span>
+                </span>
+                <span className="text-[var(--text-muted)] text-xs">{templateOpen ? '▲' : '▼'}</span>
+              </button>
+              {templateOpen && (
+                <div className="border-t border-[var(--border)] p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {getTemplates(tournament.name, slug).map((tmpl) => (
+                    <button
+                      key={tmpl.id}
+                      onClick={() => loadTemplate(tmpl)}
+                      className="text-left p-3.5 rounded-xl border border-[var(--border)] hover:border-zinc-400 dark:hover:border-zinc-500 hover:shadow-sm bg-[var(--surface)] transition-all group"
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-lg">{tmpl.emoji}</span>
+                        <span className="font-semibold text-sm text-[var(--text-primary)]">{tmpl.name}</span>
+                      </div>
+                      <p className="text-xs text-[var(--text-muted)]">{tmpl.hint}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Message + block editor */}
