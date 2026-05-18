@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState, useCallback, Suspense } from 'react';
+import { use, useEffect, useRef, useState, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useTournament } from '@/lib/useTournament';
@@ -10,7 +10,6 @@ import { createClient } from '@/lib/supabase/client';
 import type { Court, MatchWithDetails } from '@/lib/supabase/types';
 import type { BracketMatch } from '@/components/tournament/Bracket';
 import Bracket from '@/components/tournament/Bracket';
-import ZoomableBracket from '@/components/ZoomableBracket';
 import TournamentBottomNav from '@/components/layout/TournamentBottomNav';
 import { ChevronLeft } from 'lucide-react';
 import PullToRefresh from '@/components/PullToRefresh';
@@ -227,11 +226,7 @@ function CourtBoardInner({ slug }: { slug: string }) {
                   {drawNames.length === 0 ? 'Draws not published yet.' : 'No matches in this draw.'}
                 </div>
               ) : (
-                <div className="flex-1 overflow-auto bg-white/5 rounded-2xl p-4">
-                  <ZoomableBracket>
-                    <Bracket matches={drawMatches} slug={slug} />
-                  </ZoomableBracket>
-                </div>
+                <KioskBracketFit matches={drawMatches} slug={slug} />
               )}
             </div>
           )}
@@ -336,6 +331,52 @@ function CourtBoardInner({ slug }: { slug: string }) {
       <TournamentBottomNav slug={slug} />
     </div>
     </PullToRefresh>
+  );
+}
+
+// Mirror layout constants from Bracket.tsx to compute natural dimensions
+const B_CARD_W = 220;
+const B_COL_GAP = 44;
+const B_SLOT_H = 128;
+const B_LABEL_H = 24;
+const B_NAMED_ORDER: Record<string, number> = { F: 100, SF: 90, QF: 80 };
+function bRoundOrder(r: string): number {
+  if (B_NAMED_ORDER[r] !== undefined) return B_NAMED_ORDER[r];
+  const m = r.match(/^R(\d+)$/);
+  return m ? parseInt(m[1]) : 50;
+}
+
+function KioskBracketFit({ matches, slug }: { matches: BracketMatch[]; slug: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+
+  const roundNames = [...new Set(matches.map((m) => m.round))].sort(
+    (a, b) => bRoundOrder(a) - bRoundOrder(b),
+  );
+  const byRound: Record<string, BracketMatch[]> = {};
+  for (const r of roundNames) byRound[r] = matches.filter((m) => m.round === r);
+  const firstCount = byRound[roundNames[0]]?.length ?? 1;
+  const naturalW = roundNames.length * (B_CARD_W + B_COL_GAP) - B_COL_GAP + 8;
+  const naturalH = B_LABEL_H + firstCount * B_SLOT_H + 16;
+
+  useEffect(() => {
+    function measure() {
+      if (!containerRef.current) return;
+      const { width, height } = containerRef.current.getBoundingClientRect();
+      if (!width || !height) return;
+      setScale(Math.min(width / naturalW, height / naturalH, 1.5));
+    }
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [naturalW, naturalH]);
+
+  return (
+    <div ref={containerRef} className="flex-1 overflow-hidden rounded-2xl bg-white/5">
+      <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: naturalW, height: naturalH }}>
+        <Bracket matches={matches} slug={slug} />
+      </div>
+    </div>
   );
 }
 
