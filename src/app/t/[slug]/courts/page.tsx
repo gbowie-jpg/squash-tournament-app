@@ -56,8 +56,18 @@ function CourtBoardInner({ slug }: { slug: string }) {
   const { matches, loading: mLoading } = useRealtimeMatches(tournament?.id ?? '');
   const { courts, loading: cLoading } = useRealtimeCourts(tournament?.id ?? '');
 
-  // Kiosk tab state
-  const [kioskTab, setKioskTab] = useState<KioskTab>('courts');
+  // Tab initialised from URL so reloads land on the same tab
+  const initialTab = (searchParams.get('tab') === 'bracket' ? 'bracket' : 'courts') as KioskTab;
+  const [kioskTab, setKioskTab] = useState<KioskTab>(initialTab);
+
+  function switchTab(tab: KioskTab) {
+    setKioskTab(tab);
+    if (isKiosk) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', tab);
+      window.history.replaceState(null, '', url.toString());
+    }
+  }
 
   // Bracket data — fetched once when bracket tab is first opened
   const [bracketMatches, setBracketMatches] = useState<BracketMatch[]>([]);
@@ -92,7 +102,7 @@ function CourtBoardInner({ slug }: { slug: string }) {
     fetchBracket(tournament.id);
   }, [isKiosk, kioskTab, tournament?.id, fetchBracket]);
 
-  // Auto-refresh every 60 seconds in kiosk mode
+  // Auto-refresh every 60 seconds — reloads same URL so tab param is preserved
   useEffect(() => {
     if (!isKiosk) return;
     const id = setInterval(() => window.location.reload(), 60_000);
@@ -140,8 +150,8 @@ function CourtBoardInner({ slug }: { slug: string }) {
           <KioskClock />
         </header>
 
-        {/* Content area */}
-        <main className="flex-1 overflow-hidden p-5">
+        {/* Content area — minimal padding to maximise space */}
+        <main className="flex-1 overflow-hidden p-3">
 
           {/* Courts tab */}
           {kioskTab === 'courts' && (
@@ -154,7 +164,7 @@ function CourtBoardInner({ slug }: { slug: string }) {
             ) : courts.length === 0 ? (
               <p className="text-white/50 text-center py-20 text-lg">No courts set up yet.</p>
             ) : (
-              <div className={`grid gap-4 ${
+              <div className={`grid gap-4 h-full ${
                 courts.length <= 3 ? 'grid-cols-1 sm:grid-cols-3' :
                 courts.length <= 6 ? 'grid-cols-2 sm:grid-cols-3' :
                 'grid-cols-2 sm:grid-cols-4'
@@ -202,12 +212,12 @@ function CourtBoardInner({ slug }: { slug: string }) {
             <div className="flex flex-col h-full">
               {/* Draw selector */}
               {drawNames.length > 1 && (
-                <div className="flex gap-2 mb-4 shrink-0">
+                <div className="flex gap-2 mb-3 shrink-0">
                   {drawNames.map((d) => (
                     <button
                       key={d}
                       onClick={() => setActiveDraw(d)}
-                      className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-colors ${
+                      className={`px-4 py-1.5 rounded-xl text-sm font-semibold border transition-colors ${
                         activeDraw === d
                           ? 'bg-white text-black border-white'
                           : 'border-white/20 text-white/60 hover:text-white hover:border-white/40'
@@ -240,7 +250,7 @@ function CourtBoardInner({ slug }: { slug: string }) {
           ] as const).map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setKioskTab(tab.id)}
+              onClick={() => switchTab(tab.id)}
               className={`flex-1 py-4 text-sm font-bold uppercase tracking-widest transition-colors ${
                 kioskTab === tab.id
                   ? 'text-white border-t-2 border-white'
@@ -349,6 +359,7 @@ function bRoundOrder(r: string): number {
 function KioskBracketFit({ matches, slug }: { matches: BracketMatch[]; slug: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
 
   const roundNames = [...new Set(matches.map((m) => m.round))].sort(
     (a, b) => bRoundOrder(a) - bRoundOrder(b),
@@ -364,7 +375,13 @@ function KioskBracketFit({ matches, slug }: { matches: BracketMatch[]; slug: str
       if (!containerRef.current) return;
       const { width, height } = containerRef.current.getBoundingClientRect();
       if (!width || !height) return;
-      setScale(Math.min(width / naturalW, height / naturalH, 1.5));
+      const s = Math.min(width / naturalW, height / naturalH);
+      setScale(s);
+      // Centre the scaled bracket in the available space
+      setOffset({
+        x: Math.max(0, (width  - naturalW * s) / 2),
+        y: Math.max(0, (height - naturalH * s) / 2),
+      });
     }
     measure();
     window.addEventListener('resize', measure);
@@ -372,8 +389,15 @@ function KioskBracketFit({ matches, slug }: { matches: BracketMatch[]; slug: str
   }, [naturalW, naturalH]);
 
   return (
-    <div ref={containerRef} className="flex-1 overflow-hidden rounded-2xl bg-white/5">
-      <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: naturalW, height: naturalH }}>
+    <div ref={containerRef} className="flex-1 overflow-hidden">
+      <div style={{
+        transform: `scale(${scale})`,
+        transformOrigin: 'top left',
+        width: naturalW,
+        height: naturalH,
+        marginLeft: offset.x,
+        marginTop: offset.y,
+      }}>
         <Bracket matches={matches} slug={slug} />
       </div>
     </div>
