@@ -126,7 +126,7 @@ function CourtBoardInner({ slug }: { slug: string }) {
     const drawMatches = bracketMatches.filter((m) => m.draw === activeDraw);
 
     return (
-      <div className="min-h-screen flex flex-col" style={{ background: '#0a0a0a' }}>
+      <div className="h-screen overflow-hidden flex flex-col" style={{ background: '#0a0a0a' }}>
         {/* Kiosk header */}
         <header className="px-6 py-4 flex items-center justify-between border-b border-white/10 shrink-0">
           <div className="flex items-center gap-3">
