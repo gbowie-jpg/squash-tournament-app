@@ -358,8 +358,7 @@ function bRoundOrder(r: string): number {
 
 function KioskBracketFit({ matches, slug }: { matches: BracketMatch[]; slug: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(1);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [fit, setFit] = useState({ scale: 1, colGap: B_COL_GAP, x: 0, y: 0 });
 
   const roundNames = [...new Set(matches.map((m) => m.round))].sort(
     (a, b) => bRoundOrder(a) - bRoundOrder(b),
@@ -367,38 +366,51 @@ function KioskBracketFit({ matches, slug }: { matches: BracketMatch[]; slug: str
   const byRound: Record<string, BracketMatch[]> = {};
   for (const r of roundNames) byRound[r] = matches.filter((m) => m.round === r);
   const firstCount = byRound[roundNames[0]]?.length ?? 1;
-  const naturalW = roundNames.length * (B_CARD_W + B_COL_GAP) - B_COL_GAP + 8;
-  const naturalH = B_LABEL_H + firstCount * B_SLOT_H + 16;
+  const numRounds  = roundNames.length;
+  const naturalH   = B_LABEL_H + firstCount * B_SLOT_H + 16;
 
   useEffect(() => {
     function measure() {
       if (!containerRef.current) return;
       const { width, height } = containerRef.current.getBoundingClientRect();
       if (!width || !height) return;
-      const s = Math.min(width / naturalW, height / naturalH);
-      setScale(s);
-      // Centre the scaled bracket in the available space
-      setOffset({
-        x: Math.max(0, (width  - naturalW * s) / 2),
-        y: Math.max(0, (height - naturalH * s) / 2),
+
+      // Compute the column gap that fills the viewport width at the height-fit scale.
+      // naturalW = numRounds * (CARD_W + gap) - gap + 8  =>  gap = (targetW - numRounds*CARD_W - 8) / (numRounds-1)
+      const scaleH = height / naturalH;
+      const targetW = width / scaleH;
+      const idealGap = numRounds > 1
+        ? (targetW - numRounds * B_CARD_W - 8) / (numRounds - 1)
+        : B_COL_GAP;
+      const colGap  = Math.max(B_COL_GAP, Math.round(idealGap));
+      const naturalW = numRounds * (B_CARD_W + colGap) - colGap + 8;
+      const scale   = Math.min(width / naturalW, height / naturalH);
+
+      setFit({
+        scale,
+        colGap,
+        x: Math.max(0, (width  - naturalW * scale) / 2),
+        y: Math.max(0, (height - naturalH * scale) / 2),
       });
     }
     measure();
     window.addEventListener('resize', measure);
     return () => window.removeEventListener('resize', measure);
-  }, [naturalW, naturalH]);
+  }, [naturalH, numRounds]);
+
+  const naturalW = numRounds * (B_CARD_W + fit.colGap) - fit.colGap + 8;
 
   return (
     <div ref={containerRef} className="flex-1 overflow-hidden">
       <div style={{
-        transform: `scale(${scale})`,
+        transform: `scale(${fit.scale})`,
         transformOrigin: 'top left',
         width: naturalW,
         height: naturalH,
-        marginLeft: offset.x,
-        marginTop: offset.y,
+        marginLeft: fit.x,
+        marginTop: fit.y,
       }}>
-        <Bracket matches={matches} slug={slug} />
+        <Bracket matches={matches} slug={slug} colGap={fit.colGap} />
       </div>
     </div>
   );

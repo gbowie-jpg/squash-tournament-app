@@ -190,9 +190,9 @@ function MatchCard({ match, isFinal, slug }: { match: BracketMatch; isFinal?: bo
 }
 
 // ── SVG connector lines ───────────────────────────────────────────────────────
-function Connectors({ numMatches, roundIdx }: { numMatches: number; roundIdx: number }) {
+function Connectors({ numMatches, roundIdx, colGap }: { numMatches: number; roundIdx: number; colGap: number }) {
   const totalH = topOfMatch(roundIdx, numMatches - 1) + CARD_H + 20;
-  const midX   = COL_GAP / 2;
+  const midX   = colGap / 2;
 
   const lines: React.ReactNode[] = [];
   for (let i = 0; i < numMatches; i += 2) {
@@ -205,14 +205,14 @@ function Connectors({ numMatches, roundIdx }: { numMatches: number; roundIdx: nu
         <line x1={0}    y1={cy1}  x2={midX} y2={cy1} />
         <line x1={0}    y1={cy2}  x2={midX} y2={cy2} />
         <line x1={midX} y1={cy1}  x2={midX} y2={cy2} />
-        <line x1={midX} y1={midY} x2={COL_GAP} y2={midY} />
+        <line x1={midX} y1={midY} x2={colGap} y2={midY} />
       </g>,
     );
   }
 
   return (
     <svg
-      width={COL_GAP}
+      width={colGap}
       height={totalH}
       style={{ position: 'absolute', left: CARD_W, top: 0, overflow: 'visible', pointerEvents: 'none' }}
     >
@@ -222,7 +222,7 @@ function Connectors({ numMatches, roundIdx }: { numMatches: number; roundIdx: nu
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
-export default function Bracket({ matches, slug }: { matches: BracketMatch[]; slug?: string }) {
+export default function Bracket({ matches, slug, colGap = COL_GAP }: { matches: BracketMatch[]; slug?: string; colGap?: number }) {
   if (!matches.length) {
     return (
       <p className="text-center py-12 text-[var(--text-secondary)] text-sm">
@@ -244,7 +244,7 @@ export default function Bracket({ matches, slug }: { matches: BracketMatch[]; sl
 
   const firstCount = byRound[roundNames[0]]?.length ?? 1;
   const totalH     = LABEL_H + firstCount * SLOT_H + 16;
-  const totalW     = roundNames.length * (CARD_W + COL_GAP) - COL_GAP + 8;
+  const totalW     = roundNames.length * (CARD_W + colGap) - colGap + 8;
 
   return (
     <div className="overflow-x-auto pb-2">
@@ -253,7 +253,7 @@ export default function Bracket({ matches, slug }: { matches: BracketMatch[]; sl
           const roundMatches = byRound[roundName];
           const isFinalRound = roundIdx === roundNames.length - 1;
           const hasNextRound = roundIdx < roundNames.length - 1;
-          const colLeft      = roundIdx * (CARD_W + COL_GAP);
+          const colLeft      = roundIdx * (CARD_W + colGap);
 
           return (
             <div key={roundName}>
@@ -278,7 +278,7 @@ export default function Bracket({ matches, slug }: { matches: BracketMatch[]; sl
               {/* Connectors */}
               {hasNextRound && roundMatches.length > 1 && (
                 <div style={{ position: 'absolute', top: LABEL_H, left: colLeft }}>
-                  <Connectors numMatches={roundMatches.length} roundIdx={roundIdx} />
+                  <Connectors numMatches={roundMatches.length} roundIdx={roundIdx} colGap={colGap} />
                 </div>
               )}
             </div>
