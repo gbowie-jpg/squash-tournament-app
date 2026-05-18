@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, useRef, use } from 'react';
 import Link from 'next/link';
+import { QRCodeSVG } from 'qrcode.react';
 import { useTournament } from '@/lib/useTournament';
 import ThemeToggle from '@/components/ThemeToggle';
 import RefreshButton from '@/components/RefreshButton';
@@ -114,6 +115,24 @@ export default function TournamentSettings({
   };
 
   const set = (key: string, val: string) => setForm((f) => ({ ...f, [key]: val }));
+
+  const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://squash-tournament-app.vercel.app';
+  const tournamentUrl = `${siteUrl}/t/${slug}`;
+  const courtsUrl = `${siteUrl}/t/${slug}/courts`;
+  const kioskUrl = `${siteUrl}/t/${slug}/courts?kiosk=1`;
+
+  const qrRef = useRef<HTMLDivElement>(null);
+  const downloadQR = () => {
+    const svg = qrRef.current?.querySelector('svg');
+    if (!svg) return;
+    const data = new XMLSerializer().serializeToString(svg);
+    const blob = new Blob([data], { type: 'image/svg+xml' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${slug}-qr.svg`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
 
   if (loading) return <div className="flex items-center justify-center min-h-screen text-[var(--text-secondary)]">Loading...</div>;
   if (!tournament) return <div className="flex items-center justify-center min-h-screen text-[var(--text-secondary)]">Tournament not found</div>;
@@ -517,6 +536,58 @@ export default function TournamentSettings({
           </section>
 
         </form>
+
+        {/* Share & QR Code — outside the save form */}
+        {tournament && (
+          <section className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-6 space-y-5 mt-8">
+            <div>
+              <h2 className="font-semibold text-[var(--text-primary)]">Share & Display</h2>
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">QR code for signage, links for TV kiosk display.</p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-6">
+              {/* QR Code */}
+              <div className="flex flex-col items-center gap-3 shrink-0">
+                <div ref={qrRef} className="bg-white p-3 rounded-xl shadow-sm">
+                  <QRCodeSVG value={tournamentUrl} size={160} level="M" />
+                </div>
+                <button
+                  type="button"
+                  onClick={downloadQR}
+                  className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] underline underline-offset-2"
+                >
+                  Download SVG
+                </button>
+              </div>
+
+              {/* URL links */}
+              <div className="flex-1 space-y-4">
+                {([
+                  { label: 'Tournament Page', url: tournamentUrl, desc: 'Share with players — put this on the QR code' },
+                  { label: 'Court Board', url: courtsUrl, desc: 'Live court assignments for phones' },
+                  { label: 'TV Kiosk Mode', url: kioskUrl, desc: 'Paste into Chrome on a TV — full screen, no nav, auto-refreshes' },
+                ] as const).map(({ label, url, desc }) => (
+                  <div key={label}>
+                    <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">{label}</p>
+                    <p className="text-xs text-[var(--text-secondary)] mb-1.5">{desc}</p>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 text-xs bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--text-primary)] truncate">
+                        {url}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={() => navigator.clipboard.writeText(url)}
+                        className="shrink-0 text-xs px-3 py-2 border border-[var(--border)] rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)] transition-colors"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
       </main>
     </div>
   );

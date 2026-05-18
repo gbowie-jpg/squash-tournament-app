@@ -1,7 +1,8 @@
 'use client';
 
-import { use } from 'react';
+import { use, useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useTournament } from '@/lib/useTournament';
 import { useRealtimeMatches, useRealtimeCourts } from '@/lib/realtime/hooks';
 import { formatScore } from '@/lib/utils';
@@ -18,20 +19,54 @@ const COURT_STATUS_COLORS: Record<string, string> = {
   maintenance: 'border-[var(--border)] bg-[var(--surface-card)]',
 };
 
+const COURT_STATUS_COLORS_KIOSK: Record<string, string> = {
+  available: 'border-green-500 bg-green-950/40',
+  in_use: 'border-amber-400 bg-amber-950/40',
+  maintenance: 'border-zinc-700 bg-zinc-900/60',
+};
+
 const COURT_STATUS_DOT: Record<string, string> = {
   available: 'bg-green-500',
   in_use: 'bg-amber-500 animate-pulse',
   maintenance: 'bg-[var(--text-muted)]',
 };
 
-export default function CourtBoard({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = use(params);
+function KioskClock() {
+  const [time, setTime] = useState('');
+  useEffect(() => {
+    const tick = () => setTime(new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+  return <span className="text-3xl font-bold tabular-nums text-white/80">{time}</span>;
+}
+
+function CourtBoardInner({ slug }: { slug: string }) {
+  const searchParams = useSearchParams();
+  const isKiosk = searchParams.get('kiosk') === '1';
+
   const { tournament, loading: tLoading } = useTournament(slug);
   const { matches, loading: mLoading } = useRealtimeMatches(tournament?.id ?? '');
   const { courts, loading: cLoading } = useRealtimeCourts(tournament?.id ?? '');
 
+  // Auto-refresh every 60 seconds in kiosk mode (Realtime handles live data,
+  // but this catches any edge cases with stale connections)
+  useEffect(() => {
+    if (!isKiosk) return;
+    const id = setInterval(() => window.location.reload(), 60_000);
+    return () => clearInterval(id);
+  }, [isKiosk]);
+
   if (tLoading || !tournament) {
-    return <div className="flex items-center justify-center min-h-screen text-[var(--text-secondary)]">Loading…</div>;
+    return (
+      <div
+        className="flex items-center justify-center min-h-screen"
+        style={isKiosk ? { background: '#0a0a0a', color: '#fff' } : { color: 'var(--text-secondary)' }}
+      >
+        Loading…
+      </div>
+    );
   }
 
   const loading = mLoading || cLoading;
@@ -44,6 +79,87 @@ export default function CourtBoard({ params }: { params: Promise<{ slug: string 
     return { current, next: onDeck || nextScheduled };
   };
 
+  // ─── Kiosk layout ────────────────────────────────────────────────────────────
+  if (isKiosk) {
+    return (
+      <div className="min-h-screen flex flex-col" style={{ background: '#0a0a0a' }}>
+        {/* Kiosk header */}
+        <header className="px-6 py-4 flex items-center justify-between border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-green-400 text-sm font-bold uppercase tracking-widest">Live</span>
+            </span>
+            <span className="text-white/30 text-sm">·</span>
+            <span className="text-white font-bold text-lg">{tournament.name}</span>
+          </div>
+          <KioskClock />
+        </header>
+
+        {/* Court grid — fills remaining height */}
+        <main className="flex-1 p-5">
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="rounded-2xl p-6 animate-pulse border border-white/10 bg-white/5" style={{ minHeight: 180 }} />
+              ))}
+            </div>
+          ) : courts.length === 0 ? (
+            <p className="text-white/50 text-center py-20 text-lg">No courts set up yet.</p>
+          ) : (
+            <div className={`grid gap-4 h-full ${
+              courts.length <= 3 ? 'grid-cols-1 sm:grid-cols-3' :
+              courts.length <= 6 ? 'grid-cols-2 sm:grid-cols-3' :
+              'grid-cols-2 sm:grid-cols-4'
+            }`}>
+              {courts.map((court) => {
+                const { current, next } = getCourtMatches(court);
+                return (
+                  <div
+                    key={court.id}
+                    className={`border-2 rounded-2xl p-5 flex flex-col transition-all ${COURT_STATUS_COLORS_KIOSK[court.status]}`}
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="font-bold text-xl text-white">{court.name}</h2>
+                      <span className={`w-4 h-4 rounded-full ${COURT_STATUS_DOT[court.status]}`} />
+                    </div>
+
+                    {current ? (
+                      <div className="flex-1">
+                        <p className="text-xs font-bold text-green-400 uppercase tracking-widest mb-2">Now Playing</p>
+                        <KioskMatchDisplay match={current} />
+                      </div>
+                    ) : court.status === 'maintenance' ? (
+                      <p className="text-white/40 text-base flex-1">Under maintenance</p>
+                    ) : (
+                      <p className="text-white/40 text-base flex-1">Court available</p>
+                    )}
+
+                    {next && (
+                      <div className="mt-4 pt-4 border-t border-white/10">
+                        <p className="text-xs font-bold text-amber-400 uppercase tracking-widest mb-2">
+                          {next.status === 'on_deck' ? 'On Deck' : 'Up Next'}
+                        </p>
+                        <KioskMatchDisplay match={next} compact />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </main>
+
+        {/* Footer bar */}
+        <footer className="px-6 py-3 border-t border-white/10 flex items-center justify-between">
+          <span className="text-white/30 text-xs">squash-tournament-app.vercel.app</span>
+          <span className="text-white/30 text-xs">Live updates every match</span>
+        </footer>
+      </div>
+    );
+  }
+
+  // ─── Normal layout ────────────────────────────────────────────────────────────
   return (
     <PullToRefresh>
     <div className="min-h-screen bg-[var(--surface)] pb-20 md:pb-0">
@@ -122,6 +238,29 @@ export default function CourtBoard({ params }: { params: Promise<{ slug: string 
   );
 }
 
+function KioskMatchDisplay({ match: m, compact }: { match: MatchWithDetails; compact?: boolean }) {
+  return (
+    <div>
+      <p className={`font-bold text-white ${compact ? 'text-base' : 'text-xl'}`}>
+        {m.player1?.name || 'TBD'}
+      </p>
+      <p className={`text-white/40 ${compact ? 'text-xs' : 'text-sm'} my-0.5`}>vs</p>
+      <p className={`font-bold text-white ${compact ? 'text-base' : 'text-xl'}`}>
+        {m.player2?.name || 'TBD'}
+      </p>
+      <div className="flex items-center gap-2 mt-1.5">
+        {m.draw && <span className={`text-white/50 ${compact ? 'text-xs' : 'text-sm'}`}>{m.draw}</span>}
+        {m.round && <span className={`text-white/50 ${compact ? 'text-xs' : 'text-sm'}`}>· {m.round}</span>}
+      </div>
+      {m.scores && m.scores.length > 0 && (
+        <p className={`font-mono font-bold mt-1.5 text-green-400 ${compact ? 'text-sm' : 'text-2xl'}`}>
+          {formatScore(m.scores)}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function MatchDisplay({ match: m, compact, slug }: { match: MatchWithDetails; compact?: boolean; slug: string }) {
   return (
     <Link href={`/t/${slug}/match/${m.id}`} className="block group">
@@ -141,5 +280,14 @@ function MatchDisplay({ match: m, compact, slug }: { match: MatchWithDetails; co
         </p>
       )}
     </Link>
+  );
+}
+
+export default function CourtBoard({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = use(params);
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen text-[var(--text-secondary)]">Loading…</div>}>
+      <CourtBoardInner slug={slug} />
+    </Suspense>
   );
 }
