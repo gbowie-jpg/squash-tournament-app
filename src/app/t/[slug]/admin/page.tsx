@@ -60,12 +60,15 @@ export default function TournamentAdminDashboard({
           ))}
         </div>
 
-        <div className="mt-6 flex gap-4">
+        <div className="mt-6 flex flex-wrap gap-4">
           <Link href={`/t/${slug}`} className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] underline underline-offset-2">
             View public page
           </Link>
           <Link href={`/t/${slug}/courts`} className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] underline underline-offset-2">
             View court board
+          </Link>
+          <Link href={`/t/${slug}/courts?kiosk=1`} target="_blank" className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] underline underline-offset-2">
+            TV Kiosk ↗
           </Link>
         </div>
       </main>
