@@ -4,6 +4,8 @@ import { useState, useRef } from 'react';
 
 type PlayerRow = {
   name: string;
+  first_name?: string;
+  last_name?: string;
   draw?: string;
   seed?: number;
   club?: string;
@@ -11,18 +13,20 @@ type PlayerRow = {
   phone?: string;
 };
 
-type FieldKey = 'name' | 'firstName' | 'lastName' | 'draw' | 'seed' | 'club' | 'email' | 'phone' | 'skip';
+type FieldKey = 'name' | 'firstName' | 'lastName' | 'lastFirst' | 'draw' | 'seed' | 'club' | 'email' | 'phone' | 'skip';
 
 // Auto-detect column mapping from header name
 function guessField(header: string): FieldKey {
-  const h = header.toLowerCase().trim();
-  if (h === 'name' || h === 'player' || h === 'player name' || h === 'full name' || h === 'fullname') return 'name';
+  const h = header.toLowerCase().trim().replace(/\s+/g, ' ');
+  if (h === 'name' || h === 'player' || h === 'player name' || h === 'full name' || h === 'fullname' || h === 'playername') return 'name';
   if (h === 'first name' || h === 'first' || h === 'firstname' || h === 'fname' || h === 'given name') return 'firstName';
   if (h === 'last name' || h === 'last' || h === 'lastname' || h === 'lname' || h === 'surname' || h === 'family name') return 'lastName';
+  // Club Locker "Last, First" column — parse for split but don't treat as a separate name source
+  if (h === 'lastfirst' || h === 'last, first' || h === 'last first' || h === 'playerlastfirst') return 'lastFirst';
   if (h === 'draw' || h === 'event' || h === 'division' || h === 'category' || h === 'event name' || h === 'draw name') return 'draw';
   if (h === 'seed' || h === 'seeding' || h === 'seed #' || h === 'seed number') return 'seed';
   if (h === 'club' || h === 'home club' || h === 'club name' || h === 'affiliation' || h === 'team') return 'club';
-  if (h === 'email' || h === 'e-mail' || h === 'email address') return 'email';
+  if (h === 'email' || h === 'e-mail' || h === 'email address' || h === 'playeremail') return 'email';
   if (h === 'phone' || h === 'mobile' || h === 'phone number' || h === 'cell') return 'phone';
   return 'skip';
 }
@@ -181,15 +185,41 @@ export default function CsvUpload({ tournamentId, onImport }: CsvUploadProps) {
         }
       });
 
-      // Combine first/last name if separate
-      let name = obj.name || '';
-      if (!name && (obj.firstName || obj.lastName)) {
-        name = [obj.firstName, obj.lastName].filter(Boolean).join(' ');
+      let firstName = obj.firstName?.trim() || '';
+      let lastName = obj.lastName?.trim() || '';
+      let name = obj.name?.trim() || '';
+
+      // Parse Club Locker "Last, First" column only if we don't already have first/last
+      if (obj.lastFirst && (!firstName || !lastName)) {
+        const comma = obj.lastFirst.indexOf(',');
+        if (comma !== -1) {
+          lastName = lastName || obj.lastFirst.slice(0, comma).trim();
+          firstName = firstName || obj.lastFirst.slice(comma + 1).trim();
+        }
       }
+
+      // Split full name into first/last if we have a name but no split yet
+      if (name && !firstName && !lastName) {
+        const idx = name.indexOf(' ');
+        if (idx !== -1) {
+          firstName = name.slice(0, idx);
+          lastName = name.slice(idx + 1).trim();
+        } else {
+          firstName = name;
+        }
+      }
+
+      // Derive full name from parts if only parts were provided
+      if (!name && (firstName || lastName)) {
+        name = [firstName, lastName].filter(Boolean).join(' ');
+      }
+
       if (!name) return null;
 
       return {
         name,
+        first_name: firstName || undefined,
+        last_name: lastName || undefined,
         draw: obj.draw || undefined,
         seed: obj.seed ? parseInt(obj.seed) || undefined : undefined,
         club: obj.club || undefined,
@@ -243,6 +273,7 @@ export default function CsvUpload({ tournamentId, onImport }: CsvUploadProps) {
     { value: 'name', label: 'Full Name' },
     { value: 'firstName', label: 'First Name' },
     { value: 'lastName', label: 'Last Name' },
+    { value: 'lastFirst', label: 'Last, First (auto-split)' },
     { value: 'draw', label: 'Draw / Event' },
     { value: 'seed', label: 'Seed' },
     { value: 'club', label: 'Club' },

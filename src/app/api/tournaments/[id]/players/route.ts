@@ -20,11 +20,13 @@ export async function GET(
   return NextResponse.json(data);
 }
 
-const PLAYER_FIELDS = ['name', 'draw', 'seed', 'club', 'email', 'phone'] as const;
+const PLAYER_FIELDS = ['name', 'first_name', 'last_name', 'draw', 'seed', 'club', 'email', 'phone'] as const;
 
 function sanitizePlayer(p: Record<string, unknown>, tournamentId: string) {
   const record: Record<string, unknown> = { tournament_id: tournamentId };
   if (typeof p.name === 'string' && p.name.trim()) record.name = p.name.trim();
+  if (typeof p.first_name === 'string') record.first_name = p.first_name.trim() || null;
+  if (typeof p.last_name === 'string') record.last_name = p.last_name.trim() || null;
   if (typeof p.draw === 'string') record.draw = p.draw.trim() || null;
   if (p.seed !== undefined) record.seed = typeof p.seed === 'number' ? p.seed : (parseInt(String(p.seed)) || null);
   if (typeof p.club === 'string') record.club = p.club.trim() || null;

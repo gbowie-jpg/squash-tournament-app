@@ -91,6 +91,8 @@ export type Database = {
           id: string;
           tournament_id: string;
           name: string;
+          first_name: string | null;
+          last_name: string | null;
           seed: number | null;
           club: string | null;
           email: string | null;
@@ -104,6 +106,8 @@ export type Database = {
           id?: string;
           tournament_id: string;
           name: string;
+          first_name?: string | null;
+          last_name?: string | null;
           seed?: number | null;
           club?: string | null;
           email?: string | null;
