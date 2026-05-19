@@ -72,6 +72,69 @@ const BLOCK_ICONS: Record<BlockType, string> = {
   button: '⊞', image: '🖼', divider: '—',
 };
 
+function ImageBlockEditor({
+  block, onChange, onImageUpload, inputClass,
+}: {
+  block: Block;
+  onChange: (updated: Block) => void;
+  onImageUpload?: (file: File) => Promise<string>;
+  inputClass: string;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !onImageUpload) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const url = await onImageUpload(file);
+      onChange({ ...block, url });
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed — check Supabase storage permissions.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-2 items-center">
+        <input type="url" value={block.url?.startsWith('data:') ? '' : (block.url || '')}
+          onChange={(e) => { onChange({ ...block, url: e.target.value }); setUploadError(null); }}
+          placeholder="Paste image URL (https://…)"
+          className={inputClass}
+        />
+        {onImageUpload && (
+          <label className={`shrink-0 cursor-pointer border rounded-lg px-3 py-2 text-xs font-medium transition-colors whitespace-nowrap ${uploading ? 'opacity-50 cursor-not-allowed bg-surface border-border text-muted-foreground' : 'bg-surface border-border text-muted-foreground hover:text-foreground'}`}>
+            {uploading ? 'Uploading…' : 'Upload'}
+            <input type="file" accept="image/*" className="sr-only" disabled={uploading} onChange={handleUpload} />
+          </label>
+        )}
+      </div>
+      {block.url?.startsWith('data:') && (
+        <div className="rounded-lg px-3 py-2 bg-red-50 border border-red-200 text-red-700 text-xs space-y-1">
+          <p className="font-medium">⚠ This is a base64 image — it won&apos;t appear in emails and blocks sending.</p>
+          <p>Click <strong>Upload</strong> to host it, or clear and paste an https:// URL.</p>
+          <button onClick={() => onChange({ ...block, url: '' })}
+            className="underline text-red-600 hover:text-red-800">Clear image</button>
+        </div>
+      )}
+      {uploadError && (
+        <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1">{uploadError}</p>
+      )}
+      {!block.url?.startsWith('data:') && block.url && (
+        <input type="text" value={block.alt || ''}
+          onChange={(e) => onChange({ ...block, alt: e.target.value })}
+          placeholder="Alt text"
+          className={inputClass}
+        />
+      )}
+    </div>
+  );
+}
+
 function BlockCard({
   block, index, total,
   onChange, onRemove, onMove, onImageUpload,
@@ -189,38 +252,12 @@ function BlockCard({
         </div>
       )}
       {block.type === 'image' && (
-        <div className="space-y-2">
-          <div className="flex gap-2 items-center">
-            <input type="url" value={block.url || ''}
-              onChange={(e) => onChange({ ...block, url: e.target.value })}
-              placeholder="Image URL (https://…)"
-              className={inputClass}
-            />
-            {onImageUpload && (
-              <label className="shrink-0 cursor-pointer bg-surface border border-border rounded-lg px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap">
-                Upload
-                <input type="file" accept="image/*" className="sr-only"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    try { onChange({ ...block, url: await onImageUpload(file) }); }
-                    catch (err) { console.error('Image upload failed', err); }
-                  }}
-                />
-              </label>
-            )}
-          </div>
-          {block.url?.startsWith('data:') && (
-            <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1">
-              ⚠ Base64 images won&apos;t appear in email clients — upload a file or use an https:// URL.
-            </p>
-          )}
-          <input type="text" value={block.alt || ''}
-            onChange={(e) => onChange({ ...block, alt: e.target.value })}
-            placeholder="Alt text"
-            className={inputClass}
-          />
-        </div>
+        <ImageBlockEditor
+          block={block}
+          onChange={onChange}
+          onImageUpload={onImageUpload}
+          inputClass={inputClass}
+        />
       )}
       {block.type === 'divider' && (
         <div className="text-center text-muted-foreground text-sm py-1 select-none">— Divider —</div>
@@ -1180,55 +1217,66 @@ export default function GlobalEmail() {
               </div>
             )}
 
-            {sendResult && (
-              <div className={`rounded-lg px-3 py-2 text-sm ${sendResult.ok ? 'bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400' : 'bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400'}`}>
-                {sendResult.msg}
-              </div>
-            )}
+            {(() => {
+              const hasBase64 = blocks.some((b) => b.type === 'image' && b.url?.startsWith('data:'));
+              return (
+                <>
+                  {sendResult && (
+                    <div className={`rounded-lg px-3 py-2 text-sm ${sendResult.ok ? 'bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400' : 'bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400'}`}>
+                      {sendResult.msg}
+                    </div>
+                  )}
+                  {hasBase64 && (
+                    <div className="rounded-lg px-3 py-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm">
+                      ⚠ Remove or replace the base64 image before sending.
+                    </div>
+                  )}
+                  <button
+                    onClick={sendCampaign}
+                    disabled={
+                      sending || hasBase64 || !subject || blocks.every((b) => !blocksToHtml([b]).trim()) ||
+                      (sendMode === 'all' && sendTargetCount === 0) ||
+                      (sendMode === 'single' && !singleEmail)
+                    }
+                    className="bg-foreground text-background px-6 py-2.5 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50"
+                  >
+                    {sending
+                      ? 'Sending…'
+                      : sendMode === 'single'
+                      ? `Send to ${singleEmail || '…'}`
+                      : `Send to ${sendTargetCount} Recipient${sendTargetCount !== 1 ? 's' : ''}`}
+                  </button>
 
-            <button
-              onClick={sendCampaign}
-              disabled={
-                sending || !subject || blocks.every((b) => !blocksToHtml([b]).trim()) ||
-                (sendMode === 'all' && sendTargetCount === 0) ||
-                (sendMode === 'single' && !singleEmail)
-              }
-              className="bg-foreground text-background px-6 py-2.5 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50"
-            >
-              {sending
-                ? 'Sending…'
-                : sendMode === 'single'
-                ? `Send to ${singleEmail || '…'}`
-                : `Send to ${sendTargetCount} Recipient${sendTargetCount !== 1 ? 's' : ''}`}
-            </button>
-
-            {/* ── Test send ──────────────────────────────────── */}
-            <div className="border-t border-border pt-4 mt-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Send a Test</p>
-              <div className="flex flex-col sm:flex-row gap-2 items-start">
-                <input
-                  type="email"
-                  value={testEmail}
-                  onChange={(e) => { setTestEmail(e.target.value); setTestResult(null); }}
-                  placeholder="your@email.com"
-                  aria-label="Test email address"
-                  className="flex-1 sm:max-w-xs border border-border rounded-lg px-3 py-2 text-sm"
-                />
-                <button
-                  onClick={sendTest}
-                  disabled={testSending || !subject || blocks.every((b) => !blocksToHtml([b]).trim()) || !testEmail}
-                  className="whitespace-nowrap bg-surface border border-border text-foreground px-4 py-2 rounded-lg text-sm font-medium hover:opacity-80 disabled:opacity-50 transition-opacity"
-                >
-                  {testSending ? 'Sending…' : 'Send Test →'}
-                </button>
-              </div>
-              {testResult && (
-                <p className={`mt-2 text-xs ${testResult.ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {testResult.msg}
-                </p>
-              )}
-              <p className="text-xs text-muted-foreground mt-1.5">Uses current subject + message blocks. No campaign record — just a preview in your inbox.</p>
-            </div>
+                  {/* ── Test send ──────────────────────────────────── */}
+                  <div className="border-t border-border pt-4 mt-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Send a Test</p>
+                    <div className="flex flex-col sm:flex-row gap-2 items-start">
+                      <input
+                        type="email"
+                        value={testEmail}
+                        onChange={(e) => { setTestEmail(e.target.value); setTestResult(null); }}
+                        placeholder="your@email.com"
+                        aria-label="Test email address"
+                        className="flex-1 sm:max-w-xs border border-border rounded-lg px-3 py-2 text-sm"
+                      />
+                      <button
+                        onClick={sendTest}
+                        disabled={testSending || hasBase64 || !subject || blocks.every((b) => !blocksToHtml([b]).trim()) || !testEmail}
+                        className="whitespace-nowrap bg-surface border border-border text-foreground px-4 py-2 rounded-lg text-sm font-medium hover:opacity-80 disabled:opacity-50 transition-opacity"
+                      >
+                        {testSending ? 'Sending…' : 'Send Test →'}
+                      </button>
+                    </div>
+                    {testResult && (
+                      <p className={`mt-2 text-xs ${testResult.ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {testResult.msg}
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-1.5">Uses current subject + message blocks. No campaign record — just a preview in your inbox.</p>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         ) : tab === 'history' ? (
           <div className="space-y-4">

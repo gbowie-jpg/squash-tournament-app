@@ -79,6 +79,69 @@ const BLOCK_ICONS: Record<BlockType, string> = {
   button: '⊞', image: '🖼', divider: '—',
 };
 
+function ImageBlockEditor({
+  block, onChange, onImageUpload, inputClass,
+}: {
+  block: Block;
+  onChange: (updated: Block) => void;
+  onImageUpload?: (file: File) => Promise<string>;
+  inputClass: string;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !onImageUpload) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const url = await onImageUpload(file);
+      onChange({ ...block, url });
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed — check Supabase storage permissions.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-2 items-center">
+        <input type="url" value={block.url?.startsWith('data:') ? '' : (block.url || '')}
+          onChange={(e) => { onChange({ ...block, url: e.target.value }); setUploadError(null); }}
+          placeholder="Paste image URL (https://…)"
+          className={inputClass}
+        />
+        {onImageUpload && (
+          <label className={`shrink-0 cursor-pointer border rounded-lg px-3 py-2 text-xs font-medium transition-colors whitespace-nowrap ${uploading ? 'opacity-50 cursor-not-allowed bg-[var(--surface)] border-[var(--border)] text-[var(--text-muted)]' : 'bg-[var(--surface)] border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
+            {uploading ? 'Uploading…' : 'Upload'}
+            <input type="file" accept="image/*" className="sr-only" disabled={uploading} onChange={handleUpload} />
+          </label>
+        )}
+      </div>
+      {block.url?.startsWith('data:') && (
+        <div className="rounded-lg px-3 py-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-xs space-y-1">
+          <p className="font-medium">⚠ This is a base64 image — it won&apos;t appear in emails and blocks sending.</p>
+          <p>Click <strong>Upload</strong> to host it, or clear and paste an https:// URL.</p>
+          <button onClick={() => onChange({ ...block, url: '' })}
+            className="underline text-red-600 dark:text-red-400 hover:opacity-80">Clear image</button>
+        </div>
+      )}
+      {uploadError && (
+        <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded px-2 py-1">{uploadError}</p>
+      )}
+      {!block.url?.startsWith('data:') && block.url && (
+        <input type="text" value={block.alt || ''}
+          onChange={(e) => onChange({ ...block, alt: e.target.value })}
+          placeholder="Alt text"
+          className={inputClass}
+        />
+      )}
+    </div>
+  );
+}
+
 function BlockCard({
   block, index, total,
   onChange, onRemove, onMove, onImageUpload,
@@ -196,38 +259,12 @@ function BlockCard({
         </div>
       )}
       {block.type === 'image' && (
-        <div className="space-y-2">
-          <div className="flex gap-2 items-center">
-            <input type="url" value={block.url || ''}
-              onChange={(e) => onChange({ ...block, url: e.target.value })}
-              placeholder="Image URL (https://…)"
-              className={inputClass}
-            />
-            {onImageUpload && (
-              <label className="shrink-0 cursor-pointer bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors whitespace-nowrap">
-                Upload
-                <input type="file" accept="image/*" className="sr-only"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    try { onChange({ ...block, url: await onImageUpload(file) }); }
-                    catch (err) { console.error('Image upload failed', err); }
-                  }}
-                />
-              </label>
-            )}
-          </div>
-          {block.url?.startsWith('data:') && (
-            <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded px-2 py-1">
-              ⚠ Base64 images won&apos;t appear in email clients — upload a file or use an https:// URL.
-            </p>
-          )}
-          <input type="text" value={block.alt || ''}
-            onChange={(e) => onChange({ ...block, alt: e.target.value })}
-            placeholder="Alt text"
-            className={inputClass}
-          />
-        </div>
+        <ImageBlockEditor
+          block={block}
+          onChange={onChange}
+          onImageUpload={onImageUpload}
+          inputClass={inputClass}
+        />
       )}
       {block.type === 'divider' && (
         <div className="text-center text-[var(--text-muted)] text-sm py-1 select-none">— Divider —</div>
@@ -1458,9 +1495,15 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
                 </div>
               )}
 
+              {blocks.some((b) => b.type === 'image' && b.url?.startsWith('data:')) && (
+                <div className="rounded-lg px-3 py-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm">
+                  ⚠ Remove or replace the base64 image before sending.
+                </div>
+              )}
+
               <button
                 onClick={sendCampaign}
-                disabled={sending || !subject || blocks.every((b) => !blocksToHtml([b]).trim()) || sendRecipients.length === 0}
+                disabled={sending || blocks.some((b) => b.type === 'image' && b.url?.startsWith('data:')) || !subject || blocks.every((b) => !blocksToHtml([b]).trim()) || sendRecipients.length === 0}
                 className="bg-foreground text-card px-6 py-2.5 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50"
               >
                 {sending ? 'Sending…' : `Send to ${sendRecipients.length} Recipient${sendRecipients.length !== 1 ? 's' : ''}`}
