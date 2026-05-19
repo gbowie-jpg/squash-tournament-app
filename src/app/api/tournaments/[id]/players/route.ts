@@ -20,7 +20,7 @@ export async function GET(
   return NextResponse.json(data);
 }
 
-const PLAYER_FIELDS = ['name', 'first_name', 'last_name', 'draw', 'seed', 'club', 'email', 'phone'] as const;
+const PLAYER_FIELDS = ['name', 'first_name', 'last_name', 'draw', 'seed', 'club', 'email', 'phone', 'club_locker_id', 'gender', 'city', 'rating', 'ranking'] as const;
 
 function sanitizePlayer(p: Record<string, unknown>, tournamentId: string) {
   const record: Record<string, unknown> = { tournament_id: tournamentId };
@@ -32,6 +32,11 @@ function sanitizePlayer(p: Record<string, unknown>, tournamentId: string) {
   if (typeof p.club === 'string') record.club = p.club.trim() || null;
   if (typeof p.email === 'string') record.email = p.email.trim() || null;
   if (typeof p.phone === 'string') record.phone = p.phone.trim() || null;
+  if (typeof p.club_locker_id === 'string') record.club_locker_id = p.club_locker_id.trim() || null;
+  if (typeof p.gender === 'string') record.gender = p.gender.trim() || null;
+  if (typeof p.city === 'string') record.city = p.city.trim() || null;
+  if (p.rating !== undefined) record.rating = typeof p.rating === 'number' ? p.rating : (parseFloat(String(p.rating)) || null);
+  if (p.ranking !== undefined) record.ranking = typeof p.ranking === 'number' ? p.ranking : (parseInt(String(p.ranking)) || null);
   return record;
 }
 
@@ -98,8 +103,10 @@ export async function PATCH(
   const updates: Record<string, unknown> = {};
   for (const key of PLAYER_FIELDS) {
     if (key in body) {
-      if (key === 'seed') {
-        updates.seed = body.seed ? parseInt(String(body.seed)) || null : null;
+      if (key === 'seed' || key === 'ranking') {
+        updates[key] = body[key] ? parseInt(String(body[key])) || null : null;
+      } else if (key === 'rating') {
+        updates[key] = body[key] ? parseFloat(String(body[key])) || null : null;
       } else {
         updates[key] = typeof body[key] === 'string' ? (body[key].trim() || null) : body[key];
       }

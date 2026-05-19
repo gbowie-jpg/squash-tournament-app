@@ -257,10 +257,18 @@ export default function PlayerProfile({
               <h1 className="text-xl font-bold tracking-tight truncate">{displayName}</h1>
               <div className="flex flex-wrap items-center gap-2 mt-0.5">
                 {displayClub && <span className="text-sm text-muted-foreground">{displayClub}</span>}
-                {playerProfile?.squash_ranking && (
+                {(player?.rating != null || playerProfile?.squash_ranking) && (
                   <span className="text-xs font-medium bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
-                    Rating: {playerProfile.squash_ranking}
+                    Rating: {player?.rating ?? playerProfile?.squash_ranking}
                   </span>
+                )}
+                {player?.ranking != null && (
+                  <span className="text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 px-2 py-0.5 rounded-full">
+                    #{player.ranking} ranked
+                  </span>
+                )}
+                {player?.city && (
+                  <span className="text-xs text-muted-foreground">{player.city}</span>
                 )}
               </div>
               {playerProfile?.bio && (

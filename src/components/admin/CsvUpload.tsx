@@ -11,23 +11,42 @@ type PlayerRow = {
   club?: string;
   email?: string;
   phone?: string;
+  club_locker_id?: string;
+  gender?: string;
+  city?: string;
+  rating?: number;
+  ranking?: number;
 };
 
-type FieldKey = 'name' | 'firstName' | 'lastName' | 'lastFirst' | 'draw' | 'seed' | 'club' | 'email' | 'phone' | 'skip';
+type FieldKey =
+  | 'name' | 'firstName' | 'lastName' | 'lastFirst'
+  | 'draw' | 'seed' | 'club' | 'email' | 'phone'
+  | 'clubLockerId' | 'gender' | 'city' | 'rating' | 'ranking'
+  | 'skip';
 
 // Auto-detect column mapping from header name
 function guessField(header: string): FieldKey {
-  const h = header.toLowerCase().trim().replace(/\s+/g, ' ');
-  if (h === 'name' || h === 'player' || h === 'player name' || h === 'full name' || h === 'fullname' || h === 'playername') return 'name';
-  if (h === 'first name' || h === 'first' || h === 'firstname' || h === 'fname' || h === 'given name') return 'firstName';
-  if (h === 'last name' || h === 'last' || h === 'lastname' || h === 'lname' || h === 'surname' || h === 'family name') return 'lastName';
-  // Club Locker "Last, First" column — parse for split but don't treat as a separate name source
-  if (h === 'lastfirst' || h === 'last, first' || h === 'last first' || h === 'playerlastfirst') return 'lastFirst';
-  if (h === 'draw' || h === 'event' || h === 'division' || h === 'category' || h === 'event name' || h === 'draw name') return 'draw';
-  if (h === 'seed' || h === 'seeding' || h === 'seed #' || h === 'seed number') return 'seed';
-  if (h === 'club' || h === 'home club' || h === 'homeclub' || h === 'club name' || h === 'affiliation' || h === 'team') return 'club';
-  if (h === 'email' || h === 'e-mail' || h === 'email address' || h === 'playeremail') return 'email';
-  if (h === 'phone' || h === 'mobile' || h === 'phone number' || h === 'cell') return 'phone';
+  const h = header.toLowerCase().trim().replace(/\s+/g, '');
+  // Names
+  if (['name','player','playername','fullname'].includes(h) || h === 'player name' || h === 'full name') return 'name';
+  if (['firstname','fname','givenname','first'].includes(h) || h === 'first name' || h === 'given name') return 'firstName';
+  if (['lastname','lname','surname','familyname','last'].includes(h) || h === 'last name' || h === 'family name') return 'lastName';
+  if (['lastfirst','playerlastfirst'].includes(h) || h === 'last, first' || h === 'last first') return 'lastFirst';
+  // Draw / event
+  if (['draw','event','division','category','eventname','drawname'].includes(h) || h === 'event name' || h === 'draw name') return 'draw';
+  // Seed
+  if (['seed','seeding'].includes(h) || h === 'seed #' || h === 'seed number') return 'seed';
+  // Club
+  if (['club','homeclub','clubname','affiliation','team'].includes(h) || h === 'home club' || h === 'club name') return 'club';
+  // Contact
+  if (['email','e-mail','emailaddress','playeremail'].includes(h) || h === 'email address') return 'email';
+  if (['phone','mobile','phonenumber','cell'].includes(h) || h === 'phone number') return 'phone';
+  // Club Locker extended fields
+  if (['playerid','clublockerid'].includes(h)) return 'clubLockerId';
+  if (['playersex','sex','gender'].includes(h)) return 'gender';
+  if (['playercity','city'].includes(h)) return 'city';
+  if (['playerseedingrating','playerorderrating','rating','playerrating'].includes(h) || h === 'player rating') return 'rating';
+  if (['playerranking','ranking'].includes(h)) return 'ranking';
   return 'skip';
 }
 
@@ -65,7 +84,13 @@ function parseCSV(text: string): { headers: string[]; rows: string[][] } {
   return { headers, rows };
 }
 
-type DupFlag = { type: 'exact'; otherIdx: number } | { type: 'email'; otherIdx: number } | { type: 'similar'; otherIdx: number };
+type DupFlag =
+  | { type: 'exact'; otherIdx: number }
+  | { type: 'email'; otherIdx: number }
+  | { type: 'similar'; otherIdx: number }
+  | { type: 'existing'; existingName: string };
+
+type ExistingPlayer = { name: string; email?: string | null };
 
 function nameTokens(name: string): string[] {
   return name.toLowerCase().trim().split(/\s+/);
@@ -80,33 +105,46 @@ function isSimilarName(a: string, b: string): boolean {
   return shorter.every((t) => longer.includes(t));
 }
 
-function detectDuplicates(players: PlayerRow[]): Map<number, DupFlag> {
+function detectDuplicates(
+  players: PlayerRow[],
+  existing: ExistingPlayer[] = [],
+): Map<number, DupFlag> {
   const flags = new Map<number, DupFlag>();
-  const nameEmailSeen = new Map<string, number>(); // "name||email" → first index
-  const emailSeen = new Map<string, number>();      // email → first index
+  const nameEmailSeen = new Map<string, number>();
+  const emailSeen = new Map<string, number>();
+
+  // Build lookup sets from already-imported players
+  const existingEmails = new Set(existing.map((p) => p.email?.toLowerCase().trim()).filter(Boolean) as string[]);
+  const existingNames = new Map(existing.map((p) => [p.name.toLowerCase().trim(), p.name]));
 
   players.forEach((p, i) => {
     const normName = p.name.toLowerCase().trim();
     const normEmail = p.email?.toLowerCase().trim() ?? '';
 
-    // Exact duplicate: same name AND same email
+    // Already in the tournament — email match takes priority
+    if (normEmail && existingEmails.has(normEmail)) {
+      flags.set(i, { type: 'existing', existingName: existing.find((e) => e.email?.toLowerCase().trim() === normEmail)?.name ?? normName });
+      return;
+    }
+    if (existingNames.has(normName)) {
+      flags.set(i, { type: 'existing', existingName: existingNames.get(normName)! });
+      return;
+    }
+
+    // Exact duplicate within this batch
     if (normEmail) {
       const key = `${normName}||${normEmail}`;
       const prev = nameEmailSeen.get(key);
-      if (prev !== undefined) {
-        flags.set(i, { type: 'exact', otherIdx: prev });
-        return;
-      }
+      if (prev !== undefined) { flags.set(i, { type: 'exact', otherIdx: prev }); return; }
       nameEmailSeen.set(key, i);
     }
 
-    // Shared email: same email, different name
+    // Shared email, different name
     if (normEmail) {
       const prev = emailSeen.get(normEmail);
       if (prev !== undefined) {
-        const prevName = players[prev].name.toLowerCase().trim();
-        if (prevName !== normName) {
-          flags.set(i, { type: 'email', otherIdx: prev });
+        if (players[prev].name.toLowerCase().trim() !== normName) {
+          flags.set(i, { type: 'email', otherIdx: prev }); return;
         }
       } else {
         emailSeen.set(normEmail, i);
@@ -114,14 +152,13 @@ function detectDuplicates(players: PlayerRow[]): Map<number, DupFlag> {
     }
   });
 
-  // Similar name check — catches "Harper Yunqi" vs "Harper Yunqi Yangli Yangli"
+  // Similar name check within batch
   for (let i = 0; i < players.length; i++) {
     if (flags.has(i)) continue;
     for (let j = 0; j < i; j++) {
       if (flags.has(j)) continue;
       if (isSimilarName(players[i].name, players[j].name)) {
-        flags.set(i, { type: 'similar', otherIdx: j });
-        break;
+        flags.set(i, { type: 'similar', otherIdx: j }); break;
       }
     }
   }
@@ -131,10 +168,11 @@ function detectDuplicates(players: PlayerRow[]): Map<number, DupFlag> {
 
 interface CsvUploadProps {
   tournamentId: string;
+  existingPlayers?: ExistingPlayer[];
   onImport: (players: PlayerRow[]) => void;
 }
 
-export default function CsvUpload({ tournamentId, onImport }: CsvUploadProps) {
+export default function CsvUpload({ tournamentId, existingPlayers = [], onImport }: CsvUploadProps) {
   const [step, setStep] = useState<'idle' | 'mapping' | 'preview'>('idle');
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<string[][]>([]);
@@ -225,6 +263,11 @@ export default function CsvUpload({ tournamentId, onImport }: CsvUploadProps) {
         club: obj.club || undefined,
         email: obj.email || undefined,
         phone: obj.phone || undefined,
+        club_locker_id: obj.clubLockerId || undefined,
+        gender: obj.gender || undefined,
+        city: obj.city || undefined,
+        rating: obj.rating ? parseFloat(obj.rating) || undefined : undefined,
+        ranking: obj.ranking ? parseInt(obj.ranking) || undefined : undefined,
       };
     }).filter(Boolean) as PlayerRow[];
   };
@@ -262,12 +305,13 @@ export default function CsvUpload({ tournamentId, onImport }: CsvUploadProps) {
   const previewPlayers = allPlayers.filter((_, i) => !excludedIndices.has(i));
 
   // Detect on allPlayers (pre-exclusion) so warnings always reflect what's in the file
-  const dupFlags = detectDuplicates(allPlayers);
+  const dupFlags = detectDuplicates(allPlayers, existingPlayers);
   // Only count flags not already excluded
   const activeDupFlags = new Map([...dupFlags.entries()].filter(([i]) => !excludedIndices.has(i)));
   const exactDups = [...activeDupFlags.values()].filter((f) => f.type === 'exact').length;
   const emailDups = [...activeDupFlags.values()].filter((f) => f.type === 'email').length;
   const similarDups = [...activeDupFlags.values()].filter((f) => f.type === 'similar').length;
+  const existingDups = [...activeDupFlags.values()].filter((f) => f.type === 'existing').length;
   const fieldOptions: { value: FieldKey; label: string }[] = [
     { value: 'skip', label: '— Skip —' },
     { value: 'name', label: 'Full Name' },
@@ -279,6 +323,11 @@ export default function CsvUpload({ tournamentId, onImport }: CsvUploadProps) {
     { value: 'club', label: 'Club' },
     { value: 'email', label: 'Email' },
     { value: 'phone', label: 'Phone' },
+    { value: 'clubLockerId', label: 'Club Locker ID' },
+    { value: 'gender', label: 'Gender' },
+    { value: 'city', label: 'City' },
+    { value: 'rating', label: 'Rating' },
+    { value: 'ranking', label: 'Ranking' },
   ];
 
   if (step === 'idle') {
@@ -375,6 +424,9 @@ export default function CsvUpload({ tournamentId, onImport }: CsvUploadProps) {
             {similarDups > 0 && (
               <p>⚠ <strong>{similarDups}</strong> similar name{similarDups !== 1 ? 's' : ''} (possible duplicate) — highlighted in yellow below</p>
             )}
+            {existingDups > 0 && (
+              <p>★ <strong>{existingDups}</strong> already in this tournament — highlighted in purple below</p>
+            )}
           </div>
         )}
 
@@ -395,7 +447,9 @@ export default function CsvUpload({ tournamentId, onImport }: CsvUploadProps) {
                 // Map preview index back to allPlayers index for flag lookup
                 const allIdx = allPlayers.indexOf(p);
                 const flag = activeDupFlags.get(allIdx);
-                const rowBg = flag?.type === 'exact'
+                const rowBg = flag?.type === 'existing'
+                  ? 'bg-purple-50'
+                  : flag?.type === 'exact'
                   ? 'bg-red-50'
                   : flag?.type === 'email'
                   ? 'bg-amber-50'
@@ -418,6 +472,9 @@ export default function CsvUpload({ tournamentId, onImport }: CsvUploadProps) {
                       )}
                       {flag?.type === 'similar' && (
                         <span title={`Similar name to row ${flag.otherIdx + 1} (${allPlayers[flag.otherIdx]?.name})`} className="text-yellow-600 cursor-help">~</span>
+                      )}
+                      {flag?.type === 'existing' && (
+                        <span title={`Already in tournament as "${flag.existingName}"`} className="text-purple-600 cursor-help">★</span>
                       )}
                     </td>
                   </tr>
