@@ -20,6 +20,11 @@ export default function PlayerManagement({
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', draw: '', seed: '', club: '', email: '' });
+  const [customDraw, setCustomDraw] = useState(false);
+  const [customClub, setCustomClub] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!tournament) return;
@@ -66,15 +71,27 @@ export default function PlayerManagement({
   };
 
   const handleEdit = (p: Player) => {
-    setForm({
-      name: p.name,
-      draw: p.draw || '',
-      seed: p.seed?.toString() || '',
-      club: p.club || '',
-      email: p.email || '',
-    });
+    const draw = p.draw || '';
+    const club = p.club || '';
+    setForm({ name: p.name, draw, seed: p.seed?.toString() || '', club, email: p.email || '' });
     setEditingId(p.id);
     setShowForm(true);
+    // Will be resolved after drawNames/clubNames are computed below, but set conservatively
+    setCustomDraw(false);
+    setCustomClub(false);
+  };
+
+  const moveDraw = async (playerId: string, newDraw: string) => {
+    if (!tournament) return;
+    const res = await fetch(`/api/tournaments/${tournament.id}/players`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: playerId, draw: newDraw || null }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setPlayers((prev) => prev.map((p) => (p.id === playerId ? updated : p)));
+    }
   };
 
   const handleDelete = async (playerId: string) => {
@@ -85,6 +102,45 @@ export default function PlayerManagement({
       body: JSON.stringify({ playerId }),
     });
     setPlayers((prev) => prev.filter((p) => p.id !== playerId));
+    setSelected((prev) => { const s = new Set(prev); s.delete(playerId); return s; });
+  };
+
+  const handleBulkDelete = async () => {
+    if (!tournament || selected.size === 0) return;
+    if (!confirm(`Delete ${selected.size} player${selected.size !== 1 ? 's' : ''}? This cannot be undone.`)) return;
+    setBulkDeleting(true);
+    setBulkError(null);
+    const res = await fetch(`/api/tournaments/${tournament.id}/players`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ playerIds: [...selected] }),
+    });
+    if (res.ok) {
+      setPlayers((prev) => prev.filter((p) => !selected.has(p.id)));
+      setSelected(new Set());
+    } else {
+      const err = await res.json().catch(() => ({}));
+      setBulkError(err.error || 'Delete failed — try again');
+    }
+    setBulkDeleting(false);
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const s = new Set(prev);
+      s.has(id) ? s.delete(id) : s.add(id);
+      return s;
+    });
+  };
+
+  const toggleDraw = (drawName: string) => {
+    const drawIds = players.filter((p) => (p.draw || 'Unassigned') === drawName).map((p) => p.id);
+    const allSelected = drawIds.every((id) => selected.has(id));
+    setSelected((prev) => {
+      const s = new Set(prev);
+      drawIds.forEach((id) => allSelected ? s.delete(id) : s.add(id));
+      return s;
+    });
   };
 
   if (tournamentLoading) return (
@@ -100,6 +156,8 @@ export default function PlayerManagement({
 
   // Group by draw
   const draws = [...new Set(players.map((p) => p.draw || 'Unassigned'))].sort();
+  const drawNames = [...new Set(players.map((p) => p.draw).filter(Boolean) as string[])].sort();
+  const clubNames = [...new Set(players.map((p) => p.club).filter(Boolean) as string[])].sort();
 
   return (
     <div className="min-h-screen bg-[var(--surface)]">
@@ -118,7 +176,7 @@ export default function PlayerManagement({
             <ThemeToggle />
             <RefreshButton />
             <button
-              onClick={() => { setShowForm(!showForm); setEditingId(null); setForm({ name: '', draw: '', seed: '', club: '', email: '' }); }}
+              onClick={() => { setShowForm(!showForm); setEditingId(null); setForm({ name: '', draw: '', seed: '', club: '', email: '' }); setCustomDraw(false); setCustomClub(false); }}
               className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90"
             >
               {showForm ? 'Cancel' : '+ Add Player'}
@@ -143,32 +201,73 @@ export default function PlayerManagement({
               </div>
               <div>
                 <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Draw</label>
-                <input
-                  value={form.draw}
-                  onChange={(e) => setForm({ ...form, draw: e.target.value })}
-                  placeholder="Open, B, C..."
-                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
-                />
+                {customDraw ? (
+                  <div className="flex gap-1">
+                    <input
+                      autoFocus
+                      value={form.draw}
+                      onChange={(e) => setForm({ ...form, draw: e.target.value })}
+                      placeholder="New draw name"
+                      className="flex-1 border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                    />
+                    <button type="button" onClick={() => { setCustomDraw(false); setForm({ ...form, draw: '' }); }} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] px-2">✕</button>
+                  </div>
+                ) : (
+                  <select
+                    value={form.draw}
+                    onChange={(e) => {
+                      if (e.target.value === '__new__') { setCustomDraw(true); setForm({ ...form, draw: '' }); }
+                      else setForm({ ...form, draw: e.target.value });
+                    }}
+                    className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                  >
+                    <option value="">— None —</option>
+                    {drawNames.map((d) => <option key={d} value={d}>{d}</option>)}
+                    <option value="__new__">+ New draw…</option>
+                  </select>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Seed</label>
-                <input
-                  type="number"
-                  min={1}
+                <select
                   value={form.seed}
                   onChange={(e) => setForm({ ...form, seed: e.target.value })}
-                  placeholder="#"
                   className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
-                />
+                >
+                  <option value="">— None —</option>
+                  {Array.from(
+                    { length: Math.max(players.filter((p) => p.draw === form.draw && p.id !== editingId).length + 1, 16) },
+                    (_, i) => i + 1
+                  ).map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Club</label>
-                <input
-                  value={form.club}
-                  onChange={(e) => setForm({ ...form, club: e.target.value })}
-                  placeholder="SAC"
-                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
-                />
+                {customClub ? (
+                  <div className="flex gap-1">
+                    <input
+                      autoFocus
+                      value={form.club}
+                      onChange={(e) => setForm({ ...form, club: e.target.value })}
+                      placeholder="Club name"
+                      className="flex-1 border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                    />
+                    <button type="button" onClick={() => { setCustomClub(false); setForm({ ...form, club: '' }); }} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] px-2">✕</button>
+                  </div>
+                ) : (
+                  <select
+                    value={form.club}
+                    onChange={(e) => {
+                      if (e.target.value === '__new__') { setCustomClub(true); setForm({ ...form, club: '' }); }
+                      else setForm({ ...form, club: e.target.value });
+                    }}
+                    className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                  >
+                    <option value="">— None —</option>
+                    {clubNames.map((c) => <option key={c} value={c}>{c}</option>)}
+                    <option value="__new__">+ New club…</option>
+                  </select>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Email</label>
@@ -197,6 +296,28 @@ export default function PlayerManagement({
           </div>
         )}
 
+        {/* Bulk action bar */}
+        {selected.size > 0 && (
+          <div className="sticky top-0 z-10 mb-4 flex items-center gap-3 bg-zinc-900 text-white px-4 py-3 rounded-xl shadow-lg flex-wrap">
+            <span className="text-sm font-medium">{selected.size} player{selected.size !== 1 ? 's' : ''} selected</span>
+            <button
+              onClick={() => setSelected(new Set())}
+              className="text-xs text-zinc-400 hover:text-white underline"
+            >
+              Clear
+            </button>
+            <div className="flex-1" />
+            {bulkError && <span className="text-xs text-red-400">{bulkError}</span>}
+            <button
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+              className="bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-1.5 rounded-lg"
+            >
+              {bulkDeleting ? 'Deleting…' : `Delete ${selected.size}`}
+            </button>
+          </div>
+        )}
+
         {loading ? (
           <div className="space-y-4 animate-pulse">
             {[...Array(3)].map((_, i) => (
@@ -206,18 +327,35 @@ export default function PlayerManagement({
         ) : players.length === 0 ? (
           <p className="text-[var(--text-secondary)] text-center py-12">No players yet. Add some to get started.</p>
         ) : (
-          draws.map((draw) => (
+          draws.map((draw) => {
+            const drawPlayers = players.filter((p) => (p.draw || 'Unassigned') === draw);
+            const allDrawSelected = drawPlayers.every((p) => selected.has(p.id));
+            return (
             <div key={draw} className="mb-6">
-              <h2 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-3">{draw} Draw</h2>
+              <div className="flex items-center gap-2 mb-3">
+                <input
+                  type="checkbox"
+                  checked={allDrawSelected && drawPlayers.length > 0}
+                  onChange={() => toggleDraw(draw)}
+                  className="w-4 h-4 rounded border-[var(--border)] cursor-pointer"
+                  title={allDrawSelected ? 'Deselect all in this draw' : 'Select all in this draw'}
+                />
+                <h2 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider">{draw} Draw <span className="font-normal normal-case">({drawPlayers.length})</span></h2>
+              </div>
               <div className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl overflow-hidden">
-                {players
-                  .filter((p) => (p.draw || 'Unassigned') === draw)
+                {drawPlayers
                   .map((p, i) => (
                     <div
                       key={p.id}
-                      className={`flex items-center justify-between px-4 py-3 ${i > 0 ? 'border-t border-[var(--border)]' : ''}`}
+                      className={`flex items-center justify-between px-4 py-3 ${i > 0 ? 'border-t border-[var(--border)]' : ''} ${selected.has(p.id) ? 'bg-blue-50 dark:bg-blue-950/20' : ''}`}
                     >
                       <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={selected.has(p.id)}
+                          onChange={() => toggleSelect(p.id)}
+                          className="w-4 h-4 rounded border-[var(--border)] cursor-pointer shrink-0"
+                        />
                         {p.seed && (
                           <span className="w-6 h-6 rounded-full bg-surface text-muted-foreground text-xs font-medium flex items-center justify-center">
                             {p.seed}
@@ -229,6 +367,17 @@ export default function PlayerManagement({
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        <select
+                          value={p.draw || ''}
+                          onChange={(e) => moveDraw(p.id, e.target.value)}
+                          className="text-xs border border-[var(--border)] rounded-lg px-2 py-1 bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none"
+                        >
+                          <option value="">Unassigned</option>
+                          {drawNames.map((d) => <option key={d} value={d}>{d}</option>)}
+                          {p.draw && !drawNames.includes(p.draw) && (
+                            <option value={p.draw}>{p.draw}</option>
+                          )}
+                        </select>
                         <button onClick={() => handleEdit(p)} className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)]">Edit</button>
                         <button onClick={() => handleDelete(p.id)} className="text-xs text-red-400 hover:text-red-600">Delete</button>
                       </div>
@@ -236,7 +385,8 @@ export default function PlayerManagement({
                   ))}
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </main>
     </div>

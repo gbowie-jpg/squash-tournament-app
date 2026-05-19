@@ -214,7 +214,10 @@ export default function PlayerProfile({
     });
 
   const activeMatch = playerMatches.find((m) => m.status === 'in_progress' || m.status === 'on_deck');
-  const displayName = playerProfile?.full_name || player?.name || 'Loading…';
+  const playerFullName = player
+    ? [player.first_name, player.last_name].filter(Boolean).join(' ') || player.name
+    : null;
+  const displayName = playerProfile?.full_name || playerFullName || 'Loading…';
   const displayClub = playerProfile?.club || player?.club;
   const photo = playerProfile?.photo_url;
   const isOwnProfile = !!currentUserEmail && !!player?.email && player.email === currentUserEmail;
