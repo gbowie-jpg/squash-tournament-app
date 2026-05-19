@@ -20,6 +20,9 @@ export default function PlayerManagement({
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', draw: '', seed: '', club: '', email: '' });
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!tournament) return;
@@ -98,6 +101,45 @@ export default function PlayerManagement({
       body: JSON.stringify({ playerId }),
     });
     setPlayers((prev) => prev.filter((p) => p.id !== playerId));
+    setSelected((prev) => { const s = new Set(prev); s.delete(playerId); return s; });
+  };
+
+  const handleBulkDelete = async () => {
+    if (!tournament || selected.size === 0) return;
+    if (!confirm(`Delete ${selected.size} player${selected.size !== 1 ? 's' : ''}? This cannot be undone.`)) return;
+    setBulkDeleting(true);
+    setBulkError(null);
+    const res = await fetch(`/api/tournaments/${tournament.id}/players`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ playerIds: [...selected] }),
+    });
+    if (res.ok) {
+      setPlayers((prev) => prev.filter((p) => !selected.has(p.id)));
+      setSelected(new Set());
+    } else {
+      const err = await res.json().catch(() => ({}));
+      setBulkError(err.error || 'Delete failed — try again');
+    }
+    setBulkDeleting(false);
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const s = new Set(prev);
+      s.has(id) ? s.delete(id) : s.add(id);
+      return s;
+    });
+  };
+
+  const toggleDraw = (drawName: string) => {
+    const drawIds = players.filter((p) => (p.draw || 'Unassigned') === drawName).map((p) => p.id);
+    const allSelected = drawIds.every((id) => selected.has(id));
+    setSelected((prev) => {
+      const s = new Set(prev);
+      drawIds.forEach((id) => allSelected ? s.delete(id) : s.add(id));
+      return s;
+    });
   };
 
   if (tournamentLoading) return (
@@ -215,6 +257,28 @@ export default function PlayerManagement({
           </div>
         )}
 
+        {/* Bulk action bar */}
+        {selected.size > 0 && (
+          <div className="sticky top-0 z-10 mb-4 flex items-center gap-3 bg-zinc-900 text-white px-4 py-3 rounded-xl shadow-lg flex-wrap">
+            <span className="text-sm font-medium">{selected.size} player{selected.size !== 1 ? 's' : ''} selected</span>
+            <button
+              onClick={() => setSelected(new Set())}
+              className="text-xs text-zinc-400 hover:text-white underline"
+            >
+              Clear
+            </button>
+            <div className="flex-1" />
+            {bulkError && <span className="text-xs text-red-400">{bulkError}</span>}
+            <button
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+              className="bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-1.5 rounded-lg"
+            >
+              {bulkDeleting ? 'Deleting…' : `Delete ${selected.size}`}
+            </button>
+          </div>
+        )}
+
         {loading ? (
           <div className="space-y-4 animate-pulse">
             {[...Array(3)].map((_, i) => (
@@ -224,18 +288,35 @@ export default function PlayerManagement({
         ) : players.length === 0 ? (
           <p className="text-[var(--text-secondary)] text-center py-12">No players yet. Add some to get started.</p>
         ) : (
-          draws.map((draw) => (
+          draws.map((draw) => {
+            const drawPlayers = players.filter((p) => (p.draw || 'Unassigned') === draw);
+            const allDrawSelected = drawPlayers.every((p) => selected.has(p.id));
+            return (
             <div key={draw} className="mb-6">
-              <h2 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-3">{draw} Draw</h2>
+              <div className="flex items-center gap-2 mb-3">
+                <input
+                  type="checkbox"
+                  checked={allDrawSelected && drawPlayers.length > 0}
+                  onChange={() => toggleDraw(draw)}
+                  className="w-4 h-4 rounded border-[var(--border)] cursor-pointer"
+                  title={allDrawSelected ? 'Deselect all in this draw' : 'Select all in this draw'}
+                />
+                <h2 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider">{draw} Draw <span className="font-normal normal-case">({drawPlayers.length})</span></h2>
+              </div>
               <div className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl overflow-hidden">
-                {players
-                  .filter((p) => (p.draw || 'Unassigned') === draw)
+                {drawPlayers
                   .map((p, i) => (
                     <div
                       key={p.id}
-                      className={`flex items-center justify-between px-4 py-3 ${i > 0 ? 'border-t border-[var(--border)]' : ''}`}
+                      className={`flex items-center justify-between px-4 py-3 ${i > 0 ? 'border-t border-[var(--border)]' : ''} ${selected.has(p.id) ? 'bg-blue-50 dark:bg-blue-950/20' : ''}`}
                     >
                       <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={selected.has(p.id)}
+                          onChange={() => toggleSelect(p.id)}
+                          className="w-4 h-4 rounded border-[var(--border)] cursor-pointer shrink-0"
+                        />
                         {p.seed && (
                           <span className="w-6 h-6 rounded-full bg-surface text-muted-foreground text-xs font-medium flex items-center justify-center">
                             {p.seed}
@@ -265,7 +346,8 @@ export default function PlayerManagement({
                   ))}
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </main>
     </div>

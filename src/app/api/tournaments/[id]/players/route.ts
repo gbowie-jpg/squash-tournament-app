@@ -125,27 +125,30 @@ export async function DELETE(
   if (auth.error) return auth.error;
 
   const supabase = createAdminClient();
-  const { playerId } = await req.json();
+  const body = await req.json();
 
-  if (!playerId) return NextResponse.json({ error: 'playerId required' }, { status: 400 });
+  // Support single playerId (legacy) or bulk playerIds array
+  const ids: string[] = body.playerIds ?? (body.playerId ? [body.playerId] : []);
+  if (ids.length === 0) return NextResponse.json({ error: 'playerId or playerIds required' }, { status: 400 });
 
-  // Check for active matches involving this player
+  // Check for active matches involving any of these players
+  const orClause = ids.map((pid) => `player1_id.eq.${pid},player2_id.eq.${pid}`).join(',');
   const { data: activeMatches } = await supabase
     .from('matches')
     .select('id')
     .eq('tournament_id', id)
     .in('status', ['scheduled', 'on_deck', 'in_progress'])
-    .or(`player1_id.eq.${playerId},player2_id.eq.${playerId}`)
+    .or(orClause)
     .limit(1);
 
   if (activeMatches && activeMatches.length > 0) {
     return NextResponse.json(
-      { error: 'Cannot delete: player has active matches. Remove them from matches first.' },
+      { error: 'Cannot delete: one or more players have active matches. Remove them from matches first.' },
       { status: 409 },
     );
   }
 
-  const { error } = await supabase.from('players').delete().eq('id', playerId).eq('tournament_id', id);
+  const { error } = await supabase.from('players').delete().in('id', ids).eq('tournament_id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, deleted: ids.length });
 }
