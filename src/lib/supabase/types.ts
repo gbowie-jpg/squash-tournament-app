@@ -98,6 +98,11 @@ export type Database = {
           email: string | null;
           phone: string | null;
           draw: string | null;
+          club_locker_id: string | null;
+          gender: string | null;
+          city: string | null;
+          rating: number | null;
+          ranking: number | null;
           payment_status: 'free' | 'pending' | 'paid' | 'refunded' | 'waived';
           stripe_session_id: string | null;
           created_at: string;
@@ -113,6 +118,11 @@ export type Database = {
           email?: string | null;
           phone?: string | null;
           draw?: string | null;
+          club_locker_id?: string | null;
+          gender?: string | null;
+          city?: string | null;
+          rating?: number | null;
+          ranking?: number | null;
           payment_status?: 'free' | 'pending' | 'paid' | 'refunded' | 'waived';
           stripe_session_id?: string | null;
         };

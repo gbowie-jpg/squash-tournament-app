@@ -291,6 +291,7 @@ export default function PlayerManagement({
           <div className="mb-8">
             <CsvUpload
               tournamentId={tournament.id}
+              existingPlayers={players}
               onImport={(imported) => setPlayers((prev) => [...prev, ...imported as unknown as Player[]])}
             />
           </div>
