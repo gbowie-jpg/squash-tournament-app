@@ -1147,7 +1147,10 @@ export default function GlobalEmail() {
             {/* Two-column layout on md+, single-column on mobile */}
             <div className={expanded ? '' : 'md:grid md:grid-cols-2 md:gap-4'}>
               {/* Editor column */}
-              <div className={`md:flex md:flex-col ${expanded ? 'md:h-[calc(100vh-320px)]' : 'md:h-[780px]'} ${previewTab === 'preview' ? 'hidden md:flex' : ''}`}>
+              <div
+                className={`md:flex md:flex-col ${previewTab === 'preview' ? 'hidden md:flex' : ''}`}
+                style={{ height: expanded ? 'calc(100vh - 320px)' : '780px' }}
+              >
                 {/* Insert toolbar */}
                 <div className="shrink-0 flex items-center gap-0.5 border-b border-border pb-2 mb-1">
                   {BLOCK_TOOLS.map(({ type, icon, label }) => (
@@ -1179,7 +1182,10 @@ export default function GlobalEmail() {
 
               {/* Preview column — hidden when expanded */}
               {!expanded && (
-                <div className={`md:h-[780px] md:overflow-y-auto ${previewTab === 'edit' ? 'hidden md:block' : ''}`}>
+                <div
+                  className={`md:overflow-y-auto ${previewTab === 'edit' ? 'hidden md:block' : ''}`}
+                  style={{ height: '780px' }}
+                >
                   <div className="sticky top-0 hidden md:block pb-2">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Preview</p>
                   </div>
