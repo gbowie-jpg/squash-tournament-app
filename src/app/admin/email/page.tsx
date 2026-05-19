@@ -62,14 +62,15 @@ function blocksToHtml(blocks: Block[]): string {
 
 // ─── Block editor components ─────────────────────────────────────────────────
 
-const BLOCK_LABELS: Record<BlockType, string> = {
-  paragraph: 'Text', heading: 'Heading', subheading: 'Subheading',
-  bullets: 'Bullets', button: 'Button', image: 'Image', divider: 'Divider',
-};
-const BLOCK_ICONS: Record<BlockType, string> = {
-  paragraph: '¶', heading: 'H', subheading: 'h', bullets: '•',
-  button: '⊞', image: '🖼', divider: '—',
-};
+const BLOCK_TOOLS: { type: BlockType; icon: string; label: string }[] = [
+  { type: 'paragraph',  icon: 'T',  label: 'Text' },
+  { type: 'heading',    icon: 'H1', label: 'Heading' },
+  { type: 'subheading', icon: 'H2', label: 'Subheading' },
+  { type: 'bullets',    icon: '≡',  label: 'List' },
+  { type: 'button',     icon: '⊞',  label: 'Button' },
+  { type: 'image',      icon: '⬚',  label: 'Image' },
+  { type: 'divider',    icon: '─',  label: 'Divider' },
+];
 
 function ImageBlockEditor({
   block, onChange, onImageUpload, inputClass,
@@ -146,121 +147,110 @@ function BlockCard({
   onMove: (dir: 'up' | 'down') => void;
   onImageUpload?: (file: File) => Promise<string>;
 }) {
-  const inputClass = 'w-full border border-border rounded-lg px-3 py-2 text-sm bg-surface text-foreground focus:outline-none focus:ring-1 focus:ring-zinc-400';
+  const fieldClass = 'w-full border border-border rounded-lg px-3 py-2 text-sm bg-surface text-foreground focus:outline-none focus:ring-1 focus:ring-zinc-400';
+  const plainClass = 'w-full bg-transparent border-none outline-none text-foreground';
 
   return (
-    <div
-      className="group bg-card border border-border rounded-xl p-4 space-y-3"
-      style={{ transition: 'box-shadow 0.15s' }}
-    >
-      {/* Header row */}
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-          {BLOCK_ICONS[block.type]} {BLOCK_LABELS[block.type]}
-        </span>
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            onClick={() => onMove('up')} disabled={index === 0}
-            className="w-6 h-6 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
-            title="Move up"
-          >↑</button>
-          <button
-            onClick={() => onMove('down')} disabled={index === total - 1}
-            className="w-6 h-6 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
-            title="Move down"
-          >↓</button>
-          <button
-            onClick={onRemove}
-            className="w-6 h-6 rounded text-xs text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center justify-center"
-            title="Remove block"
-          >×</button>
-        </div>
+    <div className="group relative flex items-start py-0.5 pl-7 pr-1 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
+      {/* Left gutter controls — hover reveal */}
+      <div className="absolute left-0 top-1.5 flex flex-col items-center gap-px opacity-0 group-hover:opacity-100 transition-opacity">
+        <button onClick={() => onMove('up')} disabled={index === 0}
+          className="w-5 h-5 rounded flex items-center justify-center text-[10px] text-muted-foreground hover:text-foreground hover:bg-zinc-200 dark:hover:bg-zinc-700 disabled:opacity-20 disabled:cursor-not-allowed"
+          title="Move up">↑</button>
+        <button onClick={onRemove}
+          className="w-5 h-5 rounded flex items-center justify-center text-[10px] text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+          title="Delete">×</button>
+        <button onClick={() => onMove('down')} disabled={index === total - 1}
+          className="w-5 h-5 rounded flex items-center justify-center text-[10px] text-muted-foreground hover:text-foreground hover:bg-zinc-200 dark:hover:bg-zinc-700 disabled:opacity-20 disabled:cursor-not-allowed"
+          title="Move down">↓</button>
       </div>
 
-      {/* Editors */}
-      {block.type === 'paragraph' && (
-        <textarea
-          value={block.text || ''}
-          onChange={(e) => {
-            e.target.style.height = 'auto';
-            e.target.style.height = e.target.scrollHeight + 'px';
-            onChange({ ...block, text: e.target.value });
-          }}
-          style={{ minHeight: '80px', resize: 'none', overflow: 'hidden' }}
-          placeholder="Write your paragraph…"
-          className={inputClass}
-        />
-      )}
-      {block.type === 'heading' && (
-        <input type="text" value={block.text || ''}
-          onChange={(e) => onChange({ ...block, text: e.target.value })}
-          placeholder="Section heading…"
-          className={inputClass}
-        />
-      )}
-      {block.type === 'subheading' && (
-        <input type="text" value={block.text || ''}
-          onChange={(e) => onChange({ ...block, text: e.target.value })}
-          placeholder="Subheading…"
-          className={inputClass}
-        />
-      )}
-      {block.type === 'bullets' && (
-        <div className="space-y-2">
-          {(block.items || []).map((item, i) => (
-            <div key={i} className="flex gap-2 items-center">
-              <span className="text-muted-foreground text-sm shrink-0">•</span>
-              <input type="text" value={item}
-                onChange={(e) => {
-                  const items = [...(block.items || [])];
-                  items[i] = e.target.value;
-                  onChange({ ...block, items });
-                }}
-                placeholder={`Item ${i + 1}…`}
-                className={inputClass}
-              />
-              {(block.items || []).length > 1 && (
-                <button
-                  onClick={() => {
-                    const items = (block.items || []).filter((_, j) => j !== i);
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        {block.type === 'heading' && (
+          <input type="text" value={block.text || ''}
+            onChange={(e) => onChange({ ...block, text: e.target.value })}
+            placeholder="Heading"
+            className={`${plainClass} text-2xl font-bold py-1 placeholder:text-muted-foreground/30`}
+          />
+        )}
+        {block.type === 'subheading' && (
+          <input type="text" value={block.text || ''}
+            onChange={(e) => onChange({ ...block, text: e.target.value })}
+            placeholder="Subheading"
+            className={`${plainClass} text-base font-semibold text-muted-foreground py-1 placeholder:text-muted-foreground/30`}
+          />
+        )}
+        {block.type === 'paragraph' && (
+          <textarea value={block.text || ''}
+            onChange={(e) => {
+              e.target.style.height = 'auto';
+              e.target.style.height = e.target.scrollHeight + 'px';
+              onChange({ ...block, text: e.target.value });
+            }}
+            placeholder="Write something…"
+            className={`${plainClass} text-sm leading-relaxed resize-none py-1 placeholder:text-muted-foreground/30`}
+            style={{ minHeight: '2.5em', overflow: 'hidden' }}
+          />
+        )}
+        {block.type === 'bullets' && (
+          <div className="space-y-1 py-1">
+            {(block.items || []).map((item, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <span className="text-muted-foreground shrink-0 select-none leading-none">•</span>
+                <input type="text" value={item}
+                  onChange={(e) => {
+                    const items = [...(block.items || [])];
+                    items[i] = e.target.value;
                     onChange({ ...block, items });
                   }}
-                  className="text-xs text-red-400 hover:text-red-600 shrink-0"
-                >×</button>
-              )}
-            </div>
-          ))}
-          <button
-            onClick={() => onChange({ ...block, items: [...(block.items || []), ''] })}
-            className="text-xs text-muted-foreground hover:text-foreground underline"
-          >+ Add item</button>
-        </div>
-      )}
-      {block.type === 'button' && (
-        <div className="flex gap-2">
-          <input type="text" value={block.label || ''}
-            onChange={(e) => onChange({ ...block, label: e.target.value })}
-            placeholder="Button label"
-            className={inputClass}
-          />
-          <input type="url" value={block.url || ''}
-            onChange={(e) => onChange({ ...block, url: e.target.value })}
-            placeholder="https://…"
-            className={inputClass}
-          />
-        </div>
-      )}
-      {block.type === 'image' && (
-        <ImageBlockEditor
-          block={block}
-          onChange={onChange}
-          onImageUpload={onImageUpload}
-          inputClass={inputClass}
-        />
-      )}
-      {block.type === 'divider' && (
-        <div className="text-center text-muted-foreground text-sm py-1 select-none">— Divider —</div>
-      )}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const items = [...(block.items || [])];
+                      items.splice(i + 1, 0, '');
+                      onChange({ ...block, items });
+                    } else if (e.key === 'Backspace' && !item && (block.items || []).length > 1) {
+                      e.preventDefault();
+                      onChange({ ...block, items: (block.items || []).filter((_, j) => j !== i) });
+                    }
+                  }}
+                  placeholder="List item…"
+                  className={`flex-1 ${plainClass} text-sm placeholder:text-muted-foreground/30`}
+                />
+                {(block.items || []).length > 1 && (
+                  <button onClick={() => onChange({ ...block, items: (block.items || []).filter((_, j) => j !== i) })}
+                    className="text-xs text-muted-foreground/30 hover:text-red-500 shrink-0 opacity-0 group-hover:opacity-100">×</button>
+                )}
+              </div>
+            ))}
+            <button onClick={() => onChange({ ...block, items: [...(block.items || []), ''] })}
+              className="text-xs text-muted-foreground/40 hover:text-muted-foreground ml-4 py-0.5">+ item</button>
+          </div>
+        )}
+        {block.type === 'button' && (
+          <div className="py-1 flex gap-2">
+            <input type="text" value={block.label || ''}
+              onChange={(e) => onChange({ ...block, label: e.target.value })}
+              placeholder="Button label"
+              className={fieldClass}
+            />
+            <input type="url" value={block.url || ''}
+              onChange={(e) => onChange({ ...block, url: e.target.value })}
+              placeholder="https://…"
+              className={fieldClass}
+            />
+          </div>
+        )}
+        {block.type === 'image' && (
+          <div className="py-1">
+            <ImageBlockEditor block={block} onChange={onChange} onImageUpload={onImageUpload} inputClass={fieldClass} />
+          </div>
+        )}
+        {block.type === 'divider' && (
+          <div className="py-3"><hr className="border-t border-border" /></div>
+        )}
+      </div>
     </div>
   );
 }
@@ -1146,33 +1136,33 @@ export default function GlobalEmail() {
             {/* Two-column layout on md+, single-column on mobile */}
             <div className="md:grid md:grid-cols-2 md:gap-4">
               {/* Editor column */}
-              <div className={`space-y-3 md:h-[600px] md:overflow-y-auto md:pr-1 ${previewTab === 'preview' ? 'hidden md:block' : ''}`}>
-                {blocks.map((block, index) => (
-                  <BlockCard
-                    key={block.id}
-                    block={block}
-                    index={index}
-                    total={blocks.length}
-                    onChange={updateBlock}
-                    onRemove={() => removeBlock(block.id)}
-                    onMove={(dir) => moveBlock(block.id, dir)}
-                    onImageUpload={handleImageUpload}
-                  />
-                ))}
-
-                {/* Add block toolbar */}
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {(['paragraph', 'heading', 'subheading', 'bullets', 'button', 'image', 'divider'] as BlockType[]).map((type) => (
-                    <button
-                      key={type}
-                      onClick={() => addBlock(type)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border border-border bg-surface text-muted-foreground hover:text-foreground hover:border-zinc-400 transition-colors"
-                      title={`Add ${BLOCK_LABELS[type]} block`}
-                    >
-                      <span>{BLOCK_ICONS[type]}</span>
-                      <span>{BLOCK_LABELS[type]}</span>
-                    </button>
+              <div className={`md:h-[600px] md:flex md:flex-col ${previewTab === 'preview' ? 'hidden md:flex' : ''}`}>
+                {/* Insert toolbar */}
+                <div className="shrink-0 flex items-center gap-0.5 border-b border-border pb-2 mb-1">
+                  {BLOCK_TOOLS.map(({ type, icon, label }) => (
+                    <button key={type} onClick={() => addBlock(type)}
+                      title={`Add ${label}`}
+                      className="h-7 px-2 rounded flex items-center justify-center text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-surface transition-colors"
+                    >{icon}</button>
                   ))}
+                </div>
+                {/* Blocks */}
+                <div className="flex-1 overflow-y-auto space-y-0.5 pr-1">
+                  {blocks.map((block, index) => (
+                    <BlockCard
+                      key={block.id}
+                      block={block}
+                      index={index}
+                      total={blocks.length}
+                      onChange={updateBlock}
+                      onRemove={() => removeBlock(block.id)}
+                      onMove={(dir) => moveBlock(block.id, dir)}
+                      onImageUpload={handleImageUpload}
+                    />
+                  ))}
+                  {blocks.length === 0 && (
+                    <p className="text-sm text-muted-foreground/40 px-7 py-4">Use the toolbar above to add content…</p>
+                  )}
                 </div>
               </div>
 
