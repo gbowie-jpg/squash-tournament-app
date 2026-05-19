@@ -20,6 +20,8 @@ export default function PlayerManagement({
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', draw: '', seed: '', club: '', email: '' });
+  const [customDraw, setCustomDraw] = useState(false);
+  const [customClub, setCustomClub] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
@@ -69,15 +71,14 @@ export default function PlayerManagement({
   };
 
   const handleEdit = (p: Player) => {
-    setForm({
-      name: p.name,
-      draw: p.draw || '',
-      seed: p.seed?.toString() || '',
-      club: p.club || '',
-      email: p.email || '',
-    });
+    const draw = p.draw || '';
+    const club = p.club || '';
+    setForm({ name: p.name, draw, seed: p.seed?.toString() || '', club, email: p.email || '' });
     setEditingId(p.id);
     setShowForm(true);
+    // Will be resolved after drawNames/clubNames are computed below, but set conservatively
+    setCustomDraw(false);
+    setCustomClub(false);
   };
 
   const moveDraw = async (playerId: string, newDraw: string) => {
@@ -156,6 +157,7 @@ export default function PlayerManagement({
   // Group by draw
   const draws = [...new Set(players.map((p) => p.draw || 'Unassigned'))].sort();
   const drawNames = [...new Set(players.map((p) => p.draw).filter(Boolean) as string[])].sort();
+  const clubNames = [...new Set(players.map((p) => p.club).filter(Boolean) as string[])].sort();
 
   return (
     <div className="min-h-screen bg-[var(--surface)]">
@@ -174,7 +176,7 @@ export default function PlayerManagement({
             <ThemeToggle />
             <RefreshButton />
             <button
-              onClick={() => { setShowForm(!showForm); setEditingId(null); setForm({ name: '', draw: '', seed: '', club: '', email: '' }); }}
+              onClick={() => { setShowForm(!showForm); setEditingId(null); setForm({ name: '', draw: '', seed: '', club: '', email: '' }); setCustomDraw(false); setCustomClub(false); }}
               className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90"
             >
               {showForm ? 'Cancel' : '+ Add Player'}
@@ -199,36 +201,73 @@ export default function PlayerManagement({
               </div>
               <div>
                 <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Draw</label>
-                <input
-                  value={form.draw}
-                  onChange={(e) => setForm({ ...form, draw: e.target.value })}
-                  placeholder="Open, B, C..."
-                  list="draw-options"
-                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
-                />
-                <datalist id="draw-options">
-                  {drawNames.map((d) => <option key={d} value={d} />)}
-                </datalist>
+                {customDraw ? (
+                  <div className="flex gap-1">
+                    <input
+                      autoFocus
+                      value={form.draw}
+                      onChange={(e) => setForm({ ...form, draw: e.target.value })}
+                      placeholder="New draw name"
+                      className="flex-1 border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                    />
+                    <button type="button" onClick={() => { setCustomDraw(false); setForm({ ...form, draw: '' }); }} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] px-2">✕</button>
+                  </div>
+                ) : (
+                  <select
+                    value={form.draw}
+                    onChange={(e) => {
+                      if (e.target.value === '__new__') { setCustomDraw(true); setForm({ ...form, draw: '' }); }
+                      else setForm({ ...form, draw: e.target.value });
+                    }}
+                    className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                  >
+                    <option value="">— None —</option>
+                    {drawNames.map((d) => <option key={d} value={d}>{d}</option>)}
+                    <option value="__new__">+ New draw…</option>
+                  </select>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Seed</label>
-                <input
-                  type="number"
-                  min={1}
+                <select
                   value={form.seed}
                   onChange={(e) => setForm({ ...form, seed: e.target.value })}
-                  placeholder="#"
                   className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
-                />
+                >
+                  <option value="">— None —</option>
+                  {Array.from(
+                    { length: Math.max(players.filter((p) => p.draw === form.draw && p.id !== editingId).length + 1, 16) },
+                    (_, i) => i + 1
+                  ).map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Club</label>
-                <input
-                  value={form.club}
-                  onChange={(e) => setForm({ ...form, club: e.target.value })}
-                  placeholder="SAC"
-                  className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
-                />
+                {customClub ? (
+                  <div className="flex gap-1">
+                    <input
+                      autoFocus
+                      value={form.club}
+                      onChange={(e) => setForm({ ...form, club: e.target.value })}
+                      placeholder="Club name"
+                      className="flex-1 border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                    />
+                    <button type="button" onClick={() => { setCustomClub(false); setForm({ ...form, club: '' }); }} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] px-2">✕</button>
+                  </div>
+                ) : (
+                  <select
+                    value={form.club}
+                    onChange={(e) => {
+                      if (e.target.value === '__new__') { setCustomClub(true); setForm({ ...form, club: '' }); }
+                      else setForm({ ...form, club: e.target.value });
+                    }}
+                    className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                  >
+                    <option value="">— None —</option>
+                    {clubNames.map((c) => <option key={c} value={c}>{c}</option>)}
+                    <option value="__new__">+ New club…</option>
+                  </select>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Email</label>
