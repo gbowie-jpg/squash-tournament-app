@@ -61,7 +61,20 @@ function parseCSV(text: string): { headers: string[]; rows: string[][] } {
   return { headers, rows };
 }
 
-type DupFlag = { type: 'exact'; otherIdx: number } | { type: 'email'; otherIdx: number };
+type DupFlag = { type: 'exact'; otherIdx: number } | { type: 'email'; otherIdx: number } | { type: 'similar'; otherIdx: number };
+
+function nameTokens(name: string): string[] {
+  return name.toLowerCase().trim().split(/\s+/);
+}
+
+function isSimilarName(a: string, b: string): boolean {
+  const tA = nameTokens(a);
+  const tB = nameTokens(b);
+  const [shorter, longer] = tA.length <= tB.length ? [tA, tB] : [tB, tA];
+  // Require at least 2 tokens so single-word names don't false-positive
+  if (shorter.length < 2) return false;
+  return shorter.every((t) => longer.includes(t));
+}
 
 function detectDuplicates(players: PlayerRow[]): Map<number, DupFlag> {
   const flags = new Map<number, DupFlag>();
@@ -78,7 +91,7 @@ function detectDuplicates(players: PlayerRow[]): Map<number, DupFlag> {
       const prev = nameEmailSeen.get(key);
       if (prev !== undefined) {
         flags.set(i, { type: 'exact', otherIdx: prev });
-        return; // skip shared-email check for exact dups
+        return;
       }
       nameEmailSeen.set(key, i);
     }
@@ -96,6 +109,18 @@ function detectDuplicates(players: PlayerRow[]): Map<number, DupFlag> {
       }
     }
   });
+
+  // Similar name check — catches "Harper Yunqi" vs "Harper Yunqi Yangli Yangli"
+  for (let i = 0; i < players.length; i++) {
+    if (flags.has(i)) continue;
+    for (let j = 0; j < i; j++) {
+      if (flags.has(j)) continue;
+      if (isSimilarName(players[i].name, players[j].name)) {
+        flags.set(i, { type: 'similar', otherIdx: j });
+        break;
+      }
+    }
+  }
 
   return flags;
 }
@@ -212,6 +237,7 @@ export default function CsvUpload({ tournamentId, onImport }: CsvUploadProps) {
   const activeDupFlags = new Map([...dupFlags.entries()].filter(([i]) => !excludedIndices.has(i)));
   const exactDups = [...activeDupFlags.values()].filter((f) => f.type === 'exact').length;
   const emailDups = [...activeDupFlags.values()].filter((f) => f.type === 'email').length;
+  const similarDups = [...activeDupFlags.values()].filter((f) => f.type === 'similar').length;
   const fieldOptions: { value: FieldKey; label: string }[] = [
     { value: 'skip', label: '— Skip —' },
     { value: 'name', label: 'Full Name' },
@@ -315,6 +341,9 @@ export default function CsvUpload({ tournamentId, onImport }: CsvUploadProps) {
             {emailDups > 0 && (
               <p>⚠ <strong>{emailDups}</strong> shared email address{emailDups !== 1 ? 'es' : ''} — highlighted in orange below</p>
             )}
+            {similarDups > 0 && (
+              <p>⚠ <strong>{similarDups}</strong> similar name{similarDups !== 1 ? 's' : ''} (possible duplicate) — highlighted in yellow below</p>
+            )}
           </div>
         )}
 
@@ -339,6 +368,8 @@ export default function CsvUpload({ tournamentId, onImport }: CsvUploadProps) {
                   ? 'bg-red-50'
                   : flag?.type === 'email'
                   ? 'bg-amber-50'
+                  : flag?.type === 'similar'
+                  ? 'bg-yellow-50'
                   : '';
                 return (
                   <tr key={previewIdx} className={`border-b border-border ${rowBg}`}>
@@ -353,6 +384,9 @@ export default function CsvUpload({ tournamentId, onImport }: CsvUploadProps) {
                       )}
                       {flag?.type === 'email' && (
                         <span title={`Email shared with row ${flag.otherIdx + 1} (${allPlayers[flag.otherIdx]?.name})`} className="text-amber-500 cursor-help">⚠</span>
+                      )}
+                      {flag?.type === 'similar' && (
+                        <span title={`Similar name to row ${flag.otherIdx + 1} (${allPlayers[flag.otherIdx]?.name})`} className="text-yellow-600 cursor-help">~</span>
                       )}
                     </td>
                   </tr>

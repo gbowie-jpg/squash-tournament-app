@@ -77,6 +77,19 @@ export default function PlayerManagement({
     setShowForm(true);
   };
 
+  const moveDraw = async (playerId: string, newDraw: string) => {
+    if (!tournament) return;
+    const res = await fetch(`/api/tournaments/${tournament.id}/players`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: playerId, draw: newDraw || null }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setPlayers((prev) => prev.map((p) => (p.id === playerId ? updated : p)));
+    }
+  };
+
   const handleDelete = async (playerId: string) => {
     if (!tournament || !confirm('Delete this player?')) return;
     await fetch(`/api/tournaments/${tournament.id}/players`, {
@@ -100,6 +113,7 @@ export default function PlayerManagement({
 
   // Group by draw
   const draws = [...new Set(players.map((p) => p.draw || 'Unassigned'))].sort();
+  const drawNames = [...new Set(players.map((p) => p.draw).filter(Boolean) as string[])].sort();
 
   return (
     <div className="min-h-screen bg-[var(--surface)]">
@@ -147,8 +161,12 @@ export default function PlayerManagement({
                   value={form.draw}
                   onChange={(e) => setForm({ ...form, draw: e.target.value })}
                   placeholder="Open, B, C..."
+                  list="draw-options"
                   className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
                 />
+                <datalist id="draw-options">
+                  {drawNames.map((d) => <option key={d} value={d} />)}
+                </datalist>
               </div>
               <div>
                 <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Seed</label>
@@ -229,6 +247,17 @@ export default function PlayerManagement({
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        <select
+                          value={p.draw || ''}
+                          onChange={(e) => moveDraw(p.id, e.target.value)}
+                          className="text-xs border border-[var(--border)] rounded-lg px-2 py-1 bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none"
+                        >
+                          <option value="">Unassigned</option>
+                          {drawNames.map((d) => <option key={d} value={d}>{d}</option>)}
+                          {p.draw && !drawNames.includes(p.draw) && (
+                            <option value={p.draw}>{p.draw}</option>
+                          )}
+                        </select>
                         <button onClick={() => handleEdit(p)} className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)]">Edit</button>
                         <button onClick={() => handleDelete(p.id)} className="text-xs text-red-400 hover:text-red-600">Delete</button>
                       </div>
