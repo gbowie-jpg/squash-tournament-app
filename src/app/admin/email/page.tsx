@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
 
 // ─── Block editor types ──────────────────────────────────────────────────────
 
@@ -655,15 +654,14 @@ export default function GlobalEmail() {
     setTimeout(() => setCsvSuccess(''), 5000);
   };
 
-  // ── Image upload to Supabase Storage ──
+  // ── Image upload via server route (bypasses storage RLS) ──
   const handleImageUpload = async (file: File): Promise<string> => {
-    const supabase = createClient();
-    const ext = file.name.split('.').pop() || 'jpg';
-    const path = `email/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error } = await supabase.storage.from('tournament-images').upload(path, file);
-    if (error) throw error;
-    const { data } = supabase.storage.from('tournament-images').getPublicUrl(path);
-    return data.publicUrl;
+    const form = new FormData();
+    form.append('file', file);
+    const res = await fetch('/api/admin/email/upload-image', { method: 'POST', body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `Upload failed (${res.status})`);
+    return data.url;
   };
 
   // ── Block editor handlers ──
