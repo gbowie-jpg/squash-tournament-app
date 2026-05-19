@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, use, useCallback } from 'react';
 import Link from 'next/link';
+import { createClient } from '@/lib/supabase/client';
 import { useTournament } from '@/lib/useTournament';
 import ThemeToggle from '@/components/ThemeToggle';
 import RefreshButton from '@/components/RefreshButton';
@@ -80,7 +81,7 @@ const BLOCK_ICONS: Record<BlockType, string> = {
 
 function BlockCard({
   block, index, total,
-  onChange, onRemove, onMove,
+  onChange, onRemove, onMove, onImageUpload,
 }: {
   block: Block;
   index: number;
@@ -88,6 +89,7 @@ function BlockCard({
   onChange: (updated: Block) => void;
   onRemove: () => void;
   onMove: (dir: 'up' | 'down') => void;
+  onImageUpload?: (file: File) => Promise<string>;
 }) {
   const inputClass = 'w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-zinc-400';
 
@@ -123,8 +125,13 @@ function BlockCard({
       {/* Editors */}
       {block.type === 'paragraph' && (
         <textarea
-          rows={3} value={block.text || ''}
-          onChange={(e) => onChange({ ...block, text: e.target.value })}
+          value={block.text || ''}
+          onChange={(e) => {
+            e.target.style.height = 'auto';
+            e.target.style.height = e.target.scrollHeight + 'px';
+            onChange({ ...block, text: e.target.value });
+          }}
+          style={{ minHeight: '80px', resize: 'none', overflow: 'hidden' }}
           placeholder="Write your paragraph…"
           className={inputClass}
         />
@@ -190,11 +197,31 @@ function BlockCard({
       )}
       {block.type === 'image' && (
         <div className="space-y-2">
-          <input type="url" value={block.url || ''}
-            onChange={(e) => onChange({ ...block, url: e.target.value })}
-            placeholder="Image URL (https://…)"
-            className={inputClass}
-          />
+          <div className="flex gap-2 items-center">
+            <input type="url" value={block.url || ''}
+              onChange={(e) => onChange({ ...block, url: e.target.value })}
+              placeholder="Image URL (https://…)"
+              className={inputClass}
+            />
+            {onImageUpload && (
+              <label className="shrink-0 cursor-pointer bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors whitespace-nowrap">
+                Upload
+                <input type="file" accept="image/*" className="sr-only"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try { onChange({ ...block, url: await onImageUpload(file) }); }
+                    catch (err) { console.error('Image upload failed', err); }
+                  }}
+                />
+              </label>
+            )}
+          </div>
+          {block.url?.startsWith('data:') && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded px-2 py-1">
+              ⚠ Base64 images won&apos;t appear in email clients — upload a file or use an https:// URL.
+            </p>
+          )}
           <input type="text" value={block.alt || ''}
             onChange={(e) => onChange({ ...block, alt: e.target.value })}
             placeholder="Alt text"
@@ -786,6 +813,17 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
     }
   };
 
+  // ── Image upload to Supabase Storage ──
+  const handleImageUpload = async (file: File): Promise<string> => {
+    const supabase = createClient();
+    const ext = file.name.split('.').pop() || 'jpg';
+    const path = `email/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await supabase.storage.from('tournament-images').upload(path, file);
+    if (error) throw error;
+    const { data } = supabase.storage.from('tournament-images').getPublicUrl(path);
+    return data.publicUrl;
+  };
+
   // ── Template loader ──
   const loadTemplate = useCallback((tmpl: EmailTemplate) => {
     const hasContent = !!(subject.trim()) || blocks.some((b) => {
@@ -1351,7 +1389,7 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
               {/* Two-column layout on md+, single-column on mobile */}
               <div className="md:grid md:grid-cols-2 md:gap-4">
                 {/* Editor column */}
-                <div className={`space-y-3 ${previewTab === 'preview' ? 'hidden md:block' : ''}`}>
+                <div className={`space-y-3 md:h-[600px] md:overflow-y-auto md:pr-1 ${previewTab === 'preview' ? 'hidden md:block' : ''}`}>
                   {blocks.map((block, index) => (
                     <BlockCard
                       key={block.id}
@@ -1361,6 +1399,7 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
                       onChange={updateBlock}
                       onRemove={() => removeBlock(block.id)}
                       onMove={(dir) => moveBlock(block.id, dir)}
+                      onImageUpload={handleImageUpload}
                     />
                   ))}
 
@@ -1381,7 +1420,7 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
                 </div>
 
                 {/* Preview column */}
-                <div className={`md:max-h-[600px] md:overflow-y-auto ${previewTab === 'edit' ? 'hidden md:block' : ''}`}>
+                <div className={`md:h-[600px] md:overflow-y-auto ${previewTab === 'edit' ? 'hidden md:block' : ''}`}>
                   <div className="sticky top-0 hidden md:block pb-2">
                     <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">Preview</p>
                   </div>
