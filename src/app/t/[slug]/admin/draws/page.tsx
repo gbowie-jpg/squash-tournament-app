@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, use, useMemo } from 'react';
+import { useState, useEffect, use, useMemo, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useTournament } from '@/lib/useTournament';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -10,6 +10,173 @@ import ScheduleGrid from '@/components/admin/ScheduleGrid';
 import { previewSingleElimination } from '@/lib/draws/singleElimination';
 import { previewRoundRobin } from '@/lib/draws/roundRobin';
 import type { DrawFormat, PlayerInput } from '@/lib/draws/types';
+
+// ── AI Bracket Builder panel ─────────────────────────────────────────────────
+
+type AIMessage = { role: 'user' | 'assistant'; content: string };
+
+function BracketAIPanel({
+  players,
+  drawName,
+  onSetFormat,
+}: {
+  players: PlayerInput[];
+  drawName: string;
+  onSetFormat: (f: DrawFormat) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState<AIMessage[]>([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [analyzed, setAnalyzed] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  const send = useCallback(async (text: string, isAuto = false) => {
+    const question = text.trim();
+    if (!question || loading) return;
+    if (!isAuto) setInput('');
+
+    const userMsg: AIMessage = { role: 'user', content: question };
+    setMessages((prev) => isAuto ? [...prev, { role: 'assistant', content: '' }] : [...prev, userMsg, { role: 'assistant', content: '' }]);
+    setLoading(true);
+
+    try {
+      const history = isAuto ? [] : messages.slice(-8);
+      const res = await fetch('/api/ai/bracket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: question,
+          history,
+          players: players.map((p) => ({ id: p.id, name: p.name, seed: p.seed })),
+          drawName,
+        }),
+      });
+
+      if (!res.ok || !res.body) {
+        setMessages((prev) => {
+          const upd = [...prev];
+          upd[upd.length - 1] = { role: 'assistant', content: 'Error reaching AI — check that ANTHROPIC_API_KEY is set.' };
+          return upd;
+        });
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let assembled = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        assembled += decoder.decode(value, { stream: true });
+        setMessages((prev) => {
+          const upd = [...prev];
+          upd[upd.length - 1] = { role: 'assistant', content: assembled };
+          return upd;
+        });
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }
+    } catch {
+      setMessages((prev) => {
+        const upd = [...prev];
+        upd[upd.length - 1] = { role: 'assistant', content: 'Network error — please try again.' };
+        return upd;
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [loading, messages, players, drawName]);
+
+  // Auto-analyze when first opened
+  const handleOpen = () => {
+    setOpen(true);
+    if (!analyzed) {
+      setAnalyzed(true);
+      send('Analyze this draw and recommend the best bracket format and structure. Be specific about bracket size, byes, and seeding.', true);
+    }
+  };
+
+  const handleKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') send(input);
+  };
+
+  return (
+    <div className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl overflow-hidden">
+      {/* Header toggle */}
+      <button
+        onClick={open ? () => setOpen(false) : handleOpen}
+        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-[var(--surface)] transition-colors text-left"
+      >
+        <span className="flex items-center gap-2">
+          <span className="text-base">🤖</span>
+          <span className="font-semibold text-sm">Build Bracket with AI</span>
+          {!analyzed && (
+            <span className="text-xs text-[var(--text-muted)]">— get a recommendation for {players.length} players</span>
+          )}
+        </span>
+        <span className="text-[var(--text-muted)] text-xs">{open ? '▲' : '▼'}</span>
+      </button>
+
+      {open && (
+        <div className="border-t border-[var(--border)]">
+          {/* Messages */}
+          <div className="max-h-72 overflow-y-auto px-4 py-3 space-y-3 bg-[var(--surface)]">
+            {messages.map((msg, i) => (
+              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[90%] rounded-xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
+                  msg.role === 'user'
+                    ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
+                    : 'bg-[var(--surface-card)] border border-[var(--border)] text-[var(--text-primary)]'
+                }`}>
+                  {msg.content || <span className="opacity-40 italic text-xs">Analyzing your draw…</span>}
+                </div>
+              </div>
+            ))}
+            <div ref={bottomRef} />
+          </div>
+
+          {/* Format action buttons */}
+          <div className="px-4 py-3 border-t border-[var(--border)] bg-[var(--surface-card)] space-y-2">
+            <p className="text-xs text-[var(--text-muted)] font-medium uppercase tracking-wide">Apply AI recommendation</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { onSetFormat('single_elimination'); setOpen(false); }}
+                className="flex-1 py-2 px-3 rounded-lg text-sm font-medium border border-[var(--border)] hover:border-zinc-400 dark:hover:border-zinc-500 hover:bg-[var(--surface)] transition-colors text-[var(--text-primary)]"
+              >
+                Use Single Elimination
+              </button>
+              <button
+                onClick={() => { onSetFormat('round_robin'); setOpen(false); }}
+                className="flex-1 py-2 px-3 rounded-lg text-sm font-medium border border-[var(--border)] hover:border-zinc-400 dark:hover:border-zinc-500 hover:bg-[var(--surface)] transition-colors text-[var(--text-primary)]"
+              >
+                Use Round Robin
+              </button>
+            </div>
+          </div>
+
+          {/* Follow-up input */}
+          <div className="px-4 py-3 border-t border-[var(--border)] flex gap-2">
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKey}
+              placeholder="Ask a follow-up — e.g. what if I add one more player?"
+              disabled={loading}
+              className="flex-1 border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-zinc-400"
+            />
+            <button
+              onClick={() => send(input)}
+              disabled={loading || !input.trim()}
+              className="px-3 py-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-40 transition-opacity"
+            >
+              Ask
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 type DrawSummary = {
   draw: string;
@@ -274,8 +441,17 @@ export default function DrawsPage({
 
             {selectedDraw && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Left: Format + Preview */}
+                {/* Left: AI Builder + Format + Preview */}
                 <div className="space-y-6">
+                  {/* AI Bracket Builder */}
+                  {players.length >= 2 && (
+                    <BracketAIPanel
+                      players={players}
+                      drawName={selectedDraw}
+                      onSetFormat={setFormat}
+                    />
+                  )}
+
                   <div className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-6 space-y-4">
                     <h2 className="font-semibold">Format</h2>
                     <div className="flex gap-3">
