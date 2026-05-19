@@ -414,6 +414,7 @@ export default function GlobalEmail() {
   const [subject, setSubject] = useState('');
   const [blocks, setBlocks] = useState<Block[]>([{ id: '1', type: 'paragraph', text: '' }]);
   const [previewTab, setPreviewTab] = useState<'edit' | 'preview'>('edit');
+  const [expanded, setExpanded] = useState(false);
   const [attachment, setAttachment] = useState<AttachmentState | null>(null);
   const [attachWarning, setAttachWarning] = useState<string>('');
   const attachInputRef = useRef<HTMLInputElement>(null);
@@ -1120,23 +1121,33 @@ export default function GlobalEmail() {
             {/* Block editor header */}
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium">Message</label>
-              {/* Mobile tab toggle */}
-              <div className="flex md:hidden gap-1 bg-surface border border-border rounded-lg p-0.5 text-xs">
-                <button onClick={() => setPreviewTab('edit')}
-                  className={`px-3 py-1 rounded-md font-medium transition-colors ${previewTab === 'edit' ? 'bg-foreground text-background' : 'text-muted-foreground'}`}>
-                  Edit
+              <div className="flex items-center gap-2">
+                {/* Desktop: expand toggle */}
+                <button onClick={() => setExpanded(!expanded)}
+                  title={expanded ? 'Split view' : 'Full-width editor'}
+                  className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors border border-border rounded-md px-2 py-1">
+                  {expanded
+                    ? <><span>⊟</span><span>Split</span></>
+                    : <><span>⊞</span><span>Wide</span></>}
                 </button>
-                <button onClick={() => setPreviewTab('preview')}
-                  className={`px-3 py-1 rounded-md font-medium transition-colors ${previewTab === 'preview' ? 'bg-foreground text-background' : 'text-muted-foreground'}`}>
-                  Preview
-                </button>
+                {/* Mobile: edit/preview toggle */}
+                <div className="flex md:hidden gap-1 bg-surface border border-border rounded-lg p-0.5 text-xs">
+                  <button onClick={() => setPreviewTab('edit')}
+                    className={`px-3 py-1 rounded-md font-medium transition-colors ${previewTab === 'edit' ? 'bg-foreground text-background' : 'text-muted-foreground'}`}>
+                    Edit
+                  </button>
+                  <button onClick={() => setPreviewTab('preview')}
+                    className={`px-3 py-1 rounded-md font-medium transition-colors ${previewTab === 'preview' ? 'bg-foreground text-background' : 'text-muted-foreground'}`}>
+                    Preview
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Two-column layout on md+, single-column on mobile */}
-            <div className="md:grid md:grid-cols-2 md:gap-4">
+            <div className={expanded ? '' : 'md:grid md:grid-cols-2 md:gap-4'}>
               {/* Editor column */}
-              <div className={`md:h-[600px] md:flex md:flex-col ${previewTab === 'preview' ? 'hidden md:flex' : ''}`}>
+              <div className={`md:flex md:flex-col ${expanded ? 'md:h-[calc(100vh-320px)]' : 'md:h-[780px]'} ${previewTab === 'preview' ? 'hidden md:flex' : ''}`}>
                 {/* Insert toolbar */}
                 <div className="shrink-0 flex items-center gap-0.5 border-b border-border pb-2 mb-1">
                   {BLOCK_TOOLS.map(({ type, icon, label }) => (
@@ -1166,13 +1177,15 @@ export default function GlobalEmail() {
                 </div>
               </div>
 
-              {/* Preview column */}
-              <div className={`md:h-[600px] md:overflow-y-auto ${previewTab === 'edit' ? 'hidden md:block' : ''}`}>
-                <div className="sticky top-0 hidden md:block pb-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Preview</p>
+              {/* Preview column — hidden when expanded */}
+              {!expanded && (
+                <div className={`md:h-[780px] md:overflow-y-auto ${previewTab === 'edit' ? 'hidden md:block' : ''}`}>
+                  <div className="sticky top-0 hidden md:block pb-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Preview</p>
+                  </div>
+                  <EmailPreview blocks={blocks} />
                 </div>
-                <EmailPreview blocks={blocks} />
-              </div>
+              )}
             </div>
 
             {/* Attachment */}
