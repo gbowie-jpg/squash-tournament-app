@@ -25,7 +25,7 @@ function guessField(header: string): FieldKey {
   if (h === 'lastfirst' || h === 'last, first' || h === 'last first' || h === 'playerlastfirst') return 'lastFirst';
   if (h === 'draw' || h === 'event' || h === 'division' || h === 'category' || h === 'event name' || h === 'draw name') return 'draw';
   if (h === 'seed' || h === 'seeding' || h === 'seed #' || h === 'seed number') return 'seed';
-  if (h === 'club' || h === 'home club' || h === 'club name' || h === 'affiliation' || h === 'team') return 'club';
+  if (h === 'club' || h === 'home club' || h === 'homeclub' || h === 'club name' || h === 'affiliation' || h === 'team') return 'club';
   if (h === 'email' || h === 'e-mail' || h === 'email address' || h === 'playeremail') return 'email';
   if (h === 'phone' || h === 'mobile' || h === 'phone number' || h === 'cell') return 'phone';
   return 'skip';
