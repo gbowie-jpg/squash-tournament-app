@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, Trophy } from 'lucide-react';
 import type { MatchWithDetails, GameScore, Court } from '@/lib/supabase/types';
+import RulesAIChat from '@/components/RulesAIChat';
 
 type Params = { slug: string; matchId: string };
 type Step = 'confirm' | 'warmup' | 'scoring';
@@ -844,6 +845,7 @@ export default function ScorePage({ params }: { params: Promise<Params> }) {
           <p className="text-xs text-zinc-600 mt-3">Players change ends for game {currentGame + 2}</p>
         </div>
       )}
+      <RulesAIChat />
     </div>
   );
 }
