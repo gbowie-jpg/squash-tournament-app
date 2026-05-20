@@ -815,7 +815,7 @@ export default function GlobalEmail() {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className={`mx-auto px-4 py-8 ${tab === 'compose' ? 'max-w-6xl' : 'max-w-4xl'}`}>
         {/* Tabs */}
         <div className="flex gap-1 bg-card border border-border rounded-xl p-1 mb-6">
           {(['recipients', 'compose', 'history', 'template'] as Tab[]).map((t) => (
@@ -1157,8 +1157,9 @@ export default function GlobalEmail() {
                     >{icon}</button>
                   ))}
                 </div>
-                {/* Blocks */}
-                <div className="flex-1 overflow-y-auto space-y-0.5 pr-1">
+                {/* Blocks — document canvas */}
+                <div className="flex-1 overflow-y-auto rounded-lg border border-border" style={{ background: 'var(--surface)' }}>
+                <div className="space-y-0.5 px-2 py-3">
                   {blocks.map((block, index) => (
                     <BlockCard
                       key={block.id}
@@ -1174,6 +1175,7 @@ export default function GlobalEmail() {
                   {blocks.length === 0 && (
                     <p className="text-sm text-muted-foreground/40 px-7 py-4">Use the toolbar above to add content…</p>
                   )}
+                </div>
                 </div>
               </div>
 
