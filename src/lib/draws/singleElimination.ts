@@ -65,13 +65,13 @@ export function generateSingleElimination(
   const bracketSize = nextPowerOf2(players.length);
   const totalRounds = Math.log2(bracketSize);
 
-  // Sort: seeded players by seed asc, unseeded shuffled
+  // Separate seeded and unseeded players
   const seeded = players
     .filter((p) => p.seed != null)
     .sort((a, b) => a.seed! - b.seed!);
   const unseeded = shuffle(players.filter((p) => p.seed == null));
 
-  // Create bracket slots
+  // Create bracket slots — all start as BYEs
   const slots: BracketSlot[] = Array(bracketSize)
     .fill(null)
     .map(() => ({
@@ -81,27 +81,45 @@ export function generateSingleElimination(
       isBye: true,
     }));
 
-  // Get standard seed positions and place seeded players
+  // seedPositions[i] = the seed NUMBER that belongs in slot i.
+  // e.g. for 16 slots: [1, 16, 8, 9, 4, 13, 5, 12, 2, 15, 7, 10, 3, 14, 6, 11]
+  // so slot 0 → seed 1, slot 1 → seed 16, slot 2 → seed 8, etc.
+  // This ensures top seeds meet only in late rounds, and byes go to the highest seeds.
   const seedPositions = getSeedPositions(bracketSize);
 
-  for (let i = 0; i < seeded.length && i < bracketSize; i++) {
-    const position = seedPositions[i] - 1; // 0-indexed
-    slots[position] = {
-      playerId: seeded[i].id,
-      playerName: seeded[i].name,
-      seed: seeded[i].seed,
-      isBye: false,
-    };
+  // Build a lookup from seed number → player
+  const seededBySeedNum = new Map(seeded.map((p) => [p.seed!, p]));
+
+  // Place each seeded player into their correct slot
+  for (let i = 0; i < bracketSize; i++) {
+    const expectedSeed = seedPositions[i];
+    const player = seededBySeedNum.get(expectedSeed);
+    if (player) {
+      slots[i] = {
+        playerId: player.id,
+        playerName: player.name,
+        seed: player.seed,
+        isBye: false,
+      };
+    }
+    // If no player has this seed number, slot stays as BYE
   }
 
-  // Fill remaining empty slots with unseeded players
+  // Any seeded players whose seed# wasn't in seedPositions fall back to unseeded pool
+  const placedIds = new Set(slots.filter((s) => !s.isBye).map((s) => s.playerId));
+  const fallbackSeeded = seeded
+    .filter((p) => !placedIds.has(p.id))
+    .map((p) => ({ ...p, seed: null as null }));
+  const unseededPool = shuffle([...fallbackSeeded, ...unseeded]);
+
+  // Fill remaining BYE slots with unseeded players
   let unseededIdx = 0;
   for (let i = 0; i < slots.length; i++) {
-    if (slots[i].isBye && unseededIdx < unseeded.length) {
+    if (slots[i].isBye && unseededIdx < unseededPool.length) {
       slots[i] = {
-        playerId: unseeded[unseededIdx].id,
-        playerName: unseeded[unseededIdx].name,
-        seed: null,
+        playerId: unseededPool[unseededIdx].id,
+        playerName: unseededPool[unseededIdx].name,
+        seed: unseededPool[unseededIdx].seed,
         isBye: false,
       };
       unseededIdx++;
