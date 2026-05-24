@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getProgression } from '@/lib/draws/progression';
 import { requireTournamentOrganizer } from '@/lib/supabase/require-role';
 import { sendPushToAll } from '@/lib/push';
+import { sendSmsToAll } from '@/lib/sms';
 
 const MATCH_SELECT = '*, player1:players!player1_id(*), player2:players!player2_id(*), court:courts!court_id(*), referee:volunteers!referee_id(id, name)';
 
@@ -134,7 +135,7 @@ export async function PATCH(
         .update({ status: 'on_deck', updated_at: new Date().toISOString() })
         .eq('id', nextMatch.id);
 
-      // Push: on deck notification
+      // Push + SMS: on deck notification
       const nm = nextMatch as unknown as {
         player1?: { name: string } | null;
         player2?: { name: string } | null;
@@ -149,10 +150,11 @@ export async function PATCH(
         url: `/t/${data.tournament_id}`,
         tag: `on-deck-${nextMatch.id}`,
       }).catch(() => {/* non-blocking */});
+      sendSmsToAll(`⏳ On Deck — ${courtName}: ${p1} vs ${p2}. Please report to ${courtName}.`).catch(() => {});
     }
   }
 
-  // Push: match started
+  // Push + SMS: match started
   if (updates.status === 'in_progress') {
     const courtName = (data as unknown as { court?: { name: string } | null }).court?.name ?? 'court';
     const p1 = (data as unknown as { player1?: { name: string } | null }).player1?.name ?? 'TBD';
@@ -163,6 +165,7 @@ export async function PATCH(
       url: `/t/${data.tournament_id}/courts`,
       tag: `started-${matchId}`,
     }).catch(() => {/* non-blocking */});
+    sendSmsToAll(`🎾 Now playing on ${courtName}: ${p1} vs ${p2}.`).catch(() => {});
   }
 
   // Winner progression: advance winner to next round match

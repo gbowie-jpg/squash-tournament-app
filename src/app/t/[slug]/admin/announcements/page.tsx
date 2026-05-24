@@ -18,7 +18,9 @@ export default function AnnouncementComposer({
   const [message, setMessage] = useState('');
   const [priority, setPriority] = useState<'normal' | 'urgent'>('normal');
   const [sendPush, setSendPush] = useState(false);
+  const [sendSms, setSendSms] = useState(false);
   const [pushStatus, setPushStatus] = useState<string | null>(null);
+  const [smsStatus, setSmsStatus] = useState<string | null>(null);
 
   useEffect(() => {
     if (!tournament) return;
@@ -58,6 +60,22 @@ export default function AnnouncementComposer({
           setPushStatus('Push failed — check auth');
         }
         setTimeout(() => setPushStatus(null), 4000);
+      }
+
+      if (sendSms) {
+        setSmsStatus('Sending SMS...');
+        const smsRes = await fetch('/api/sms/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ body: message.trim() }),
+        });
+        if (smsRes.ok) {
+          const { sent } = await smsRes.json();
+          setSmsStatus(`SMS sent to ${sent} subscriber${sent !== 1 ? 's' : ''}`);
+        } else {
+          setSmsStatus('SMS failed');
+        }
+        setTimeout(() => setSmsStatus(null), 4000);
       }
 
       setMessage('');
@@ -141,15 +159,26 @@ export default function AnnouncementComposer({
               />
               <span className="text-sm text-red-600 font-medium">Urgent</span>
             </label>
-            <label className="flex items-center gap-2 cursor-pointer ml-auto">
-              <input
-                type="checkbox"
-                checked={sendPush}
-                onChange={(e) => setSendPush(e.target.checked)}
-                className="accent-blue-600 w-4 h-4"
-              />
-              <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">Send push notification</span>
-            </label>
+            <div className="flex items-center gap-4 ml-auto flex-wrap justify-end">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={sendPush}
+                  onChange={(e) => setSendPush(e.target.checked)}
+                  className="accent-blue-600 w-4 h-4"
+                />
+                <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">Push</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={sendSms}
+                  onChange={(e) => setSendSms(e.target.checked)}
+                  className="accent-green-600 w-4 h-4"
+                />
+                <span className="text-sm text-green-600 dark:text-green-400 font-medium">SMS</span>
+              </label>
+            </div>
             <button
               type="submit"
               className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-6 py-2 rounded-lg text-sm font-medium hover:opacity-90"
@@ -159,6 +188,9 @@ export default function AnnouncementComposer({
           </div>
           {pushStatus && (
             <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">{pushStatus}</p>
+          )}
+          {smsStatus && (
+            <p className="text-sm text-green-600 dark:text-green-400 font-medium">{smsStatus}</p>
           )}
         </form>
 
