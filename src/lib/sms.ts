@@ -5,6 +5,8 @@ const client = twilio(
   process.env.TWILIO_ACCOUNT_SID,
   process.env.TWILIO_AUTH_TOKEN,
 );
+// Use Messaging Service SID (A2P registered) if available, fall back to direct number
+const MESSAGING_SERVICE_SID = process.env.TWILIO_MESSAGING_SERVICE_SID;
 const FROM = process.env.TWILIO_FROM_NUMBER!;
 
 /** Normalize to E.164. Handles 10-digit US numbers and already-formatted ones. */
@@ -37,7 +39,11 @@ export async function sendSmsToAll(body: string): Promise<{ sent: number; failed
       const to = normalizePhone(p.phone!);
       if (!to) { failed++; return; }
       try {
-        await client.messages.create({ from: FROM, to, body });
+        await client.messages.create(
+          MESSAGING_SERVICE_SID
+            ? { messagingServiceSid: MESSAGING_SERVICE_SID, to, body }
+            : { from: FROM, to, body }
+        );
         sent++;
       } catch {
         failed++;
