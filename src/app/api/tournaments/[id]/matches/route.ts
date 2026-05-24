@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getProgression } from '@/lib/draws/progression';
 import { requireTournamentOrganizer } from '@/lib/supabase/require-role';
+import { sendPushToAll } from '@/lib/push';
 
 const MATCH_SELECT = '*, player1:players!player1_id(*), player2:players!player2_id(*), court:courts!court_id(*), referee:volunteers!referee_id(id, name)';
 
@@ -119,7 +120,7 @@ export async function PATCH(
   if (updates.status === 'in_progress' && data.court_id) {
     const { data: nextMatch } = await supabase
       .from('matches')
-      .select('id')
+      .select('id, player1:players!player1_id(name), player2:players!player2_id(name), court:courts!court_id(name)')
       .eq('court_id', data.court_id)
       .eq('status', 'scheduled')
       .order('sort_order')
@@ -132,7 +133,36 @@ export async function PATCH(
         .from('matches')
         .update({ status: 'on_deck', updated_at: new Date().toISOString() })
         .eq('id', nextMatch.id);
+
+      // Push: on deck notification
+      const nm = nextMatch as unknown as {
+        player1?: { name: string } | null;
+        player2?: { name: string } | null;
+        court?: { name: string } | null;
+      };
+      const courtName = nm.court?.name ?? 'your court';
+      const p1 = nm.player1?.name ?? 'TBD';
+      const p2 = nm.player2?.name ?? 'TBD';
+      sendPushToAll({
+        title: `⏳ On Deck — ${courtName}`,
+        body: `${p1} vs ${p2} — please report to ${courtName}`,
+        url: `/t/${data.tournament_id}`,
+        tag: `on-deck-${nextMatch.id}`,
+      }).catch(() => {/* non-blocking */});
     }
+  }
+
+  // Push: match started
+  if (updates.status === 'in_progress') {
+    const courtName = (data as unknown as { court?: { name: string } | null }).court?.name ?? 'court';
+    const p1 = (data as unknown as { player1?: { name: string } | null }).player1?.name ?? 'TBD';
+    const p2 = (data as unknown as { player2?: { name: string } | null }).player2?.name ?? 'TBD';
+    sendPushToAll({
+      title: `🎾 Match Starting — ${courtName}`,
+      body: `${p1} vs ${p2} is underway on ${courtName}`,
+      url: `/t/${data.tournament_id}/courts`,
+      tag: `started-${matchId}`,
+    }).catch(() => {/* non-blocking */});
   }
 
   // Winner progression: advance winner to next round match

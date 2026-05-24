@@ -6,6 +6,8 @@ import RefreshButton from '@/components/RefreshButton';
 import PullToRefresh from '@/components/PullToRefresh';
 import TournamentMediaGallery from '@/components/tournament/TournamentMediaGallery';
 import type { TournamentMediaItem } from '@/components/tournament/TournamentMediaGallery';
+import TournamentQRCode from '@/components/tournament/TournamentQRCode';
+import PushManager from '@/components/PushManager';
 
 // Always fetch fresh data — tournament details change frequently
 export const dynamic = 'force-dynamic';
@@ -303,6 +305,21 @@ export default async function TournamentLanding({
 
           {/* RIGHT: sidebar */}
           <div className="space-y-4">
+
+            {/* Join card — QR + notifications */}
+            <div className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-5 space-y-3">
+              <h2 className="font-semibold text-xs uppercase tracking-wide text-[var(--text-muted)]">Stay in the loop</h2>
+              <p className="text-sm text-[var(--text-secondary)]">
+                Get live court updates and match alerts.
+              </p>
+              <div className="flex flex-col gap-2">
+                <PushManager />
+                <TournamentQRCode
+                  url={`${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://squash-tournament-app.vercel.app'}/t/${slug}`}
+                  tournamentName={tournament.name}
+                />
+              </div>
+            </div>
 
             {/* Schedule */}
             {scheduleItems.length > 0 && (
