@@ -28,6 +28,13 @@ export default function PrivacyPage() {
             <p className="text-foreground leading-relaxed mb-4">
               Your information is used to manage tournament operations, display draws and scores, and communicate event updates. We do not sell your personal information to third parties.
             </p>
+            <h2 className="text-lg font-semibold mt-6 mb-2">SMS Alerts</h2>
+            <p className="text-foreground leading-relaxed mb-4">
+              By entering your phone number on your account profile page at app.seattlesquash.com/account, you consent to receive SMS alerts from Seattle Squash Racquets Association during tournament events. These messages include court assignments, match start times, and on-deck notifications. Message and data rates may apply. Message frequency varies by tournament activity.
+            </p>
+            <p className="text-foreground leading-relaxed mb-4">
+              To opt out at any time, reply <strong>STOP</strong> to any message. For help, reply <strong>HELP</strong> or email president@seattlesquash.com. Your phone number will not be shared with third parties or used for marketing purposes.
+            </p>
             <h2 className="text-lg font-semibold mt-6 mb-2">Data Storage</h2>
             <p className="text-foreground leading-relaxed mb-4">
               Data is stored securely using Supabase (hosted on AWS). Access is restricted to authorized administrators and tournament organizers.
