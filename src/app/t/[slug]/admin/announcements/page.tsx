@@ -88,6 +88,7 @@ export default function AnnouncementComposer({
             title: trimmed.length > 80 ? trimmed.slice(0, 80) + '…' : trimmed,
             body: trimmed,
             tournament_id: tournament.id,
+            url: `/t/${slug}/announcements`,
           }),
         }).catch(() => {});
       }

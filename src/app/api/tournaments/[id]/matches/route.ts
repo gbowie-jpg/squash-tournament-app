@@ -144,10 +144,15 @@ export async function PATCH(
       const courtName = nm.court?.name ?? 'your court';
       const p1 = nm.player1?.name ?? 'TBD';
       const p2 = nm.player2?.name ?? 'TBD';
+
+      // Look up slug for deep-link URL
+      const { data: tourney } = await supabase.from('tournaments').select('slug').eq('id', id).single();
+      const slug = tourney?.slug ?? '';
+
       sendPushToAll({
         title: `⏳ On Deck — ${courtName}`,
         body: `${p1} vs ${p2} — please report to ${courtName}`,
-        url: `/t/${data.tournament_id}`,
+        url: `/t/${slug}/courts`,
         tag: `on-deck-${nextMatch.id}`,
       }).catch(() => {/* non-blocking */});
       sendSmsToAll(`⏳ On Deck — ${courtName}: ${p1} vs ${p2}. Please report to ${courtName}.`).catch(() => {});
@@ -155,6 +160,7 @@ export async function PATCH(
         title: `⏳ On Deck — ${courtName}`,
         body: `${p1} vs ${p2} — please report to ${courtName}`,
         tournament_id: id,
+        url: slug ? `/t/${slug}/courts` : null,
       })).catch(() => {});
     }
   }
@@ -164,10 +170,15 @@ export async function PATCH(
     const courtName = (data as unknown as { court?: { name: string } | null }).court?.name ?? 'court';
     const p1 = (data as unknown as { player1?: { name: string } | null }).player1?.name ?? 'TBD';
     const p2 = (data as unknown as { player2?: { name: string } | null }).player2?.name ?? 'TBD';
+
+    // Look up slug for deep-link URL (only if not already fetched above)
+    const { data: tourney2 } = await supabase.from('tournaments').select('slug').eq('id', id).single();
+    const slug2 = tourney2?.slug ?? '';
+
     sendPushToAll({
       title: `🎾 Match Starting — ${courtName}`,
       body: `${p1} vs ${p2} is underway on ${courtName}`,
-      url: `/t/${data.tournament_id}/courts`,
+      url: `/t/${slug2}/courts`,
       tag: `started-${matchId}`,
     }).catch(() => {/* non-blocking */});
     sendSmsToAll(`🎾 Now playing on ${courtName}: ${p1} vs ${p2}.`).catch(() => {});
@@ -175,6 +186,7 @@ export async function PATCH(
       title: `🎾 Match Starting — ${courtName}`,
       body: `${p1} vs ${p2} is underway on ${courtName}`,
       tournament_id: id,
+      url: slug2 ? `/t/${slug2}/courts` : null,
     })).catch(() => {});
   }
 
