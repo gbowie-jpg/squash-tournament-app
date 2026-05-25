@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import PushManager from '@/components/PushManager';
+import MessagesLink from '@/components/MessagesLink';
 import AuthButton from './AuthButton';
 import ThemeToggle from '@/components/ThemeToggle';
 
@@ -28,6 +29,7 @@ export default function SiteNav() {
             </div>
           )}
           <PushManager />
+          <MessagesLink />
           <ThemeToggle />
           <AuthButton />
         </div>

@@ -151,6 +151,11 @@ export async function PATCH(
         tag: `on-deck-${nextMatch.id}`,
       }).catch(() => {/* non-blocking */});
       sendSmsToAll(`⏳ On Deck — ${courtName}: ${p1} vs ${p2}. Please report to ${courtName}.`).catch(() => {});
+      void Promise.resolve(supabase.from('messages').insert({
+        title: `⏳ On Deck — ${courtName}`,
+        body: `${p1} vs ${p2} — please report to ${courtName}`,
+        tournament_id: id,
+      })).catch(() => {});
     }
   }
 
@@ -166,6 +171,11 @@ export async function PATCH(
       tag: `started-${matchId}`,
     }).catch(() => {/* non-blocking */});
     sendSmsToAll(`🎾 Now playing on ${courtName}: ${p1} vs ${p2}.`).catch(() => {});
+    void Promise.resolve(supabase.from('messages').insert({
+      title: `🎾 Match Starting — ${courtName}`,
+      body: `${p1} vs ${p2} is underway on ${courtName}`,
+      tournament_id: id,
+    })).catch(() => {});
   }
 
   // Winner progression: advance winner to next round match

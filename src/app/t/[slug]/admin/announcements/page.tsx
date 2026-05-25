@@ -19,6 +19,7 @@ export default function AnnouncementComposer({
   const [priority, setPriority] = useState<'normal' | 'urgent'>('normal');
   const [sendPush, setSendPush] = useState(false);
   const [sendSms, setSendSms] = useState(false);
+  const [sendInbox, setSendInbox] = useState(false);
   const [pushStatus, setPushStatus] = useState<string | null>(null);
   const [smsStatus, setSmsStatus] = useState<string | null>(null);
 
@@ -76,6 +77,19 @@ export default function AnnouncementComposer({
           setSmsStatus('SMS failed');
         }
         setTimeout(() => setSmsStatus(null), 4000);
+      }
+
+      if (sendInbox) {
+        const trimmed = message.trim();
+        await fetch('/api/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: trimmed.length > 80 ? trimmed.slice(0, 80) + '…' : trimmed,
+            body: trimmed,
+            tournament_id: tournament.id,
+          }),
+        }).catch(() => {});
       }
 
       setMessage('');
@@ -177,6 +191,15 @@ export default function AnnouncementComposer({
                   className="accent-green-600 w-4 h-4"
                 />
                 <span className="text-sm text-green-600 dark:text-green-400 font-medium">SMS</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={sendInbox}
+                  onChange={(e) => setSendInbox(e.target.checked)}
+                  className="accent-violet-600 w-4 h-4"
+                />
+                <span className="text-sm text-violet-600 dark:text-violet-400 font-medium">Inbox</span>
               </label>
             </div>
             <button
