@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { BellRing, BellOff } from 'lucide-react';
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!;
 
@@ -85,23 +86,31 @@ export default function PushManager() {
     }
   };
 
-  if (status === 'unsupported') return null;
+  if (status === 'unsupported' || status === 'denied') return null;
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="relative">
       {status === 'subscribed' ? (
-        <button onClick={unsubscribe} disabled={loading}
-          aria-label="Turn off push notifications"
-          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-          <span aria-hidden="true">🔔</span> Notifications on
+        <button
+          onClick={unsubscribe}
+          disabled={loading}
+          aria-label="Alerts on — tap to turn off"
+          title="Alerts on — tap to turn off"
+          className="flex items-center justify-center w-8 h-8 text-white/70 hover:text-white transition-colors"
+        >
+          <BellRing className="w-5 h-5" />
         </button>
-      ) : status === 'denied' ? (
-        <span className="text-xs text-dim" aria-live="polite">Notifications blocked</span>
       ) : (
-        <button onClick={subscribe} disabled={loading}
-          aria-label={loading ? 'Enabling notifications' : 'Enable push notifications'}
-          className="flex items-center gap-1.5 text-xs bg-yellow-400 hover:bg-yellow-500 text-foreground font-medium px-3 py-1.5 rounded-full transition-colors">
-          <span aria-hidden="true">🔔</span> {loading ? 'Enabling...' : 'Enable Notifications'}
+        <button
+          onClick={subscribe}
+          disabled={loading}
+          aria-label="Enable alerts"
+          title="Enable alerts"
+          className="flex items-center justify-center w-8 h-8 text-white/40 hover:text-white transition-colors"
+        >
+          <BellOff className="w-5 h-5" />
+          {/* Yellow dot urging user to enable */}
+          <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-yellow-400 rounded-full" />
         </button>
       )}
     </div>

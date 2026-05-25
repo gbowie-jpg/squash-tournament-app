@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import PushManager from '@/components/PushManager';
 import MessagesLink from '@/components/MessagesLink';
+import RefreshButton from '@/components/RefreshButton';
 import AuthButton from './AuthButton';
 import ThemeToggle from '@/components/ThemeToggle';
 
@@ -30,6 +31,7 @@ export default function SiteNav() {
           )}
           <PushManager />
           <MessagesLink />
+          <RefreshButton className="text-white/70 hover:text-white hover:bg-white/10" />
           <ThemeToggle />
           <AuthButton />
         </div>
