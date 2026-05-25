@@ -4,10 +4,10 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { Mail } from 'lucide-react';
+import { Bell } from 'lucide-react';
 
 /**
- * Envelope icon with a red badge showing the unread message count.
+ * Bell icon with a red dot when there are unread messages.
  * Only renders when the user is logged in.
  * Re-checks the count on every route change so it clears after visiting /messages.
  */
@@ -43,13 +43,11 @@ export default function MessagesLink() {
     <Link
       href="/messages"
       className="relative flex items-center justify-center w-8 h-8 text-white/70 hover:text-white transition-colors"
-      title="Messages"
+      title={count > 0 ? `${count} unread message${count !== 1 ? 's' : ''}` : 'Messages'}
     >
-      <Mail className="w-5 h-5" />
+      <Bell className={`w-5 h-5 transition-colors ${count > 0 ? 'text-white' : ''}`} />
       {count > 0 && (
-        <span className="absolute -top-0.5 -right-0.5 min-w-[1.125rem] h-[1.125rem] bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
-          {count > 99 ? '99+' : count}
-        </span>
+        <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-red-500 rounded-full" />
       )}
     </Link>
   );

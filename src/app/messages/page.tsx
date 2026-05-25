@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import SiteNav from '@/components/layout/SiteNav';
 import SiteFooter from '@/components/layout/SiteFooter';
 import { createClient } from '@/lib/supabase/client';
-import { Mail, MailOpen } from 'lucide-react';
+import { Bell, BellOff } from 'lucide-react';
 
 type Message = {
   id: string;
@@ -61,7 +61,7 @@ export default function MessagesPage() {
       <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center gap-2.5">
-            <Mail className="w-6 h-6" />
+            <Bell className="w-6 h-6" />
             Inbox
           </h1>
           {unreadCount > 0 && !loading && (
@@ -83,7 +83,7 @@ export default function MessagesPage() {
           </div>
         ) : messages.length === 0 ? (
           <div className="text-center py-20 text-[var(--text-secondary)]">
-            <MailOpen className="w-12 h-12 mx-auto mb-4 opacity-25" />
+            <BellOff className="w-12 h-12 mx-auto mb-4 opacity-25" />
             <p className="font-medium text-[var(--text-primary)]">All caught up</p>
             <p className="text-sm mt-1">Match alerts and announcements will appear here.</p>
           </div>
