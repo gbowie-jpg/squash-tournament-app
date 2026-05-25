@@ -11,7 +11,7 @@ import type { Court, MatchWithDetails } from '@/lib/supabase/types';
 import type { BracketMatch } from '@/components/tournament/Bracket';
 import Bracket from '@/components/tournament/Bracket';
 import TournamentBottomNav from '@/components/layout/TournamentBottomNav';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Search } from 'lucide-react';
 import PullToRefresh from '@/components/PullToRefresh';
 import RefreshButton from '@/components/RefreshButton';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -55,6 +55,9 @@ function CourtBoardInner({ slug }: { slug: string }) {
   const { tournament, loading: tLoading } = useTournament(slug);
   const { matches, loading: mLoading } = useRealtimeMatches(tournament?.id ?? '');
   const { courts, loading: cLoading } = useRealtimeCourts(tournament?.id ?? '');
+
+  // Player search (normal mode only)
+  const [playerSearch, setPlayerSearch] = useState('');
 
   // Tab initialised from URL so reloads land on the same tab
   const initialTab = (searchParams.get('tab') === 'bracket' ? 'bracket' : 'courts') as KioskTab;
@@ -266,24 +269,43 @@ function CourtBoardInner({ slug }: { slug: string }) {
   }
 
   // ─── Normal layout ────────────────────────────────────────────────────────────
+
+  // Helper: does this match involve the searched player?
+  const q = playerSearch.trim().toLowerCase();
+  const matchHasPlayer = (m: MatchWithDetails) =>
+    !!q && !!(m.player1?.name?.toLowerCase().includes(q) || m.player2?.name?.toLowerCase().includes(q));
+
   return (
     <PullToRefresh>
     <div className="min-h-screen bg-[var(--surface)] pb-20 md:pb-0">
       <header className="bg-[var(--surface-card)] border-b border-[var(--border)] sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div>
-            <Link href={`/t/${slug}`} className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-1 mb-0.5">
-              <ChevronLeft className="w-3.5 h-3.5" /> {tournament.name}
-            </Link>
-            <h1 className="text-lg font-bold tracking-tight text-[var(--text-primary)]">Court Board</h1>
+        <div className="max-w-5xl mx-auto px-4 pt-3 pb-2">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <Link href={`/t/${slug}`} className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-1 mb-0.5">
+                <ChevronLeft className="w-3.5 h-3.5" /> {tournament.name}
+              </Link>
+              <h1 className="text-lg font-bold tracking-tight text-[var(--text-primary)]">Court Board</h1>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="flex items-center gap-1.5 mr-1">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <span className="text-xs text-[var(--text-secondary)] font-medium">Live</span>
+              </span>
+              <ThemeToggle />
+              <RefreshButton />
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            <span className="flex items-center gap-1.5 mr-1">
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-xs text-[var(--text-secondary)] font-medium">Live</span>
-            </span>
-            <ThemeToggle />
-            <RefreshButton />
+          {/* Player self-lookup */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.5} />
+            <input
+              type="search"
+              placeholder="Find my matches — type your name…"
+              value={playerSearch}
+              onChange={(e) => setPlayerSearch(e.target.value)}
+              className="w-full border border-[var(--border)] rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-[var(--surface)] text-[var(--text-primary)]"
+            />
           </div>
         </div>
       </header>
@@ -305,11 +327,22 @@ function CourtBoardInner({ slug }: { slug: string }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {courts.map((court) => {
               const { current, next } = getCourtMatches(court);
+              const isPlayerCourt = !!q && ((!!current && matchHasPlayer(current)) || (!!next && matchHasPlayer(next)));
               return (
-                <div key={court.id} className={`border-2 rounded-2xl p-4 transition-all ${COURT_STATUS_COLORS[court.status]}`}>
+                <div
+                  key={court.id}
+                  className={`border-2 rounded-2xl p-4 transition-all ${COURT_STATUS_COLORS[court.status]}${
+                    q ? (isPlayerCourt ? ' ring-2 ring-blue-500 ring-offset-2 ring-offset-[var(--surface)]' : ' opacity-40') : ''
+                  }`}
+                >
                   <div className="flex items-center justify-between mb-3">
                     <h2 className="font-bold text-base text-[var(--text-primary)]">{court.name}</h2>
-                    <span className={`w-3 h-3 rounded-full ${COURT_STATUS_DOT[court.status]}`} />
+                    <div className="flex items-center gap-2">
+                      {isPlayerCourt && (
+                        <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">👤 You</span>
+                      )}
+                      <span className={`w-3 h-3 rounded-full ${COURT_STATUS_DOT[court.status]}`} />
+                    </div>
                   </div>
 
                   {current ? (

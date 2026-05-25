@@ -7,7 +7,7 @@ import { formatScore } from '@/lib/utils';
 import ThemeToggle from '@/components/ThemeToggle';
 import RefreshButton from '@/components/RefreshButton';
 import type { Player, Court, MatchWithDetails } from '@/lib/supabase/types';
-import { List, LayoutGrid, Clock, MapPin, ArrowRight, Pencil, Check, X } from 'lucide-react';
+import { List, LayoutGrid, Clock, MapPin, ArrowRight, Pencil, Check, X, Bell } from 'lucide-react';
 
 const STATUS_OPTIONS = ['scheduled', 'on_deck', 'in_progress', 'completed', 'walkover', 'cancelled'] as const;
 const STATUS_COLORS: Record<string, string> = {
@@ -44,6 +44,9 @@ export default function MatchManagement({
   const [editingTime, setEditingTime] = useState<string | null>(null);   // matchId
   const [timeInput, setTimeInput] = useState('');
   const [savingTime, setSavingTime] = useState<string | null>(null);
+
+  // Notify state
+  const [notifyingId, setNotifyingId] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     player1_id: '',
@@ -139,6 +142,35 @@ export default function MatchManagement({
       body: JSON.stringify({ matchId }),
     });
     setMatches((prev) => prev.filter((m) => m.id !== matchId));
+  };
+
+  const handleNotify = async (matchId: string) => {
+    const m = matches.find((match) => match.id === matchId);
+    if (!m) return;
+    setNotifyingId(matchId);
+    const p1 = m.player1?.name || 'Player 1';
+    const p2 = m.player2?.name || 'Player 2';
+    const courtName = m.court?.name;
+    const loc = courtName ? ` — Report to ${courtName}.` : '.';
+    const body =
+      m.status === 'on_deck'
+        ? `⏳ On Deck: ${p1} vs ${p2}${loc} Please be ready.`
+        : m.status === 'in_progress'
+        ? `🎾 Match Starting: ${p1} vs ${p2}${loc}`
+        : `📢 Upcoming: ${p1} vs ${p2}${loc} Please be ready.`;
+    await Promise.allSettled([
+      fetch('/api/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'Match Alert', body }),
+      }),
+      fetch('/api/sms/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body }),
+      }),
+    ]);
+    setNotifyingId(null);
   };
 
   if (!tournament || loading) {
@@ -297,6 +329,8 @@ export default function MatchManagement({
                     onUpdate={handleUpdate}
                     onDelete={handleDelete}
                     onAddGame={handleAddGame}
+                    onNotify={handleNotify}
+                    notifyingId={notifyingId}
                     onSetScoringMatch={setScoringMatch}
                     onSetScoreInput={setScoreInput}
                     onStartEditTime={(id, cur) => {
@@ -326,6 +360,8 @@ export default function MatchManagement({
             onUpdate={handleUpdate}
             onDelete={handleDelete}
             onAddGame={handleAddGame}
+            onNotify={handleNotify}
+            notifyingId={notifyingId}
             onSetScoringMatch={setScoringMatch}
             onSetScoreInput={setScoreInput}
             onStartEditTime={(id, cur) => {
@@ -355,6 +391,8 @@ interface ScheduleViewProps {
   onUpdate: (id: string, updates: Record<string, unknown>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onAddGame: (id: string) => Promise<void>;
+  onNotify: (id: string) => Promise<void>;
+  notifyingId: string | null;
   onSetScoringMatch: (id: string | null) => void;
   onSetScoreInput: (v: { p1: string; p2: string }) => void;
   onStartEditTime: (id: string, cur: string | null) => void;
@@ -445,6 +483,8 @@ interface ScheduleMatchCardProps {
   onUpdate: (id: string, updates: Record<string, unknown>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onAddGame: (id: string) => Promise<void>;
+  onNotify: (id: string) => Promise<void>;
+  notifyingId: string | null;
   onSetScoringMatch: (id: string | null) => void;
   onSetScoreInput: (v: { p1: string; p2: string }) => void;
   onStartEditTime: (id: string, cur: string | null) => void;
@@ -559,6 +599,17 @@ function ScheduleMatchCard({ m, courts, ...rest }: ScheduleMatchCardProps) {
           <button onClick={() => rest.onSetScoringMatch(rest.scoringMatch === m.id ? null : m.id)}
             className="text-xs bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 px-2 py-1 rounded hover:opacity-80">
             Score
+          </button>
+        )}
+        {(m.status === 'scheduled' || m.status === 'on_deck' || m.status === 'in_progress') && (
+          <button
+            onClick={() => rest.onNotify(m.id)}
+            disabled={rest.notifyingId === m.id}
+            title="Send push + SMS alert"
+            className="text-xs bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-400 px-2 py-1 rounded hover:opacity-80 disabled:opacity-40 flex items-center gap-1"
+          >
+            <Bell className="w-3 h-3" />
+            {rest.notifyingId === m.id ? '…' : 'Notify'}
           </button>
         )}
         <button onClick={() => rest.onDelete(m.id)} className="text-xs text-red-400 hover:text-red-600 ml-auto">
@@ -678,6 +729,17 @@ function MatchCard({ m, courts, ...rest }: MatchCardProps) {
               Complete
             </button>
           </>
+        )}
+        {(m.status === 'scheduled' || m.status === 'on_deck' || m.status === 'in_progress') && (
+          <button
+            onClick={() => rest.onNotify(m.id)}
+            disabled={rest.notifyingId === m.id}
+            title="Send push + SMS alert to all subscribers"
+            className="text-xs bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-400 px-3 py-1.5 rounded-lg hover:opacity-80 disabled:opacity-40 flex items-center gap-1.5"
+          >
+            <Bell className="w-3.5 h-3.5" />
+            {rest.notifyingId === m.id ? 'Sending…' : 'Notify Players'}
+          </button>
         )}
         <button onClick={() => rest.onDelete(m.id)} className="text-xs text-red-400 hover:text-red-600 ml-auto">
           Delete
