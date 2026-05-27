@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { ClipboardList, Search, Megaphone, HandHelping, MapPin, Phone, Mail, Users, GitBranch } from 'lucide-react';
+import { ClipboardList, Search, Megaphone, HandHelping, MapPin, Phone, Mail, Users, GitBranch, User } from 'lucide-react';
 import RefreshButton from '@/components/RefreshButton';
 import PullToRefresh from '@/components/PullToRefresh';
 import TournamentMediaGallery from '@/components/tournament/TournamentMediaGallery';
@@ -56,6 +56,68 @@ export default async function TournamentLanding({
     .eq('tournament_id', tournament.id)
     .not('draw', 'is', null);
   const draws = [...new Set((drawRows || []).map((r: { draw: string | null }) => r.draw).filter(Boolean))] as string[];
+
+  // My Matches — personalised section for logged-in users
+  type MyMatch = {
+    id: string;
+    status: string;
+    scheduled_time: string | null;
+    draw: string | null;
+    round: string | null;
+    player1: { id: string; name: string } | null;
+    player2: { id: string; name: string } | null;
+    court: { name: string } | null;
+  };
+
+  let myMatches: MyMatch[] = [];
+  let myPlayerIds: string[] = [];
+  let profileName: string | null = null;
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    const { data: profileRaw } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', user.id)
+      .single() as unknown as { data: { full_name: string | null } | null };
+
+    profileName = profileRaw?.full_name?.trim() ?? null;
+
+    if (profileName) {
+      const nameParts = profileName.split(/\s+/);
+      const firstName = nameParts[0];
+      const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : null;
+
+      let playerQuery = supabase
+        .from('players')
+        .select('id')
+        .eq('tournament_id', tournament.id);
+
+      if (lastName) {
+        playerQuery = playerQuery.or(
+          `name.ilike.${profileName},and(first_name.ilike.${firstName},last_name.ilike.${lastName})`
+        );
+      } else {
+        playerQuery = playerQuery.ilike('name', profileName);
+      }
+
+      const { data: matchedPlayers } = await playerQuery;
+      myPlayerIds = (matchedPlayers ?? []).map((p: { id: string }) => p.id);
+
+      if (myPlayerIds.length > 0) {
+        const { data: myMatchesRaw } = await supabase
+          .from('matches')
+          .select('id, status, scheduled_time, draw, round, player1:players!player1_id(id, name), player2:players!player2_id(id, name), court:courts!court_id(name)')
+          .eq('tournament_id', tournament.id)
+          .in('status', ['scheduled', 'on_deck', 'in_progress'])
+          .or(`player1_id.in.(${myPlayerIds.join(',')}),player2_id.in.(${myPlayerIds.join(',')})`)
+          .order('sort_order')
+          .order('scheduled_time', { nullsFirst: false });
+
+        myMatches = (myMatchesRaw ?? []) as unknown as MyMatch[];
+      }
+    }
+  }
 
   type MatchPreview = {
     id: string;
@@ -211,6 +273,60 @@ export default async function TournamentLanding({
 
           {/* LEFT: main info column */}
           <div className="lg:col-span-2 space-y-6">
+
+            {/* My Matches — only shown to logged-in users whose name matches a player */}
+            {myMatches.length > 0 && (
+              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <h2 className="font-semibold text-blue-900 dark:text-blue-100">Your Matches</h2>
+                </div>
+                <div className="space-y-2">
+                  {myMatches.map((m) => {
+                    const isMe1 = myPlayerIds.includes(m.player1?.id ?? '');
+                    const me = isMe1 ? m.player1 : m.player2;
+                    const opponent = isMe1 ? m.player2 : m.player1;
+                    return (
+                      <Link
+                        key={m.id}
+                        href={`/t/${slug}/match/${m.id}`}
+                        className="flex items-center justify-between p-3 rounded-lg text-sm bg-white/60 dark:bg-white/5 hover:bg-white/80 dark:hover:bg-white/10 transition-colors border border-blue-100 dark:border-blue-900"
+                      >
+                        <div>
+                          <span className="font-medium text-[var(--text-primary)]">{me?.name ?? 'You'}</span>
+                          <span className="text-[var(--text-muted)] mx-2">vs</span>
+                          <span className="font-medium text-[var(--text-primary)]">{opponent?.name ?? 'TBD'}</span>
+                          {(m.draw || m.round) && (
+                            <span className="ml-2 text-xs text-[var(--text-muted)]">
+                              {[m.draw, m.round].filter(Boolean).join(' · ')}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-right text-xs shrink-0 ml-3">
+                          {m.court?.name && (
+                            <span className="text-[var(--text-secondary)] mr-2">{m.court.name}</span>
+                          )}
+                          {m.status === 'in_progress' && (
+                            <span className="text-green-600 dark:text-green-400 font-semibold">LIVE</span>
+                          )}
+                          {m.status === 'on_deck' && (
+                            <span className="text-orange-500 dark:text-orange-400 font-semibold">On Deck</span>
+                          )}
+                          {m.status === 'scheduled' && m.scheduled_time && (
+                            <span className="text-[var(--text-secondary)]">
+                              {new Date(m.scheduled_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                            </span>
+                          )}
+                          {m.status === 'scheduled' && !m.scheduled_time && (
+                            <span className="text-[var(--text-muted)]">TBD</span>
+                          )}
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Stats row */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
