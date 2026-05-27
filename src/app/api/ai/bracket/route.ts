@@ -1,5 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { NextRequest } from 'next/server';
+import { requireRole } from '@/lib/supabase/require-role';
+import { rateLimit, limits } from '@/lib/rateLimit';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -40,6 +42,13 @@ type MessageParam = { role: 'user' | 'assistant'; content: string };
 export type BracketPlayer = { id: string; name: string; seed: number | null };
 
 export async function POST(req: NextRequest) {
+  // Admin only — Anthropic API costs
+  const auth = await requireRole('admin');
+  if (auth.error) return auth.error;
+
+  const limited = rateLimit(req, limits.ai);
+  if (limited) return limited;
+
   if (!process.env.ANTHROPIC_API_KEY) {
     return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured' }), {
       status: 500,

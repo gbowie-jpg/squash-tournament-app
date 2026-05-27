@@ -86,4 +86,6 @@ export const limits = {
   scoring: { window: 60_000, max: 60 },
   /** Push subscribe: 10 per hour per IP */
   pushSubscribe: { window: 60 * 60_000, max: 10 },
+  /** AI chat: 30 per hour per IP — Anthropic API costs */
+  ai: { window: 60 * 60_000, max: 30 },
 };
