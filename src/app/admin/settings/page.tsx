@@ -143,6 +143,9 @@ export default function AdminSettings() {
           </div>
         </div>
 
+        {/* Email Template */}
+        <EmailTemplatePanel />
+
         {/* Stripe / Payment Processing */}
         <StripeSettingsPanel />
 
@@ -173,6 +176,191 @@ export default function AdminSettings() {
         </div>
 
       </main>
+    </div>
+  );
+}
+
+function EmailTemplatePanel() {
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    email_heading: '',
+    email_subheading: '',
+    email_header_bg: '#0f172a',
+    email_header_image_url: '',
+    email_footer_text: '',
+  });
+
+  const set = (key: string, val: string) => setForm((f) => ({ ...f, [key]: val }));
+
+  useEffect(() => {
+    fetch('/api/site-settings')
+      .then((r) => r.json())
+      .then((data: Record<string, string | null>) => {
+        setForm({
+          email_heading: data.email_heading || '',
+          email_subheading: data.email_subheading || '',
+          email_header_bg: data.email_header_bg || '#0f172a',
+          email_header_image_url: data.email_header_image_url || '',
+          email_footer_text: data.email_footer_text || '',
+        });
+        setLoaded(true);
+      });
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    setSaved(false);
+    try {
+      const res = await fetch('/api/site-settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email_heading: form.email_heading || null,
+          email_subheading: form.email_subheading || null,
+          email_header_bg: form.email_header_bg || null,
+          email_header_image_url: form.email_header_image_url || null,
+          email_footer_text: form.email_footer_text || null,
+        }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || 'Save failed');
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputCls = 'w-full border border-border rounded-lg px-3 py-2 text-sm bg-surface text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500';
+
+  if (!loaded) return null;
+
+  return (
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="px-6 py-4 border-b border-border">
+        <h2 className="font-semibold text-foreground">Email Template</h2>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Header and footer for all outgoing emails — campaigns and registration confirmations.
+        </p>
+      </div>
+
+      {/* Live preview */}
+      <div
+        className="h-28 flex flex-col items-center justify-center gap-2"
+        style={{ background: form.email_header_bg || '#0f172a' }}
+      >
+        {form.email_header_image_url ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={form.email_header_image_url}
+            alt="Logo preview"
+            className="h-12 w-12 rounded-xl object-contain"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+        ) : (
+          <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl"
+            style={{ background: 'rgba(255,255,255,0.15)' }}>🎾</div>
+        )}
+        <div className="text-center">
+          <p className="text-white font-bold text-sm leading-tight">
+            {form.email_heading || 'Seattle Squash'}
+          </p>
+          <p className="text-xs font-medium uppercase tracking-widest mt-0.5"
+            style={{ color: 'rgba(255,255,255,0.55)' }}>
+            {form.email_subheading || 'Updates and News'}
+          </p>
+        </div>
+      </div>
+
+      <div className="p-6 space-y-4">
+        {error && (
+          <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</div>
+        )}
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1">Heading</label>
+            <input
+              type="text"
+              value={form.email_heading}
+              onChange={(e) => set('email_heading', e.target.value)}
+              placeholder="Seattle Squash"
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1">Subheading</label>
+            <input
+              type="text"
+              value={form.email_subheading}
+              onChange={(e) => set('email_subheading', e.target.value)}
+              placeholder="Updates and News"
+              className={inputCls}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1">Header Background Color</label>
+            <div className="flex gap-2 items-center">
+              <input
+                type="color"
+                value={form.email_header_bg}
+                onChange={(e) => set('email_header_bg', e.target.value)}
+                className="h-9 w-12 rounded-lg border border-border cursor-pointer bg-surface p-0.5"
+              />
+              <input
+                type="text"
+                value={form.email_header_bg}
+                onChange={(e) => set('email_header_bg', e.target.value)}
+                placeholder="#0f172a"
+                className={`${inputCls} flex-1 font-mono`}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1">Logo Image URL</label>
+            <input
+              type="url"
+              value={form.email_header_image_url}
+              onChange={(e) => set('email_header_image_url', e.target.value)}
+              placeholder="https://… (leave blank for emoji)"
+              className={inputCls}
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-foreground mb-1">Footer Text</label>
+          <input
+            type="text"
+            value={form.email_footer_text}
+            onChange={(e) => set('email_footer_text', e.target.value)}
+            placeholder="Seattle Squash Racquets Association · P.O. Box 665, Seattle, WA 98111"
+            className={inputCls}
+          />
+          <p className="text-xs text-muted-foreground mt-1">Leave blank to use the default.</p>
+        </div>
+
+        <div className="flex items-center gap-3 pt-1">
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
+              saved ? 'bg-green-600 text-white' : 'bg-foreground text-background hover:opacity-90'
+            }`}
+          >
+            {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save Email Settings'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
