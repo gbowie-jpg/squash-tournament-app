@@ -11,7 +11,7 @@ import type { Court, MatchWithDetails } from '@/lib/supabase/types';
 import type { BracketMatch } from '@/components/tournament/Bracket';
 import Bracket from '@/components/tournament/Bracket';
 import TournamentBottomNav from '@/components/layout/TournamentBottomNav';
-import { ChevronLeft, Search } from 'lucide-react';
+import { ChevronLeft, Search, LogOut } from 'lucide-react';
 import PullToRefresh from '@/components/PullToRefresh';
 import RefreshButton from '@/components/RefreshButton';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -150,7 +150,17 @@ function CourtBoardInner({ slug }: { slug: string }) {
             <span className="text-white/30 text-sm">·</span>
             <span className="text-white font-bold text-lg">{tournament.name}</span>
           </div>
-          <KioskClock />
+          <div className="flex items-center gap-4">
+            <KioskClock />
+            <Link
+              href={`/t/${slug}/courts`}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/20 text-white/40 hover:text-white hover:border-white/50 transition-colors text-xs font-medium"
+              title="Exit kiosk mode"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Exit
+            </Link>
+          </div>
         </header>
 
         {/* Content area — minimal padding to maximise space */}

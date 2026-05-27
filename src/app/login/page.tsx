@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>('signin');
+  const [mode, setMode] = useState<'signin' | 'signup' | 'reset' | 'magic'>('signin');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -60,6 +60,15 @@ function LoginForm() {
         });
         if (error) { setError(error.message); return; }
         setMessage('Password reset email sent — check your inbox and click the link to set a new password.');
+      } else if (mode === 'magic') {
+        const origin = window.location.origin;
+        const dest = redirectParam ? `${origin}${redirectParam}` : `${origin}/`;
+        const { error } = await supabase.auth.signInWithOtp({
+          email,
+          options: { emailRedirectTo: dest, shouldCreateUser: false },
+        });
+        if (error) { setError(error.message); return; }
+        setMessage('Magic link sent — check your inbox and click the link to sign in instantly.');
       }
     } finally {
       setLoading(false);
@@ -76,7 +85,7 @@ function LoginForm() {
 
         <form onSubmit={handleSubmit} className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-6 space-y-4">
           <h2 className="font-semibold text-lg text-[var(--text-primary)]">
-            {mode === 'signin' ? 'Sign In' : mode === 'signup' ? 'Create Account' : 'Reset Password'}
+            {mode === 'signin' ? 'Sign In' : mode === 'signup' ? 'Create Account' : mode === 'reset' ? 'Reset Password' : 'Magic Link'}
           </h2>
 
           {error && (
@@ -103,7 +112,7 @@ function LoginForm() {
             />
           </div>
 
-          {mode !== 'reset' && (
+          {(mode !== 'reset' && mode !== 'magic') && (
             <div>
               <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Password</label>
               <input
@@ -119,7 +128,14 @@ function LoginForm() {
           )}
 
           {mode === 'signin' && (
-            <div className="text-right -mt-2">
+            <div className="flex items-center justify-between -mt-2">
+              <button
+                type="button"
+                onClick={() => { setMode('magic'); setError(null); setMessage(null); }}
+                className="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] underline"
+              >
+                Use magic link instead
+              </button>
               <button
                 type="button"
                 onClick={() => { setMode('reset'); setError(null); setMessage(null); }}
@@ -141,7 +157,9 @@ function LoginForm() {
               ? 'Sign In'
               : mode === 'signup'
               ? 'Create Account'
-              : 'Send Reset Email'}
+              : mode === 'reset'
+              ? 'Send Reset Email'
+              : 'Send Magic Link'}
           </button>
 
           <p className="text-center text-sm text-[var(--text-secondary)]">
@@ -158,6 +176,12 @@ function LoginForm() {
               </button>
             )}
           </p>
+
+          {mode === 'magic' && (
+            <p className="text-center text-xs text-[var(--text-muted)]">
+              We&apos;ll email you a one-time link — no password needed.
+            </p>
+          )}
         </form>
       </div>
     </div>
