@@ -169,7 +169,7 @@ function detectDuplicates(
 interface CsvUploadProps {
   tournamentId: string;
   existingPlayers?: ExistingPlayer[];
-  onImport: (players: PlayerRow[]) => void;
+  onImport: (players: PlayerRow[], skipped?: { name: string; email: string; existingName: string }[]) => void;
 }
 
 export default function CsvUpload({ tournamentId, existingPlayers = [], onImport }: CsvUploadProps) {
@@ -285,8 +285,11 @@ export default function CsvUpload({ tournamentId, existingPlayers = [], onImport
         body: JSON.stringify(players),
       });
       if (res.ok) {
-        const imported = await res.json();
-        onImport(imported);
+        const result = await res.json();
+        // API returns { data, duplicates } for bulk, or array for legacy
+        const imported: PlayerRow[] = Array.isArray(result) ? result : (result.data ?? []);
+        const skipped: { name: string; email: string; existingName: string }[] = result.duplicates ?? [];
+        onImport(imported, skipped);
         setStep('idle');
         setHeaders([]);
         setRows([]);

@@ -61,6 +61,63 @@ export async function POST(
     return NextResponse.json({ error: 'No valid players (name is required)' }, { status: 400 });
   }
 
+  // Duplicate check — find any existing players in this tournament with the same email
+  const incomingEmails = records
+    .map((r) => (r.email as string | null | undefined))
+    .filter((e): e is string => !!e)
+    .map((e) => e.trim().toLowerCase());
+
+  let duplicates: { name: string; email: string; existingName: string }[] = [];
+
+  if (incomingEmails.length > 0) {
+    const { data: existing } = await supabase
+      .from('players')
+      .select('name, email')
+      .eq('tournament_id', id)
+      .in('email', incomingEmails);
+
+    if (existing && existing.length > 0) {
+      const existingByEmail: Record<string, string> = {};
+      for (const p of existing) {
+        if (p.email) existingByEmail[p.email.toLowerCase()] = p.name;
+      }
+
+      // For single adds, block entirely and return conflict info
+      if (!Array.isArray(body)) {
+        const email = incomingEmails[0];
+        if (existingByEmail[email]) {
+          return NextResponse.json(
+            { error: `A player with this email already exists: ${existingByEmail[email]}`, duplicate: true },
+            { status: 409 },
+          );
+        }
+      }
+
+      // For bulk, skip duplicates and track them
+      duplicates = records
+        .filter((r) => {
+          const e = (r.email as string | null | undefined)?.trim().toLowerCase();
+          return e && existingByEmail[e];
+        })
+        .map((r) => {
+          const e = (r.email as string).trim().toLowerCase();
+          return { name: r.name as string, email: e, existingName: existingByEmail[e] };
+        });
+
+      // Remove duplicates from records to insert
+      const dupEmails = new Set(duplicates.map((d) => d.email));
+      records.splice(0, records.length, ...records.filter((r) => {
+        const e = (r.email as string | null | undefined)?.trim().toLowerCase();
+        return !e || !dupEmails.has(e);
+      }));
+    }
+  }
+
+  // If all records were duplicates in a bulk import, return early
+  if (records.length === 0) {
+    return NextResponse.json({ data: [], duplicates }, { status: 200 });
+  }
+
   const { data, error } = await supabase
     .from('players')
     .insert(records)
@@ -82,7 +139,10 @@ export async function POST(
     );
   }
 
-  return NextResponse.json(Array.isArray(body) ? data : data[0], { status: 201 });
+  if (Array.isArray(body)) {
+    return NextResponse.json({ data, duplicates }, { status: 201 });
+  }
+  return NextResponse.json(data[0], { status: 201 });
 }
 
 export async function PATCH(

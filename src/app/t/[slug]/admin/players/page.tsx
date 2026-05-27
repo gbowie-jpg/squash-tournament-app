@@ -25,6 +25,8 @@ export default function PlayerManagement({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
+  const [addError, setAddError] = useState<string | null>(null);
+  const [importSkipped, setImportSkipped] = useState<{ name: string; email: string; existingName: string }[]>([]);
 
   useEffect(() => {
     if (!tournament) return;
@@ -36,6 +38,7 @@ export default function PlayerManagement({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!tournament) return;
+    setAddError(null);
     const payload = {
       name: form.name,
       draw: form.draw || null,
@@ -54,6 +57,10 @@ export default function PlayerManagement({
         const updated = await res.json();
         setPlayers((prev) => prev.map((p) => (p.id === editingId ? updated : p)));
         setEditingId(null);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setAddError(err.error || 'Update failed');
+        return;
       }
     } else {
       const res = await fetch(`/api/tournaments/${tournament.id}/players`, {
@@ -64,6 +71,10 @@ export default function PlayerManagement({
       if (res.ok) {
         const player = await res.json();
         setPlayers((prev) => [...prev, player]);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setAddError(err.error || 'Add failed');
+        return;
       }
     }
     setForm({ name: '', draw: '', seed: '', club: '', email: '' });
@@ -280,6 +291,11 @@ export default function PlayerManagement({
                 />
               </div>
             </div>
+            {addError && (
+              <div className="mt-2 text-sm text-red-600 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
+                ⚠ {addError}
+              </div>
+            )}
             <button type="submit" className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-6 py-2 rounded-lg text-sm font-medium hover:opacity-90">
               {editingId ? 'Update Player' : 'Add Player'}
             </button>
@@ -292,8 +308,22 @@ export default function PlayerManagement({
             <CsvUpload
               tournamentId={tournament.id}
               existingPlayers={players}
-              onImport={(imported) => setPlayers((prev) => [...prev, ...imported as unknown as Player[]])}
+              onImport={(imported, skipped) => {
+                setPlayers((prev) => [...prev, ...imported as unknown as Player[]]);
+                setImportSkipped(skipped ?? []);
+              }}
             />
+            {importSkipped.length > 0 && (
+              <div className="mt-3 text-sm bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 rounded-lg px-4 py-3">
+                <p className="font-medium mb-1">⚠ {importSkipped.length} duplicate{importSkipped.length !== 1 ? 's' : ''} skipped — email already in tournament:</p>
+                <ul className="space-y-0.5 text-xs">
+                  {importSkipped.map((s) => (
+                    <li key={s.email}><span className="font-medium">{s.name}</span> ({s.email}) — already listed as <span className="font-medium">{s.existingName}</span></li>
+                  ))}
+                </ul>
+                <button onClick={() => setImportSkipped([])} className="mt-2 text-xs underline opacity-70 hover:opacity-100">Dismiss</button>
+              </div>
+            )}
           </div>
         )}
 
