@@ -46,8 +46,13 @@ export async function POST(req: NextRequest) {
 
   let sentCount = 0;
   let failCount = 0;
+  const failedRecipients: { name: string; email: string }[] = [];
 
-  for (const recipient of recipients) {
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  // Throttle to ~4/sec to stay under Resend's 5 req/sec rate limit
+  for (let i = 0; i < recipients.length; i++) {
+    const recipient = recipients[i];
     const unsubscribeUrl = `${siteUrl}/api/unsubscribe?token=${recipient.unsubscribe_token}`;
     const html = buildCampaignHtml({ body: campaign.body, tournamentName: 'Seattle Squash', template, unsubscribeUrl });
     const result = await sendEmail({ to: recipient.email, subject: campaign.subject, html, attachment: attachment ?? undefined });
@@ -60,8 +65,15 @@ export async function POST(req: NextRequest) {
       sent_at: result.success ? new Date().toISOString() : null,
     });
 
-    if (result.success) sentCount++;
-    else failCount++;
+    if (result.success) {
+      sentCount++;
+    } else {
+      failCount++;
+      failedRecipients.push({ name: recipient.name || '', email: recipient.email });
+    }
+
+    // 250ms between sends = ~4/sec, safely under Resend's 5/sec rate limit
+    if (i < recipients.length - 1) await sleep(250);
   }
 
   await supabase
@@ -74,5 +86,5 @@ export async function POST(req: NextRequest) {
     })
     .eq('id', campaignId);
 
-  return NextResponse.json({ sent: sentCount, failed: failCount });
+  return NextResponse.json({ sent: sentCount, failed: failCount, failedRecipients });
 }

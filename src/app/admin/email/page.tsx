@@ -422,7 +422,7 @@ export default function GlobalEmail() {
   const [sendMode, setSendMode] = useState<'all' | 'single'>('all');
   const [singleEmail, setSingleEmail] = useState('');
   const [sending, setSending] = useState(false);
-  const [sendResult, setSendResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [sendResult, setSendResult] = useState<{ ok: boolean; msg: string; failedRecipients?: { name: string; email: string }[] } | null>(null);
 
   // Pre-flight confirmation
   const [showConfirm, setShowConfirm] = useState(false);
@@ -796,7 +796,11 @@ export default function GlobalEmail() {
 
     if (sendRes.ok) {
       const result = await sendRes.json();
-      setSendResult({ ok: true, msg: `Sent to ${result.sent} recipients${result.failed > 0 ? `, ${result.failed} failed` : ''}` });
+      setSendResult({
+        ok: true,
+        msg: `Sent to ${result.sent} recipient${result.sent !== 1 ? 's' : ''}${result.failed > 0 ? ` · ${result.failed} failed` : ''}`,
+        failedRecipients: result.failedRecipients || [],
+      });
       setSubject(''); setBlocks([{ id: '1', type: 'paragraph', text: '' }]);
       setAttachment(null); setAttachWarning(''); setSendTags([]);
       await refresh();
@@ -1245,6 +1249,20 @@ export default function GlobalEmail() {
                   {sendResult && (
                     <div className={`rounded-lg px-3 py-2 text-sm ${sendResult.ok ? 'bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400' : 'bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400'}`}>
                       {sendResult.msg}
+                      {sendResult.failedRecipients && sendResult.failedRecipients.length > 0 && (
+                        <details className="mt-2">
+                          <summary className="cursor-pointer text-xs font-medium opacity-80 hover:opacity-100">
+                            Show failed recipients ({sendResult.failedRecipients.length})
+                          </summary>
+                          <ul className="mt-1.5 space-y-0.5">
+                            {sendResult.failedRecipients.map((r) => (
+                              <li key={r.email} className="text-xs opacity-90">
+                                {r.name ? `${r.name} — ` : ''}{r.email}
+                              </li>
+                            ))}
+                          </ul>
+                        </details>
+                      )}
                     </div>
                   )}
                   {hasBase64 && (
