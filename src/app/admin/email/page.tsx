@@ -424,6 +424,10 @@ export default function GlobalEmail() {
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
+  // Pre-flight confirmation
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [subjectTouched, setSubjectTouched] = useState(false);
+
   // Test send
   const [testEmail, setTestEmail] = useState('');
   const [testSending, setTestSending] = useState(false);
@@ -1112,10 +1116,24 @@ export default function GlobalEmail() {
             </div>
 
             <div>
-              <label htmlFor="compose-subject" className="block text-sm font-medium mb-1">Subject</label>
-              <input id="compose-subject" value={subject} onChange={(e) => setSubject(e.target.value)}
+              <label htmlFor="compose-subject" className="block text-sm font-medium mb-1">
+                Subject <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="compose-subject"
+                value={subject}
+                onChange={(e) => { setSubject(e.target.value); setShowConfirm(false); }}
+                onBlur={() => setSubjectTouched(true)}
                 placeholder="e.g. Seattle Squash — Spring Season Update"
-                className="w-full border border-border rounded-lg px-3 py-2.5 text-sm" />
+                className={`w-full border rounded-lg px-3 py-2.5 text-sm transition-colors ${
+                  subjectTouched && !subject
+                    ? 'border-red-400 bg-red-50 dark:bg-red-950/20 focus:ring-red-400'
+                    : 'border-border'
+                }`}
+              />
+              {subjectTouched && !subject && (
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">A subject line is required before sending.</p>
+              )}
             </div>
 
             {/* Block editor header */}
@@ -1234,21 +1252,57 @@ export default function GlobalEmail() {
                       ⚠ Remove or replace the base64 image before sending.
                     </div>
                   )}
-                  <button
-                    onClick={sendCampaign}
-                    disabled={
-                      sending || hasBase64 || !subject || blocks.every((b) => !blocksToHtml([b]).trim()) ||
-                      (sendMode === 'all' && sendTargetCount === 0) ||
-                      (sendMode === 'single' && !singleEmail)
-                    }
-                    className="bg-foreground text-background px-6 py-2.5 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50"
-                  >
-                    {sending
-                      ? 'Sending…'
-                      : sendMode === 'single'
-                      ? `Send to ${singleEmail || '…'}`
-                      : `Send to ${sendTargetCount} Recipient${sendTargetCount !== 1 ? 's' : ''}`}
-                  </button>
+
+                  {/* Pre-flight confirmation panel */}
+                  {showConfirm && (
+                    <div className="rounded-xl border-2 border-amber-400 dark:border-amber-500 bg-amber-50 dark:bg-amber-950/30 p-4 space-y-3">
+                      <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">Ready to send?</p>
+                      <div className="text-sm text-amber-800 dark:text-amber-300 space-y-1">
+                        <p><span className="font-medium">Subject:</span> {subject}</p>
+                        <p><span className="font-medium">To:</span>{' '}
+                          {sendMode === 'single'
+                            ? singleEmail
+                            : `${sendTargetCount} subscribed recipient${sendTargetCount !== 1 ? 's' : ''}${sendTags.length > 0 ? ` tagged "${sendTags.join('", "')}"` : ''}`}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => { setShowConfirm(false); sendCampaign(); }}
+                          disabled={sending}
+                          className="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                        >
+                          {sending ? 'Sending…' : 'Confirm — Send Now'}
+                        </button>
+                        <button
+                          onClick={() => setShowConfirm(false)}
+                          className="px-4 py-2 rounded-lg text-sm text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {!showConfirm && (
+                    <button
+                      onClick={() => {
+                        setSubjectTouched(true);
+                        if (!subject) return; // error shown on field
+                        setShowConfirm(true);
+                      }}
+                      disabled={
+                        sending || hasBase64 ||
+                        blocks.every((b) => !blocksToHtml([b]).trim()) ||
+                        (sendMode === 'all' && sendTargetCount === 0) ||
+                        (sendMode === 'single' && !singleEmail)
+                      }
+                      className="bg-foreground text-background px-6 py-2.5 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50"
+                    >
+                      {sendMode === 'single'
+                        ? `Send to ${singleEmail || '…'}`
+                        : `Send to ${sendTargetCount} Recipient${sendTargetCount !== 1 ? 's' : ''}`}
+                    </button>
+                  )}
 
                   {/* ── Test send ──────────────────────────────────── */}
                   <div className="border-t border-border pt-4 mt-2">
