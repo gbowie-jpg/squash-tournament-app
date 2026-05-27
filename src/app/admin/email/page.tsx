@@ -423,6 +423,8 @@ export default function GlobalEmail() {
   const [singleEmail, setSingleEmail] = useState('');
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<{ ok: boolean; msg: string; failedRecipients?: { name: string; email: string }[] } | null>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [resendResults, setResendResults] = useState<Record<string, { msg: string; ok: boolean; failedRecipients?: { name: string; email: string }[] }>>({});
 
   // Pre-flight confirmation
   const [showConfirm, setShowConfirm] = useState(false);
@@ -809,6 +811,39 @@ export default function GlobalEmail() {
       setSendResult({ ok: false, msg: err.error || 'Send failed' });
     }
     setSending(false);
+  };
+
+  const resendFailed = async (campaignId: string) => {
+    setResendingId(campaignId);
+    setResendResults((prev) => { const n = { ...prev }; delete n[campaignId]; return n; });
+    try {
+      const res = await fetch('/api/admin/email/resend-failed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ campaignId }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        if (data.sent === 0 && data.failed === 0) {
+          setResendResults((prev) => ({ ...prev, [campaignId]: { ok: true, msg: 'No failed sends to retry.' } }));
+        } else {
+          setResendResults((prev) => ({
+            ...prev,
+            [campaignId]: {
+              ok: true,
+              msg: `Resent to ${data.sent}${data.failed > 0 ? ` · ${data.failed} still failed` : ''}`,
+              failedRecipients: data.failedRecipients || [],
+            },
+          }));
+          if (data.sent > 0) await refresh();
+        }
+      } else {
+        setResendResults((prev) => ({ ...prev, [campaignId]: { ok: false, msg: data.error || 'Resend failed' } }));
+      }
+    } catch {
+      setResendResults((prev) => ({ ...prev, [campaignId]: { ok: false, msg: 'Network error' } }));
+    }
+    setResendingId(null);
   };
 
   return (
@@ -1385,6 +1420,34 @@ export default function GlobalEmail() {
                     {c.sent_count > 0 && <p className="text-xs text-muted-foreground">{c.sent_count} sent</p>}
                   </div>
                 </div>
+                {c.status === 'sent' && (
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <button
+                      onClick={() => resendFailed(c.id)}
+                      disabled={resendingId === c.id}
+                      className="text-xs text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 disabled:opacity-50 transition-colors"
+                    >
+                      {resendingId === c.id ? 'Retrying…' : 'Resend to failed'}
+                    </button>
+                    {resendResults[c.id] && (
+                      <div className={`mt-2 text-xs rounded-lg px-3 py-2 ${resendResults[c.id].ok ? 'bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400' : 'bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400'}`}>
+                        {resendResults[c.id].msg}
+                        {resendResults[c.id].failedRecipients && resendResults[c.id].failedRecipients!.length > 0 && (
+                          <details className="mt-1">
+                            <summary className="cursor-pointer font-medium opacity-80 hover:opacity-100">
+                              Still failed ({resendResults[c.id].failedRecipients!.length})
+                            </summary>
+                            <ul className="mt-1 space-y-0.5">
+                              {resendResults[c.id].failedRecipients!.map((r) => (
+                                <li key={r.email}>{r.name ? `${r.name} — ` : ''}{r.email}</li>
+                              ))}
+                            </ul>
+                          </details>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>

@@ -610,6 +610,8 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
   const attachInputRef = useRef<HTMLInputElement>(null);
   const [sending, setSendingEmail] = useState(false);
   const [sendResult, setSendResult] = useState<{ ok: boolean; msg: string; failedRecipients?: { name: string; email: string }[] } | null>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [resendResults, setResendResults] = useState<Record<string, { msg: string; ok: boolean; failedRecipients?: { name: string; email: string }[] }>>({});
 
   const refreshRecipients = async () => {
     if (!tournament) return;
@@ -962,6 +964,44 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
       setSendResult({ ok: false, msg: err.error || 'Send failed' });
     }
     setSendingEmail(false);
+  };
+
+  const resendFailed = async (campaignId: string) => {
+    if (!tournament) return;
+    setResendingId(campaignId);
+    setResendResults((prev) => { const n = { ...prev }; delete n[campaignId]; return n; });
+    try {
+      const res = await fetch(`/api/tournaments/${tournament.id}/email/resend-failed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ campaignId }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        if (data.sent === 0 && data.failed === 0) {
+          setResendResults((prev) => ({ ...prev, [campaignId]: { ok: true, msg: 'No failed sends to retry.' } }));
+        } else {
+          setResendResults((prev) => ({
+            ...prev,
+            [campaignId]: {
+              ok: true,
+              msg: `Resent to ${data.sent}${data.failed > 0 ? ` · ${data.failed} still failed` : ''}`,
+              failedRecipients: data.failedRecipients || [],
+            },
+          }));
+          if (data.sent > 0) {
+            setCampaigns((prev) =>
+              prev.map((c) => c.id === campaignId ? { ...c, sent_count: (c.sent_count || 0) + data.sent } : c)
+            );
+          }
+        }
+      } else {
+        setResendResults((prev) => ({ ...prev, [campaignId]: { ok: false, msg: data.error || 'Resend failed' } }));
+      }
+    } catch {
+      setResendResults((prev) => ({ ...prev, [campaignId]: { ok: false, msg: 'Network error' } }));
+    }
+    setResendingId(null);
   };
 
   if (tLoading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
@@ -1541,7 +1581,7 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
             ) : campaigns.map((c) => (
               <div key={c.id} className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-5">
                 <div className="flex items-start justify-between gap-4">
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <h3 className="font-semibold">{c.subject}</h3>
                     <p className="text-sm text-[var(--text-secondary)] mt-1 line-clamp-2">{c.body}</p>
                   </div>
@@ -1553,6 +1593,34 @@ export default function EmailMarketing({ params }: { params: Promise<{ slug: str
                     {c.sent_count > 0 && <p className="text-xs text-[var(--text-secondary)]">{c.sent_count} sent</p>}
                   </div>
                 </div>
+                {c.status === 'sent' && (
+                  <div className="mt-3 pt-3 border-t border-[var(--border)]">
+                    <button
+                      onClick={() => resendFailed(c.id)}
+                      disabled={resendingId === c.id}
+                      className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] rounded-lg px-3 py-1.5 disabled:opacity-50 transition-colors"
+                    >
+                      {resendingId === c.id ? 'Retrying…' : 'Resend to failed'}
+                    </button>
+                    {resendResults[c.id] && (
+                      <div className={`mt-2 text-xs rounded-lg px-3 py-2 ${resendResults[c.id].ok ? 'bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400' : 'bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400'}`}>
+                        {resendResults[c.id].msg}
+                        {resendResults[c.id].failedRecipients && resendResults[c.id].failedRecipients!.length > 0 && (
+                          <details className="mt-1">
+                            <summary className="cursor-pointer font-medium opacity-80 hover:opacity-100">
+                              Still failed ({resendResults[c.id].failedRecipients!.length})
+                            </summary>
+                            <ul className="mt-1 space-y-0.5">
+                              {resendResults[c.id].failedRecipients!.map((r) => (
+                                <li key={r.email}>{r.name ? `${r.name} — ` : ''}{r.email}</li>
+                              ))}
+                            </ul>
+                          </details>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
