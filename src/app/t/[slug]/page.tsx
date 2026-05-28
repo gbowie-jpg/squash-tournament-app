@@ -344,12 +344,12 @@ export default async function TournamentLanding({
               </div>
             )}
 
-            {/* Stats row */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <StatCard label="Players" value={playerCount ?? 0} color="text-[var(--text-primary)]" />
-              <StatCard label="Matches" value={matchCount ?? 0} color="text-[var(--text-primary)]" />
-              <StatCard label="In Progress" value={inProgress ?? 0} color="text-green-600" />
-              <StatCard label="Completed" value={completed ?? 0} color="text-blue-600 dark:text-blue-400" />
+            {/* Stats row — compact inline */}
+            <div className="bg-[var(--surface-card)] rounded-xl border border-[var(--border)] flex items-center justify-around px-3 py-2.5 divide-x divide-[var(--border)]">
+              <StatInline label="Players" value={playerCount ?? 0} />
+              <StatInline label="Matches" value={matchCount ?? 0} />
+              <StatInline label="In Progress" value={inProgress ?? 0} valueClass="text-green-600" />
+              <StatInline label="Completed" value={completed ?? 0} valueClass="text-blue-600 dark:text-blue-400" />
             </div>
 
             {/* Description */}
@@ -538,6 +538,15 @@ function StatCard({ label, value, color }: { label: string; value: number; color
     <div className="bg-[var(--surface-card)] rounded-xl border border-[var(--border)] p-4 text-center">
       <p className={`text-2xl font-bold ${color}`}>{value}</p>
       <p className="text-xs text-[var(--text-muted)] mt-1">{label}</p>
+    </div>
+  );
+}
+
+function StatInline({ label, value, valueClass = 'text-[var(--text-primary)]' }: { label: string; value: number; valueClass?: string }) {
+  return (
+    <div className="flex-1 flex items-baseline justify-center gap-1.5 px-2">
+      <span className={`text-lg sm:text-xl font-bold tabular-nums ${valueClass}`}>{value}</span>
+      <span className="text-[10px] sm:text-xs text-[var(--text-muted)] uppercase tracking-wide">{label}</span>
     </div>
   );
 }
