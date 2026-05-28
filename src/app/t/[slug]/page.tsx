@@ -261,8 +261,8 @@ export default async function TournamentLanding({
 
             {/* Countdown */}
             {isUpcoming && (
-              <div className="shrink-0 bg-black/30 rounded-2xl px-6 py-5 text-center backdrop-blur-sm">
-                <p className="text-xs uppercase tracking-widest mb-3 font-semibold" style={{ color: textColors.accent }}>
+              <div className="shrink-0 bg-black/30 rounded-xl px-4 py-2 flex items-center gap-3 backdrop-blur-sm">
+                <p className="text-[10px] uppercase tracking-widest font-semibold whitespace-nowrap" style={{ color: textColors.accent }}>
                   Starts In
                 </p>
                 <CountdownTimer targetDate={tournament.start_date} textColor={textColors.heading} />

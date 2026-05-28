@@ -31,7 +31,7 @@ export function HeroSponsorLockup({
       <div className="flex flex-wrap items-center gap-4">
         {titles.map((s) => {
           /* eslint-disable-next-line @next/next/no-img-element */
-          const logo = <img src={s.logo_url!} alt={s.name} className="h-10 sm:h-12 w-auto object-contain" />;
+          const logo = <img src={s.logo_url!} alt={s.name} className="h-20 sm:h-24 w-auto object-contain" />;
           return s.url ? (
             <a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer" title={s.name} className="hover:opacity-80 transition-opacity">
               {logo}

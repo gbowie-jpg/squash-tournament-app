@@ -35,15 +35,16 @@ export default function CountdownTimer({ targetDate, textColor }: { targetDate: 
   ];
 
   return (
-    <div className="flex items-center gap-6">
-      {units.map(({ label, val }) => (
-        <div key={label} className="text-center">
-          <div className="text-3xl font-bold tabular-nums leading-none" style={textColor ? { color: textColor } : undefined}>
+    <div className="flex items-center gap-2">
+      {units.map(({ label, val }, i) => (
+        <div key={label} className="flex items-baseline gap-1">
+          <span className="text-lg font-bold tabular-nums leading-none" style={textColor ? { color: textColor } : undefined}>
             {String(val).padStart(2, '0')}
-          </div>
-          <div className="text-xs mt-1 uppercase tracking-wide" style={textColor ? { color: textColor, opacity: 0.6 } : { color: '#a1a1aa' }}>
+          </span>
+          <span className="text-[10px] uppercase tracking-wide" style={textColor ? { color: textColor, opacity: 0.6 } : { color: '#a1a1aa' }}>
             {label}
-          </div>
+          </span>
+          {i < units.length - 1 && <span className="text-xs opacity-30 ml-0.5" style={textColor ? { color: textColor } : undefined}>·</span>}
         </div>
       ))}
     </div>
