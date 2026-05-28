@@ -160,6 +160,45 @@ export default function SponsorsAdminPage({ params }: { params: Promise<{ slug: 
     }
   };
 
+  /** Swap display_order with neighbor (within the same tier). */
+  const move = async (s: Sponsor, direction: 'up' | 'down') => {
+    if (!tournament) return;
+    const peers = sponsors
+      .filter((x) => x.tier === s.tier)
+      .sort((a, b) => (a.display_order - b.display_order) || a.name.localeCompare(b.name));
+    const idx = peers.findIndex((x) => x.id === s.id);
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= peers.length) return;
+
+    const a = peers[idx];
+    const b = peers[targetIdx];
+    // Use position-based order so ties don't lock us up
+    const aNew = b.display_order;
+    const bNew = a.display_order;
+    const finalA = aNew === bNew ? targetIdx : aNew;
+    const finalB = aNew === bNew ? idx : bNew;
+
+    // Optimistic update
+    setSponsors((prev) => prev.map((x) => {
+      if (x.id === a.id) return { ...x, display_order: finalA };
+      if (x.id === b.id) return { ...x, display_order: finalB };
+      return x;
+    }));
+
+    await Promise.all([
+      fetch(`/api/tournaments/${tournament.id}/sponsors`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: a.id, display_order: finalA }),
+      }),
+      fetch(`/api/tournaments/${tournament.id}/sponsors`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: b.id, display_order: finalB }),
+      }),
+    ]);
+  };
+
   if (tLoading || loading) {
     return <div className="flex items-center justify-center min-h-screen text-[var(--text-secondary)]">Loading…</div>;
   }
@@ -328,8 +367,29 @@ export default function SponsorsAdminPage({ params }: { params: Promise<{ slug: 
               <p className="text-sm text-[var(--text-muted)] italic">None yet.</p>
             ) : (
               <ul className="space-y-2">
-                {byTier[tier].map((s) => (
+                {byTier[tier]
+                  .slice()
+                  .sort((a, b) => (a.display_order - b.display_order) || a.name.localeCompare(b.name))
+                  .map((s, i, arr) => (
                   <li key={s.id} className={`bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-4 flex items-center gap-4 ${!s.active ? 'opacity-50' : ''}`}>
+                    <div className="flex flex-col gap-0.5 shrink-0">
+                      <button
+                        onClick={() => move(s, 'up')}
+                        disabled={i === 0}
+                        title="Move up"
+                        className="w-6 h-6 flex items-center justify-center rounded text-[var(--text-secondary)] hover:bg-[var(--surface)] hover:text-[var(--text-primary)] disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 15 12 9 6 15" /></svg>
+                      </button>
+                      <button
+                        onClick={() => move(s, 'down')}
+                        disabled={i === arr.length - 1}
+                        title="Move down"
+                        className="w-6 h-6 flex items-center justify-center rounded text-[var(--text-secondary)] hover:bg-[var(--surface)] hover:text-[var(--text-primary)] disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
+                      </button>
+                    </div>
                     {s.logo_url ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img src={s.logo_url} alt={s.name} className="h-12 w-24 object-contain shrink-0 bg-white/50 dark:bg-zinc-900/50 rounded" />
