@@ -544,9 +544,9 @@ function StatCard({ label, value, color }: { label: string; value: number; color
 
 function StatInline({ label, value, valueClass = 'text-[var(--text-primary)]' }: { label: string; value: number; valueClass?: string }) {
   return (
-    <div className="flex-1 flex items-baseline justify-center gap-1.5 px-2">
-      <span className={`text-lg sm:text-xl font-bold tabular-nums ${valueClass}`}>{value}</span>
-      <span className="text-[10px] sm:text-xs text-[var(--text-muted)] uppercase tracking-wide">{label}</span>
+    <div className="flex-1 flex flex-col items-center justify-center px-1 py-0.5 min-w-0">
+      <span className={`text-lg sm:text-xl font-bold tabular-nums leading-none ${valueClass}`}>{value}</span>
+      <span className="text-[9px] sm:text-[10px] text-[var(--text-muted)] uppercase tracking-wide mt-1 text-center whitespace-nowrap">{label}</span>
     </div>
   );
 }
