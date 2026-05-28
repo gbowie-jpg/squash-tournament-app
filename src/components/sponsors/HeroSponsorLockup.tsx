@@ -2,6 +2,20 @@
 
 import { useSponsors } from '@/lib/useSponsors';
 
+/** Subtle full-width band that only renders when there are title sponsors. */
+export function HeroSponsorBand({ tournamentId }: { tournamentId: string }) {
+  const { sponsors } = useSponsors(tournamentId);
+  const hasTitle = sponsors.some((s) => s.tier === 'title' && s.logo_url);
+  if (!hasTitle) return null;
+  return (
+    <div className="bg-[var(--surface-card)] border-b border-[var(--border)]">
+      <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-center">
+        <HeroSponsorLockup tournamentId={tournamentId} textColor="var(--text-muted)" align="center" />
+      </div>
+    </div>
+  );
+}
+
 /**
  * "Presented by [logo]" treatment for the tournament hero.
  * Shows all active title sponsors side-by-side. Subtle but prominent.

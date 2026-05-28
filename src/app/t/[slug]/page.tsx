@@ -15,7 +15,7 @@ import type { Tournament } from '@/lib/supabase/types';
 import SiteNav from '@/components/layout/SiteNav';
 import SiteFooter from '@/components/layout/SiteFooter';
 import { SponsorStrip } from '@/components/sponsors/SponsorStrip';
-import { HeroSponsorLockup } from '@/components/sponsors/HeroSponsorLockup';
+import { HeroSponsorBand } from '@/components/sponsors/HeroSponsorLockup';
 import TournamentBottomNav from '@/components/layout/TournamentBottomNav';
 import CountdownTimer from '@/components/CountdownTimer';
 import InfoAccordion from '@/components/InfoAccordion';
@@ -202,75 +202,87 @@ export default async function TournamentLanding({
     <div className="min-h-screen bg-[var(--surface)] flex flex-col pb-16 md:pb-0">
       <SiteNav />
 
-      {/* Hero — compact so info buttons are above the fold */}
-      <header style={{ background: heroBackground(tournament.hero_image_url, tournament.hero_gradient, tournament.hero_overlay !== 'false') }}>
-        <div className="max-w-5xl mx-auto px-4 py-5">
-          <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
+      {/* Hero — full-width image backdrop with overlaid info */}
+      {(() => {
+        // Use tournament.image_url first (most likely to be a hero shot now),
+        // fall back to hero_image_url, then to the gradient via heroBackground().
+        const bgImage = tournament.image_url || tournament.hero_image_url || null;
+        const hasImage = !!bgImage;
 
-            {/* Tournament graphic */}
-            <div className="shrink-0">
-              {tournament.image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={tournament.image_url}
-                  alt={tournament.name}
-                  className="w-[140px] h-[140px] rounded-2xl object-cover shadow-lg"
-                />
-              ) : (
-                <div className="w-[140px] h-[140px] rounded-2xl bg-black/20 flex items-center justify-center text-5xl shadow-lg">
-                  🏆
+        return (
+          <header
+            className="relative"
+            style={
+              hasImage
+                ? {
+                    backgroundImage: `url(${bgImage})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  }
+                : { background: heroBackground(tournament.hero_image_url, tournament.hero_gradient, tournament.hero_overlay !== 'false') }
+            }
+          >
+            {/* Dark gradient overlay for legibility (only on image bg) */}
+            {hasImage && (
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20 pointer-events-none" />
+            )}
+
+            <div className="relative max-w-5xl mx-auto px-4 pt-8 pb-6 sm:pt-16 sm:pb-8 min-h-[260px] sm:min-h-[360px] flex flex-col justify-end">
+              <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+
+                {/* Title block — bottom-left on image hero */}
+                <div className="flex-1 min-w-0">
+                  <div className="mb-2">
+                    {isActive ? (
+                      <span className="bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">Live Now</span>
+                    ) : isUpcoming ? (
+                      <span className="bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">Upcoming</span>
+                    ) : (
+                      <span className="bg-zinc-700 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">Completed</span>
+                    )}
+                  </div>
+                  <h1
+                    className="text-3xl sm:text-5xl font-bold tracking-tight drop-shadow-lg"
+                    style={{ color: hasImage ? '#fff' : textColors.heading }}
+                  >
+                    {tournament.name}
+                  </h1>
+                  <p
+                    className="mt-2 text-sm sm:text-base font-medium drop-shadow"
+                    style={{ color: hasImage ? 'rgba(255,255,255,0.92)' : textColors.body }}
+                  >
+                    {startDateStr}{endDateStr ? ` – ${endDateStr}` : ''}
+                    {(tournament.location_city || tournament.venue) && (
+                      <> · {tournament.venue || tournament.location_city}</>
+                    )}
+                  </p>
+                  {tournament.category && (
+                    <p
+                      className="text-xs sm:text-sm mt-0.5 drop-shadow"
+                      style={{ color: hasImage ? 'rgba(255,255,255,0.75)' : textColors.accent }}
+                    >
+                      {tournament.category}
+                    </p>
+                  )}
                 </div>
-              )}
-            </div>
 
-            {/* Title block */}
-            <div className="flex-1 text-center md:text-left">
-              <div className="mb-3">
-                {isActive ? (
-                  <span className="bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">Live Now</span>
-                ) : isUpcoming ? (
-                  <span className="bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">Upcoming</span>
-                ) : (
-                  <span className="bg-surface text-muted-foreground text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">Completed</span>
+                {/* Countdown — bottom-right on image hero */}
+                {isUpcoming && (
+                  <div className="shrink-0 bg-black/50 backdrop-blur-sm rounded-xl px-4 py-2 flex items-center gap-3 self-start sm:self-end">
+                    <p className="text-[10px] uppercase tracking-widest font-semibold whitespace-nowrap" style={{ color: hasImage ? 'rgba(255,255,255,0.75)' : textColors.accent }}>
+                      Starts In
+                    </p>
+                    <CountdownTimer targetDate={tournament.start_date} textColor={hasImage ? '#fff' : textColors.heading} />
+                  </div>
                 )}
               </div>
-              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight" style={{ color: textColors.heading }}>
-                {tournament.name}
-              </h1>
-              {(tournament.location_city || tournament.venue) && (
-                <p className="text-lg mt-1" style={{ color: textColors.body }}>
-                  {tournament.location_city || tournament.venue}
-                </p>
-              )}
-              {tournament.category && (
-                <p className="text-sm mt-0.5" style={{ color: textColors.accent }}>
-                  {tournament.category}
-                </p>
-              )}
-              <p className="mt-1 text-sm" style={{ color: textColors.accent }}>
-                {startDateStr}{endDateStr ? ` – ${endDateStr}` : ''}
-              </p>
-              {tournament.venue && tournament.location_city && (
-                <p className="text-sm mt-0.5" style={{ color: textColors.body, opacity: 0.8 }}>
-                  {tournament.venue}
-                </p>
-              )}
-
-              <HeroSponsorLockup tournamentId={tournament.id} textColor={textColors.accent} />
             </div>
+          </header>
+        );
+      })()}
 
-            {/* Countdown */}
-            {isUpcoming && (
-              <div className="shrink-0 bg-black/30 rounded-xl px-4 py-2 flex items-center gap-3 backdrop-blur-sm">
-                <p className="text-[10px] uppercase tracking-widest font-semibold whitespace-nowrap" style={{ color: textColors.accent }}>
-                  Starts In
-                </p>
-                <CountdownTimer targetDate={tournament.start_date} textColor={textColors.heading} />
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
+      {/* Sponsor lockup band — sits just below the hero, hides itself if no title sponsors */}
+      <HeroSponsorBand tournamentId={tournament.id} />
 
       <main className="max-w-5xl mx-auto px-4 py-8 flex-1 w-full">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
