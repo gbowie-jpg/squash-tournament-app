@@ -1,22 +1,37 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
 import { useSponsors } from '@/lib/useSponsors';
+
+const DEFAULT_DURATION_MS = 3000;
+const FADE_MS = 300;
 
 /**
  * Full-screen "Presented by" splash, shown once per session per tournament.
- * Auto-dismisses after 1.8s. Skip button appears after 500ms.
+ * Duration is configurable via site_settings.sponsor_splash_duration_ms
+ * (default 3000ms). Skip button appears after 500ms.
  *
- * Only renders if there's at least one active title-tier sponsor with a logo.
+ * Shows ALL active title-tier sponsors side-by-side (co-sponsor friendly).
  */
 export function SponsorSplash({ tournamentId, slug }: { tournamentId: string; slug: string }) {
   const { sponsors } = useSponsors(tournamentId);
   const [show, setShow] = useState(false);
   const [skippable, setSkippable] = useState(false);
   const [fadingOut, setFadingOut] = useState(false);
+  const [durationMs, setDurationMs] = useState(DEFAULT_DURATION_MS);
 
   const titleSponsors = sponsors.filter((s) => s.tier === 'title' && s.logo_url);
+
+  // Fetch configured duration
+  useEffect(() => {
+    fetch('/api/site-settings')
+      .then((r) => r.ok ? r.json() : {})
+      .then((data: Record<string, string | null>) => {
+        const v = parseInt(data.sponsor_splash_duration_ms || '');
+        if (!isNaN(v) && v > 0) setDurationMs(v);
+      })
+      .catch(() => { /* use default */ });
+  }, []);
 
   useEffect(() => {
     if (!slug || titleSponsors.length === 0) return;
@@ -28,16 +43,15 @@ export function SponsorSplash({ tournamentId, slug }: { tournamentId: string; sl
 
     setShow(true);
     const t1 = setTimeout(() => setSkippable(true), 500);
-    const t2 = setTimeout(() => setFadingOut(true), 1500);
-    const t3 = setTimeout(() => setShow(false), 1800);
+    const t2 = setTimeout(() => setFadingOut(true), durationMs - FADE_MS);
+    const t3 = setTimeout(() => setShow(false), durationMs);
 
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-  }, [slug, titleSponsors.length]);
+  }, [slug, titleSponsors.length, durationMs]);
 
   if (!show || titleSponsors.length === 0) return null;
 
-  // Pick one title sponsor at random per render to rotate over multiple sessions
-  const sponsor = titleSponsors[Math.floor(Math.random() * titleSponsors.length)];
+  const isMulti = titleSponsors.length > 1;
 
   return (
     <div
@@ -47,19 +61,26 @@ export function SponsorSplash({ tournamentId, slug }: { tournamentId: string; sl
       aria-label="Sponsor message"
     >
       <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400 mb-6 font-medium">
-        Presented by
+        {isMulti ? 'Presented by' : 'Presented by'}
       </p>
-      {sponsor.logo_url && (
-        <div className="relative w-[280px] h-[140px] sm:w-[400px] sm:h-[200px]">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={sponsor.logo_url}
-            alt={sponsor.name}
-            className="w-full h-full object-contain"
-          />
-        </div>
-      )}
-      <p className="text-base font-semibold text-zinc-900 dark:text-zinc-100 mt-4">{sponsor.name}</p>
+
+      <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-12 px-6 max-w-[90vw]">
+        {titleSponsors.map((s, i) => (
+          <div key={s.id} className="flex flex-col items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={s.logo_url!}
+              alt={s.name}
+              className={`object-contain ${isMulti ? 'max-h-[120px] sm:max-h-[160px]' : 'max-h-[180px] sm:max-h-[240px]'} max-w-[280px] sm:max-w-[400px]`}
+            />
+            <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{s.name}</p>
+            {/* Visual divider between sponsors */}
+            {isMulti && i < titleSponsors.length - 1 && (
+              <div className="hidden sm:block absolute" />
+            )}
+          </div>
+        ))}
+      </div>
 
       {skippable && (
         <button
@@ -72,5 +93,3 @@ export function SponsorSplash({ tournamentId, slug }: { tournamentId: string; sl
     </div>
   );
 }
-// Image import used implicitly via <img> for now to avoid Next/Image config for arbitrary remote hosts
-void Image;

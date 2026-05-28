@@ -185,6 +185,8 @@ export default function SponsorsAdminPage({ params }: { params: Promise<{ slug: 
 
       <main className="max-w-4xl mx-auto px-4 py-8 space-y-8">
 
+        <SplashDurationCard />
+
         {!showForm && (
           <button
             onClick={() => { setForm(emptyForm); setEditingId(null); setShowForm(true); setError(null); }}
@@ -360,6 +362,84 @@ export default function SponsorsAdminPage({ params }: { params: Promise<{ slug: 
           </section>
         ))}
       </main>
+    </div>
+  );
+}
+
+function SplashDurationCard() {
+  const [seconds, setSeconds] = useState(3);
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/site-settings')
+      .then((r) => r.json())
+      .then((data: Record<string, string | null>) => {
+        const ms = parseInt(data.sponsor_splash_duration_ms || '');
+        if (!isNaN(ms) && ms > 0) setSeconds(Math.round(ms / 1000));
+        setLoaded(true);
+      });
+  }, []);
+
+  const save = async () => {
+    setSaving(true); setSaved(false);
+    const ms = Math.max(500, Math.min(15000, Math.round(seconds * 1000)));
+    await fetch('/api/site-settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sponsor_splash_duration_ms: String(ms) }),
+    });
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  };
+
+  // Reset session-storage flag so admins can re-trigger the splash for preview
+  const previewAgain = () => {
+    if (typeof window === 'undefined') return;
+    Object.keys(sessionStorage)
+      .filter((k) => k.startsWith('sponsor-splash-'))
+      .forEach((k) => sessionStorage.removeItem(k));
+    window.location.reload();
+  };
+
+  if (!loaded) return null;
+
+  return (
+    <div className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-5">
+      <h2 className="font-semibold text-[var(--text-primary)] mb-1">Splash Settings</h2>
+      <p className="text-xs text-[var(--text-muted)] mb-4">
+        How long the &quot;Presented by&quot; screen shows on first visit. Applies to all tournaments.
+      </p>
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Duration (seconds)</label>
+          <input
+            type="number"
+            min={1}
+            max={15}
+            step={0.5}
+            value={seconds}
+            onChange={(e) => setSeconds(parseFloat(e.target.value) || 3)}
+            className="border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] w-24 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <button
+          onClick={save}
+          disabled={saving}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${saved ? 'bg-green-600 text-white' : 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:opacity-90'}`}
+        >
+          {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save'}
+        </button>
+        <button
+          onClick={previewAgain}
+          className="px-4 py-2 rounded-lg text-sm text-[var(--text-secondary)] border border-[var(--border)] hover:text-[var(--text-primary)] transition-colors"
+          title="Clears session flag and reloads — splash will show again"
+        >
+          Preview splash
+        </button>
+      </div>
     </div>
   );
 }
