@@ -14,6 +14,7 @@ export const dynamic = 'force-dynamic';
 import type { Tournament } from '@/lib/supabase/types';
 import SiteNav from '@/components/layout/SiteNav';
 import SiteFooter from '@/components/layout/SiteFooter';
+import { SponsorStrip } from '@/components/sponsors/SponsorStrip';
 import TournamentBottomNav from '@/components/layout/TournamentBottomNav';
 import CountdownTimer from '@/components/CountdownTimer';
 import InfoAccordion from '@/components/InfoAccordion';
@@ -501,6 +502,8 @@ export default async function TournamentLanding({
           </div>
         </div>
       </main>
+
+      {tournament?.id && <SponsorStrip tournamentId={tournament.id} />}
 
       <SiteFooter />
       {/* Mobile refresh FAB — visible above bottom nav */}

@@ -288,6 +288,23 @@ export type MatchWithDetails = Match & {
   referee: { id: string; name: string } | null;
 };
 
+// Sponsors
+export type SponsorTier = 'title' | 'court' | 'supporting';
+
+export type Sponsor = {
+  id: string;
+  tournament_id: string;
+  name: string;
+  logo_url: string | null;
+  url: string | null;
+  tier: SponsorTier;
+  court_id: string | null;
+  display_order: number;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
 // Email marketing
 export type EmailCampaign = {
   id: string;

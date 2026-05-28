@@ -11,6 +11,7 @@ import type { Court, MatchWithDetails } from '@/lib/supabase/types';
 import type { BracketMatch } from '@/components/tournament/Bracket';
 import Bracket from '@/components/tournament/Bracket';
 import TournamentBottomNav from '@/components/layout/TournamentBottomNav';
+import { SponsorStrip } from '@/components/sponsors/SponsorStrip';
 import { ChevronLeft, Search, LogOut } from 'lucide-react';
 import PullToRefresh from '@/components/PullToRefresh';
 import RefreshButton from '@/components/RefreshButton';
@@ -255,6 +256,9 @@ function CourtBoardInner({ slug }: { slug: string }) {
           )}
         </main>
 
+        {/* Sponsor strip (kiosk variant) */}
+        {tournament?.id && <SponsorStrip tournamentId={tournament.id} variant="kiosk" />}
+
         {/* Kiosk tab bar */}
         <nav className="shrink-0 border-t border-white/10 flex" style={{ background: '#111' }}>
           {([
@@ -380,6 +384,8 @@ function CourtBoardInner({ slug }: { slug: string }) {
           </div>
         )}
       </main>
+
+      {tournament?.id && <SponsorStrip tournamentId={tournament.id} />}
 
       <TournamentBottomNav slug={slug} />
     </div>
