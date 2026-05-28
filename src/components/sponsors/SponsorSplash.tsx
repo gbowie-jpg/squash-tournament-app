@@ -18,23 +18,24 @@ export function SponsorSplash({ tournamentId, slug }: { tournamentId: string; sl
   const [show, setShow] = useState(false);
   const [skippable, setSkippable] = useState(false);
   const [fadingOut, setFadingOut] = useState(false);
-  const [durationMs, setDurationMs] = useState(DEFAULT_DURATION_MS);
+  const [durationMs, setDurationMs] = useState<number | null>(null);
 
   const titleSponsors = sponsors.filter((s) => s.tier === 'title' && s.logo_url);
 
-  // Fetch configured duration
+  // Fetch configured duration — sets to a number when ready (use default on failure)
   useEffect(() => {
     fetch('/api/site-settings')
       .then((r) => r.ok ? r.json() : {})
       .then((data: Record<string, string | null>) => {
         const v = parseInt(data.sponsor_splash_duration_ms || '');
-        if (!isNaN(v) && v > 0) setDurationMs(v);
+        setDurationMs(!isNaN(v) && v > 0 ? v : DEFAULT_DURATION_MS);
       })
-      .catch(() => { /* use default */ });
+      .catch(() => setDurationMs(DEFAULT_DURATION_MS));
   }, []);
 
+  // Only run once durationMs is loaded AND sponsors are loaded
   useEffect(() => {
-    if (!slug || titleSponsors.length === 0) return;
+    if (!slug || titleSponsors.length === 0 || durationMs === null) return;
 
     // Once per session per tournament
     const key = `sponsor-splash-${slug}`;
@@ -47,7 +48,8 @@ export function SponsorSplash({ tournamentId, slug }: { tournamentId: string; sl
     const t3 = setTimeout(() => setShow(false), durationMs);
 
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-  }, [slug, titleSponsors.length, durationMs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug, titleSponsors.length, durationMs !== null]);
 
   if (!show || titleSponsors.length === 0) return null;
 
