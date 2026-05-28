@@ -15,6 +15,7 @@ import type { Tournament } from '@/lib/supabase/types';
 import SiteNav from '@/components/layout/SiteNav';
 import SiteFooter from '@/components/layout/SiteFooter';
 import { SponsorStrip } from '@/components/sponsors/SponsorStrip';
+import { HeroSponsorLockup } from '@/components/sponsors/HeroSponsorLockup';
 import TournamentBottomNav from '@/components/layout/TournamentBottomNav';
 import CountdownTimer from '@/components/CountdownTimer';
 import InfoAccordion from '@/components/InfoAccordion';
@@ -254,6 +255,8 @@ export default async function TournamentLanding({
                   {tournament.venue}
                 </p>
               )}
+
+              <HeroSponsorLockup tournamentId={tournament.id} textColor={textColors.accent} />
             </div>
 
             {/* Countdown */}

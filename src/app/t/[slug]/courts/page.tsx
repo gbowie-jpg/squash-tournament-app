@@ -12,6 +12,7 @@ import type { BracketMatch } from '@/components/tournament/Bracket';
 import Bracket from '@/components/tournament/Bracket';
 import TournamentBottomNav from '@/components/layout/TournamentBottomNav';
 import { SponsorStrip } from '@/components/sponsors/SponsorStrip';
+import { HeroSponsorLockup } from '@/components/sponsors/HeroSponsorLockup';
 import { ChevronLeft, Search, LogOut } from 'lucide-react';
 import PullToRefresh from '@/components/PullToRefresh';
 import RefreshButton from '@/components/RefreshButton';
@@ -151,7 +152,12 @@ function CourtBoardInner({ slug }: { slug: string }) {
             <span className="text-white/30 text-sm">·</span>
             <span className="text-white font-bold text-lg">{tournament.name}</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-6">
+            {tournament?.id && (
+              <div className="hidden md:block">
+                <HeroSponsorLockup tournamentId={tournament.id} textColor="rgba(255,255,255,0.55)" />
+              </div>
+            )}
             <KioskClock />
             <Link
               href={`/t/${slug}/courts`}
