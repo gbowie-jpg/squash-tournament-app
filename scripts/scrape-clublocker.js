@@ -12,6 +12,10 @@
  *
  * If you get an auth error: refresh the Club Locker tab and try again
  * (the token may have expired — there's no programmatic refresh).
+ *
+ * The draws endpoint (/tournaments/{id}/draws?) returns a FLAT array of
+ * sections, each tagged with divisionId/divisionName. We group them back
+ * into { [divisionId]: { name, data: [sections] } } for the importer.
  */
 
 (async () => {
@@ -26,8 +30,6 @@
   }
   const headers = { Authorization: `Bearer ${token}`, Accept: 'application/json' };
 
-  // Fault-tolerant GET — returns null on any failure instead of throwing,
-  // so one bad endpoint never aborts the whole scrape.
   const get = async (path) => {
     try {
       const res = await fetch(`${API}${path}`, { headers });
@@ -39,15 +41,6 @@
     }
   };
 
-  // Try several endpoint shapes, return first that yields data.
-  const getFirst = async (paths) => {
-    for (const p of paths) {
-      const r = await get(p);
-      if (r && (Array.isArray(r) ? r.length : Object.keys(r).length)) return r;
-    }
-    return null;
-  };
-
   console.log(`Scraping tournament ${TOURNAMENT_ID}…`);
 
   // Tournament basics (non-fatal)
@@ -55,53 +48,34 @@
   const tournamentName = tourn?.TournamentName || tourn?.name || `Tournament ${TOURNAMENT_ID}`;
   console.log(`✓ ${tournamentName}`);
 
-  // Divisions — required
-  const divisions = await getFirst([
-    `/tournaments/${TOURNAMENT_ID}/divisions`,
-    `/res/tournaments/${TOURNAMENT_ID}/divisions`,
-    `/tournaments/${TOURNAMENT_ID}/divisions/all`,
-  ]);
-  if (!divisions || !Array.isArray(divisions)) {
-    alert('Could not fetch divisions. Token may have expired — refresh the tab and retry.');
+  // ALL draws in one shot — flat array of sections
+  const sections = await get(`/tournaments/${TOURNAMENT_ID}/draws?`);
+  if (!Array.isArray(sections)) {
+    alert('Could not fetch draws. Token may have expired — refresh the tab and retry.');
     return;
   }
-  console.log(`✓ ${divisions.length} divisions found`);
 
-  // Entrants — optional (importer does not require them)
-  const entrants = (await getFirst([
-    `/tournaments/${TOURNAMENT_ID}/entries`,
-    `/res/tournaments/${TOURNAMENT_ID}/entries`,
-    `/tournaments/${TOURNAMENT_ID}/entrants`,
-    `/res/tournaments/${TOURNAMENT_ID}/entrants`,
-  ])) || [];
-  console.log(`✓ ${entrants.length} entrants${entrants.length === 0 ? ' (skipped/unavailable — not required)' : ''}`);
-
-  // Draws per division
+  // Group sections by divisionId → { name, data: [sections] }
   const divisionsData = {};
   let totalMatches = 0;
-  for (const d of divisions) {
-    const divId = d.DivisionID || d.divisionId || d.id;
-    const divName = d.DivisionName || d.name || `Division ${divId}`;
+  for (const s of sections) {
+    const divId = String(s.divisionId);
+    if (!divisionsData[divId]) {
+      divisionsData[divId] = { name: s.divisionName?.trim() || `Division ${divId}`, data: [] };
+    }
+    divisionsData[divId].data.push(s);
+    totalMatches += s.matches?.length || 0;
+  }
 
-    let raw = await getFirst([
-      `/res/tournaments/${TOURNAMENT_ID}/divisions/${divId}/draws`,
-      `/tournaments/${TOURNAMENT_ID}/divisions/${divId}/draws`,
-      `/res/draws/${divId}`,
-      `/draws/${divId}`,
-      `/tournaments/${TOURNAMENT_ID}/divisions/${divId}/matches`,
-    ]);
-    if (!Array.isArray(raw)) raw = raw ? [raw] : [];
-
-    divisionsData[String(divId)] = { name: divName, data: raw };
-
-    const matchCount = raw.reduce((sum, s) => sum + (s.matches?.length || 0), 0);
-    totalMatches += matchCount;
-    console.log(`  · ${divName}: ${matchCount} matches`);
+  const divCount = Object.keys(divisionsData).length;
+  console.log(`✓ ${sections.length} sections across ${divCount} divisions, ${totalMatches} matches`);
+  for (const [id, d] of Object.entries(divisionsData)) {
+    const mc = d.data.reduce((sum, s) => sum + (s.matches?.length || 0), 0);
+    if (mc > 0) console.log(`  · ${d.name}: ${mc} matches`);
   }
 
   if (totalMatches === 0) {
-    alert('Found divisions but no matches in any of them. The draws endpoint may have changed — open a single draw in Club Locker, check the Network tab for the XHR that loads it, and send me the URL.');
-    console.error('No matches scraped. Check the Network tab for the real draws endpoint.');
+    alert('Draws endpoint returned no matches. The brackets may not be published yet.');
     return;
   }
 
@@ -110,7 +84,7 @@
     tournamentName,
     exportedAt: new Date().toISOString(),
     divisions: divisionsData,
-    entrants,
+    entrants: [], // not needed by importer
   };
 
   // Trigger download
@@ -122,6 +96,6 @@
   a.click();
   a.remove();
 
-  console.log(`\n✅ Downloaded ${OUTPUT_FILENAME} — ${totalMatches} matches across ${divisions.length} divisions`);
+  console.log(`\n✅ Downloaded ${OUTPUT_FILENAME} — ${totalMatches} matches across ${divCount} divisions`);
   console.log(`Move it to ~/Downloads/ and run the importer.`);
 })();
