@@ -37,6 +37,8 @@ export default function MatchManagement({
   const [view, setView] = useState<'list' | 'schedule'>('list');
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState('all');
+  const [drawFilter, setDrawFilter] = useState('all');
+  const [sortBy, setSortBy] = useState<'default' | 'date'>('default');
   const [scoringMatch, setScoringMatch] = useState<string | null>(null);
   const [scoreInput, setScoreInput] = useState({ p1: '', p2: '' });
 
@@ -186,7 +188,20 @@ export default function MatchManagement({
     );
   }
 
-  const filtered = filter === 'all' ? matches : matches.filter((m) => m.status === filter);
+  // Unique draw names for the draw filter dropdown
+  const drawNames = ['all', ...Array.from(new Set(matches.map((m) => m.draw).filter(Boolean))).sort()];
+
+  const filtered = matches
+    .filter((m) => filter === 'all' || m.status === filter)
+    .filter((m) => drawFilter === 'all' || m.draw === drawFilter)
+    .sort((a, b) => {
+      if (sortBy === 'date') {
+        if (a.scheduled_time && b.scheduled_time) return new Date(a.scheduled_time).getTime() - new Date(b.scheduled_time).getTime();
+        if (a.scheduled_time) return -1;
+        if (b.scheduled_time) return 1;
+      }
+      return 0;
+    });
 
   // --- Schedule view helpers ---
   const courtsWithMatches = courts.map((court) => ({
@@ -300,8 +315,9 @@ export default function MatchManagement({
 
         {view === 'list' && (
           <>
-            {/* Status filter */}
-            <div className="flex gap-2 mb-5 flex-wrap">
+            {/* Filters + sort row */}
+            <div className="flex flex-wrap items-center gap-2 mb-5">
+              {/* Status pills */}
               {['all', ...STATUS_OPTIONS].map((s) => (
                 <button key={s} onClick={() => setFilter(s)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
@@ -310,6 +326,41 @@ export default function MatchManagement({
                   {s === 'all' ? `All (${matches.length})` : `${s.replace('_', ' ')} (${matches.filter((m) => m.status === s).length})`}
                 </button>
               ))}
+
+              {/* Divider */}
+              <span className="text-[var(--border)]">|</span>
+
+              {/* Draw / category filter */}
+              <select
+                value={drawFilter}
+                onChange={(e) => setDrawFilter(e.target.value)}
+                className="border border-[var(--border)] rounded-lg px-3 py-1.5 text-xs bg-[var(--surface-card)] text-[var(--text-secondary)] focus:outline-none"
+              >
+                {drawNames.map((d) => (
+                  <option key={d ?? 'null'} value={d ?? ''}>{d === 'all' ? 'All draws' : (d ?? 'Unknown')}</option>
+                ))}
+              </select>
+
+              {/* Sort by date toggle */}
+              <button
+                onClick={() => setSortBy(sortBy === 'date' ? 'default' : 'date')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                  sortBy === 'date'
+                    ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-transparent'
+                    : 'bg-[var(--surface-card)] border-[var(--border)] text-[var(--text-secondary)] hover:opacity-80'}`}
+              >
+                Sort: {sortBy === 'date' ? 'By time ↑' : 'Default'}
+              </button>
+
+              {/* Clear filters shortcut */}
+              {(filter !== 'all' || drawFilter !== 'all' || sortBy !== 'default') && (
+                <button
+                  onClick={() => { setFilter('all'); setDrawFilter('all'); setSortBy('default'); }}
+                  className="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] underline"
+                >
+                  Clear
+                </button>
+              )}
             </div>
 
             {filtered.length === 0 ? (
