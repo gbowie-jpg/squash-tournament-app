@@ -108,7 +108,7 @@ export async function GET(req: NextRequest) {
         .join(',');
       const { data: matches } = await supabase
         .from('matches')
-        .select('id, draw, round, scheduled_time, player1:player1_id(name), player2:player2_id(name)')
+        .select('id, draw, round, scheduled_time, player1:players!player1_id(name), player2:players!player2_id(name)')
         .eq('tournament_id', scopeId)
         .or(orClause)
         .limit(6);
