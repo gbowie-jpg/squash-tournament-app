@@ -5,6 +5,7 @@ import MessagesLink from '@/components/MessagesLink';
 import RefreshButton from '@/components/RefreshButton';
 import AuthButton from './AuthButton';
 import ThemeToggle from '@/components/ThemeToggle';
+import GlobalSearch from '@/components/GlobalSearch';
 
 export default function SiteNav() {
   // In gated/single-tournament mode, hide site-wide nav links so visitors
@@ -29,6 +30,7 @@ export default function SiteNav() {
               <Link href="/contact" className="text-white/70 hover:text-white transition-colors">Contact</Link>
             </div>
           )}
+          <GlobalSearch />
           <PushManager />
           <MessagesLink />
           <RefreshButton className="text-white/70 hover:text-white hover:bg-white/10" />
