@@ -646,10 +646,10 @@ function ScheduleMatchCard({ m, courts, ...rest }: ScheduleMatchCardProps) {
             Start
           </button>
         )}
-        {m.status === 'in_progress' && (
+        {m.status !== 'cancelled' && m.player1_id && m.player2_id && (
           <button onClick={() => rest.onSetScoringMatch(rest.scoringMatch === m.id ? null : m.id)}
             className="text-xs bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 px-2 py-1 rounded hover:opacity-80">
-            Score
+            {rest.scoringMatch === m.id ? 'Hide' : m.status === 'completed' ? 'Edit' : 'Score'}
           </button>
         )}
         {(m.status === 'scheduled' || m.status === 'on_deck' || m.status === 'in_progress') && (
@@ -670,18 +670,33 @@ function ScheduleMatchCard({ m, courts, ...rest }: ScheduleMatchCardProps) {
 
       {/* Score input */}
       {rest.scoringMatch === m.id && (
-        <div className="mt-2 flex items-center gap-2">
-          <input type="number" min={0} placeholder="P1" value={rest.scoreInput.p1}
-            onChange={(e) => rest.onSetScoreInput({ ...rest.scoreInput, p1: e.target.value })}
-            className="w-14 border border-[var(--border)] rounded px-2 py-1 text-xs text-center bg-[var(--surface)] text-[var(--text-primary)]" />
-          <span className="text-[var(--text-muted)] text-xs">—</span>
-          <input type="number" min={0} placeholder="P2" value={rest.scoreInput.p2}
-            onChange={(e) => rest.onSetScoreInput({ ...rest.scoreInput, p2: e.target.value })}
-            className="w-14 border border-[var(--border)] rounded px-2 py-1 text-xs text-center bg-[var(--surface)] text-[var(--text-primary)]" />
-          <button onClick={() => rest.onAddGame(m.id)}
-            className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-2 py-1 rounded text-xs font-medium hover:opacity-90">
-            + Game
-          </button>
+        <div className="mt-2 space-y-1.5">
+          <div className="flex items-center gap-2">
+            <input type="number" min={0} placeholder="P1" value={rest.scoreInput.p1}
+              onChange={(e) => rest.onSetScoreInput({ ...rest.scoreInput, p1: e.target.value })}
+              className="w-14 border border-[var(--border)] rounded px-2 py-1 text-xs text-center bg-[var(--surface)] text-[var(--text-primary)]" />
+            <span className="text-[var(--text-muted)] text-xs">—</span>
+            <input type="number" min={0} placeholder="P2" value={rest.scoreInput.p2}
+              onChange={(e) => rest.onSetScoreInput({ ...rest.scoreInput, p2: e.target.value })}
+              className="w-14 border border-[var(--border)] rounded px-2 py-1 text-xs text-center bg-[var(--surface)] text-[var(--text-primary)]" />
+            <button onClick={() => rest.onAddGame(m.id)}
+              className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-2 py-1 rounded text-xs font-medium hover:opacity-90">
+              + Game
+            </button>
+          </div>
+          {m.scores && m.scores.length > 0 && m.status !== 'completed' && (
+            <button
+              onClick={() => {
+                let p1g = 0, p2g = 0;
+                m.scores!.forEach((g) => { if (g.p1 > g.p2) p1g++; else p2g++; });
+                rest.onUpdate(m.id, { status: 'completed', winner_id: p1g > p2g ? m.player1_id : m.player2_id });
+                rest.onSetScoringMatch(null);
+              }}
+              className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:opacity-90 font-medium"
+            >
+              ✓ Complete
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -764,22 +779,22 @@ function MatchCard({ m, courts, ...rest }: MatchCardProps) {
           </button>
         )}
         {m.status === 'in_progress' && (
-          <>
-            <button onClick={() => rest.onSetScoringMatch(rest.scoringMatch === m.id ? null : m.id)}
-              className="text-xs bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 px-3 py-1.5 rounded-lg hover:opacity-80">
-              {rest.scoringMatch === m.id ? 'Hide Scoring' : 'Add Score'}
-            </button>
-            <button
-              onClick={() => {
-                const winnerId = m.scores?.length
-                  ? (() => { let p1g = 0, p2g = 0; m.scores.forEach((g) => { if (g.p1 > g.p2) p1g++; else p2g++; }); return p1g > p2g ? m.player1_id : m.player2_id; })()
-                  : null;
-                rest.onUpdate(m.id, { status: 'completed', winner_id: winnerId });
-              }}
-              className="text-xs bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 px-3 py-1.5 rounded-lg hover:opacity-80">
-              Complete
-            </button>
-          </>
+          <button
+            onClick={() => {
+              const winnerId = m.scores?.length
+                ? (() => { let p1g = 0, p2g = 0; m.scores.forEach((g) => { if (g.p1 > g.p2) p1g++; else p2g++; }); return p1g > p2g ? m.player1_id : m.player2_id; })()
+                : null;
+              rest.onUpdate(m.id, { status: 'completed', winner_id: winnerId });
+            }}
+            className="text-xs bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 px-3 py-1.5 rounded-lg hover:opacity-80">
+            Complete
+          </button>
+        )}
+        {m.status !== 'cancelled' && m.player1_id && m.player2_id && (
+          <button onClick={() => rest.onSetScoringMatch(rest.scoringMatch === m.id ? null : m.id)}
+            className="text-xs bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 px-3 py-1.5 rounded-lg hover:opacity-80">
+            {rest.scoringMatch === m.id ? 'Hide' : m.status === 'completed' ? 'Edit Result' : 'Enter Result'}
+          </button>
         )}
         {(m.status === 'scheduled' || m.status === 'on_deck' || m.status === 'in_progress') && (
           <button
@@ -800,6 +815,9 @@ function MatchCard({ m, courts, ...rest }: MatchCardProps) {
       {/* Scoring panel */}
       {rest.scoringMatch === m.id && (
         <div className="mt-3 pt-3 border-t border-[var(--border)]">
+          <p className="text-xs font-medium text-[var(--text-secondary)] mb-2">
+            {m.player1?.name?.split(' ')[0] || 'P1'} vs {m.player2?.name?.split(' ')[0] || 'P2'} — add one game at a time
+          </p>
           <div className="flex items-center gap-2">
             <input type="number" min={0} placeholder={m.player1?.name?.split(' ')[0] || 'P1'} value={rest.scoreInput.p1}
               onChange={(e) => rest.onSetScoreInput({ ...rest.scoreInput, p1: e.target.value })}
@@ -810,11 +828,27 @@ function MatchCard({ m, courts, ...rest }: MatchCardProps) {
               className="w-20 border border-[var(--border)] rounded px-2 py-1.5 text-sm text-center bg-[var(--surface)] text-[var(--text-primary)]" />
             <button onClick={() => rest.onAddGame(m.id)}
               className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-3 py-1.5 rounded text-xs font-medium hover:opacity-90">
-              Add Game
+              + Game
             </button>
           </div>
           {m.scores && m.scores.length > 0 && (
-            <p className="text-xs text-[var(--text-secondary)] mt-2">Games: {formatScore(m.scores)}</p>
+            <div className="flex items-center gap-3 mt-2">
+              <span className="text-xs text-[var(--text-secondary)]">Games: {formatScore(m.scores)}</span>
+              {m.status !== 'completed' && (
+                <button
+                  onClick={() => {
+                    let p1g = 0, p2g = 0;
+                    m.scores!.forEach((g) => { if (g.p1 > g.p2) p1g++; else p2g++; });
+                    const winnerId = p1g > p2g ? m.player1_id : m.player2_id;
+                    rest.onUpdate(m.id, { status: 'completed', winner_id: winnerId });
+                    rest.onSetScoringMatch(null);
+                  }}
+                  className="text-xs bg-green-600 text-white px-3 py-1 rounded hover:opacity-90 font-medium"
+                >
+                  ✓ Mark Complete
+                </button>
+              )}
+            </div>
           )}
         </div>
       )}
