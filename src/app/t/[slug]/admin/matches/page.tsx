@@ -136,6 +136,20 @@ export default function MatchManagement({
     setScoreInput({ p1: '', p2: '' });
   };
 
+  const handleDeleteGame = async (matchId: string, gameIndex: number) => {
+    const match = matches.find((m) => m.id === matchId);
+    if (!match || !match.scores) return;
+    const newScores = match.scores.filter((_, i) => i !== gameIndex);
+    await handleUpdate(matchId, { scores: newScores });
+  };
+
+  const handleEditGame = async (matchId: string, gameIndex: number, p1: number, p2: number) => {
+    const match = matches.find((m) => m.id === matchId);
+    if (!match || !match.scores) return;
+    const newScores = match.scores.map((g, i) => (i === gameIndex ? { p1, p2 } : g));
+    await handleUpdate(matchId, { scores: newScores });
+  };
+
   const handleDelete = async (matchId: string) => {
     if (!tournament || !confirm('Delete this match?')) return;
     await fetch(`/api/tournaments/${tournament.id}/matches`, {
@@ -380,6 +394,8 @@ export default function MatchManagement({
                     onUpdate={handleUpdate}
                     onDelete={handleDelete}
                     onAddGame={handleAddGame}
+                    onDeleteGame={handleDeleteGame}
+                    onEditGame={handleEditGame}
                     onNotify={handleNotify}
                     notifyingId={notifyingId}
                     onSetScoringMatch={setScoringMatch}
@@ -411,6 +427,8 @@ export default function MatchManagement({
             onUpdate={handleUpdate}
             onDelete={handleDelete}
             onAddGame={handleAddGame}
+            onDeleteGame={handleDeleteGame}
+            onEditGame={handleEditGame}
             onNotify={handleNotify}
             notifyingId={notifyingId}
             onSetScoringMatch={setScoringMatch}
@@ -442,6 +460,8 @@ interface ScheduleViewProps {
   onUpdate: (id: string, updates: Record<string, unknown>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onAddGame: (id: string) => Promise<void>;
+  onDeleteGame: (id: string, gameIndex: number) => Promise<void>;
+  onEditGame: (id: string, gameIndex: number, p1: number, p2: number) => Promise<void>;
   onNotify: (id: string) => Promise<void>;
   notifyingId: string | null;
   onSetScoringMatch: (id: string | null) => void;
@@ -534,6 +554,8 @@ interface ScheduleMatchCardProps {
   onUpdate: (id: string, updates: Record<string, unknown>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onAddGame: (id: string) => Promise<void>;
+  onDeleteGame: (id: string, gameIndex: number) => Promise<void>;
+  onEditGame: (id: string, gameIndex: number, p1: number, p2: number) => Promise<void>;
   onNotify: (id: string) => Promise<void>;
   notifyingId: string | null;
   onSetScoringMatch: (id: string | null) => void;
@@ -684,18 +706,33 @@ function ScheduleMatchCard({ m, courts, ...rest }: ScheduleMatchCardProps) {
               + Game
             </button>
           </div>
-          {m.scores && m.scores.length > 0 && m.status !== 'completed' && (
-            <button
-              onClick={() => {
-                let p1g = 0, p2g = 0;
-                m.scores!.forEach((g) => { if (g.p1 > g.p2) p1g++; else p2g++; });
-                rest.onUpdate(m.id, { status: 'completed', winner_id: p1g > p2g ? m.player1_id : m.player2_id });
-                rest.onSetScoringMatch(null);
-              }}
-              className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:opacity-90 font-medium"
-            >
-              ✓ Complete
-            </button>
+          {m.scores && m.scores.length > 0 && (
+            <div className="space-y-1">
+              {m.scores.map((g, i) => (
+                <div key={i} className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-[var(--text-muted)] w-10">G{i + 1}</span>
+                  <span className={`text-xs font-mono ${g.p1 > g.p2 ? 'font-bold' : ''}`}>{g.p1}</span>
+                  <span className="text-[var(--text-muted)] text-[10px]">—</span>
+                  <span className={`text-xs font-mono ${g.p2 > g.p1 ? 'font-bold' : ''}`}>{g.p2}</span>
+                  <button onClick={() => rest.onDeleteGame(m.id, i)} title="Remove" className="text-red-400 hover:text-red-600 ml-0.5">
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+              {m.status !== 'completed' && (
+                <button
+                  onClick={() => {
+                    let p1g = 0, p2g = 0;
+                    m.scores!.forEach((g) => { if (g.p1 > g.p2) p1g++; else p2g++; });
+                    rest.onUpdate(m.id, { status: 'completed', winner_id: p1g > p2g ? m.player1_id : m.player2_id });
+                    rest.onSetScoringMatch(null);
+                  }}
+                  className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:opacity-90 font-medium mt-1"
+                >
+                  ✓ Complete
+                </button>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -832,8 +869,23 @@ function MatchCard({ m, courts, ...rest }: MatchCardProps) {
             </button>
           </div>
           {m.scores && m.scores.length > 0 && (
-            <div className="flex items-center gap-3 mt-2">
-              <span className="text-xs text-[var(--text-secondary)]">Games: {formatScore(m.scores)}</span>
+            <div className="mt-3 space-y-1.5">
+              <p className="text-xs font-medium text-[var(--text-muted)]">Recorded games (click × to remove):</p>
+              {m.scores.map((g, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <span className="text-xs text-[var(--text-muted)] w-12">Game {i + 1}</span>
+                  <span className={`text-sm font-mono ${g.p1 > g.p2 ? 'font-bold text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>{g.p1}</span>
+                  <span className="text-[var(--text-muted)] text-xs">—</span>
+                  <span className={`text-sm font-mono ${g.p2 > g.p1 ? 'font-bold text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>{g.p2}</span>
+                  <button
+                    onClick={() => rest.onDeleteGame(m.id, i)}
+                    title="Remove this game"
+                    className="text-red-400 hover:text-red-600 ml-1"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
               {m.status !== 'completed' && (
                 <button
                   onClick={() => {
@@ -843,7 +895,7 @@ function MatchCard({ m, courts, ...rest }: MatchCardProps) {
                     rest.onUpdate(m.id, { status: 'completed', winner_id: winnerId });
                     rest.onSetScoringMatch(null);
                   }}
-                  className="text-xs bg-green-600 text-white px-3 py-1 rounded hover:opacity-90 font-medium"
+                  className="text-xs bg-green-600 text-white px-3 py-1 rounded hover:opacity-90 font-medium mt-1"
                 >
                   ✓ Mark Complete
                 </button>
