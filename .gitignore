@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local data exports (real player PII — never commit)
+ssra_players.csv
+
+# claude code (local only)
+.claude/settings.local.json
+.claude/worktrees/
