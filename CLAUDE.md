@@ -56,9 +56,7 @@ NEXT_PUBLIC_VAPID_PUBLIC_KEY
 VAPID_PRIVATE_KEY
 ```
 
-VAPID keys (already generated and set):
-- Public: `BOmOGJHaXQcsUPcQLFK60yaXXqeDf3B11ilJPzqGSNtODW69GsArKVoIGE4-ibqLtu4-_7JjyxvuLzNXObL1-bc`
-- Private: `xOqjO3aHTLIOXRgQR5B535IIxA5gzZK4b9US04qvIbc`
+VAPID keys are already generated and set in `.env.local` and Vercel. Never commit key values — this repo is public.
 
 Auth redirect URLs configured in Supabase:
 - `https://squash-tournament-app.vercel.app/**`
