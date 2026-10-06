@@ -18,7 +18,7 @@ const SKIP_DIVISION_IDS = new Set<string>([]);
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-/** "Luthra, Rehan " → { first: "Rehan", last: "Luthra", full: "Rehan Luthra" } */
+/** "Doe, Jane " → { first: "Jane", last: "Doe", full: "Jane Doe" } */
 function parseName(raw: string | null | undefined): { first: string; last: string; full: string } | null {
   if (!raw?.trim()) return null;
   const parts = raw.split(',').map(s => s.trim()).filter(Boolean);

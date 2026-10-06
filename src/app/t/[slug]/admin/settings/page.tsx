@@ -485,7 +485,7 @@ export default function TournamentSettings({
                 <input
                   value={form.contact_name}
                   onChange={(e) => set('contact_name', e.target.value)}
-                  placeholder="Peter Gregory"
+                  placeholder="Jane Smith"
                   className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-zinc-900"
                 />
               </div>
