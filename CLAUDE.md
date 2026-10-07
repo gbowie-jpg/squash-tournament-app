@@ -72,10 +72,15 @@ src/
     page.tsx                          # Homepage — tournament list + hero
     layout.tsx                        # Root layout — ThemeProvider, NavigationLoadingBar, manifest
     not-found.tsx                     # Custom 404
-    login/page.tsx                    # Sign in / Sign up / Password reset
+    login/page.tsx                    # Sign in / magic link / Password reset (no public sign-up)
+    join/[token]/page.tsx             # Invite-only account sign-up (token = site_settings.invite_token)
+    auth/confirm/page.tsx             # Email confirmation page — button only, never consumes the token on GET
+    auth/confirm/verify/route.ts      # POST: verifyOtp(token_hash) → 303 to /account/set-password (signup) or next
+    auth/callback/route.ts            # PKCE code exchange landing
     account/
       page.tsx                        # User profile — name, club, ranking, photo, change password
       reset-password/page.tsx         # Password reset landing (handles Supabase recovery token)
+      set-password/page.tsx           # New accounts choose their password (+ confirm name) after confirming email
     admin/
       page.tsx                        # Top-level admin dashboard
       tournaments/page.tsx            # Create/manage tournaments (dark theme)
@@ -88,7 +93,7 @@ src/
       courts/page.tsx                 # Live court board (real-time)
       players/page.tsx                # Player lookup / draw sheet
       announcements/page.tsx          # Public announcements feed
-      volunteer/page.tsx              # Public volunteer signup (creates auth account)
+      volunteer/page.tsx              # Public volunteer signup (records signup only — no account)
       player/[playerId]/page.tsx      # Player profile — matches + highlight video upload
       match/[matchId]/page.tsx        # Match detail — status, score, players, CTA to score
       match/[matchId]/score/page.tsx  # Full scoring app (4-step flow)
@@ -106,7 +111,8 @@ src/
   api/
     tournaments/route.ts              # GET all / POST create
     tournaments/[id]/route.ts         # GET/PATCH/DELETE tournament
-    tournaments/[id]/players/route.ts
+    tournaments/[id]/players/route.ts  # organizer-only (full rows incl. contact/payment)
+    tournaments/[id]/players/[playerId]/route.ts  # public player page data: public columns + profile + isOwn
     tournaments/[id]/matches/route.ts # includes winner progression + on_deck logic
     tournaments/[id]/courts/route.ts
     tournaments/[id]/announcements/route.ts
@@ -114,7 +120,8 @@ src/
     tournaments/[id]/videos/route.ts  # GET/POST/PATCH/DELETE player videos
     tournaments/[id]/email/route.ts
     tournaments/[id]/referees/assign/route.ts
-    site-settings/route.ts
+    site-settings/route.ts            # GET public allowlisted keys / PATCH (admin) — key lists in src/lib/site-settings.ts
+    join/route.ts                     # Invite-only sign-up (GET token check, POST create + confirmation email)
     auth/me/route.ts
     account/profile/route.ts
     account/photo/route.ts
@@ -215,16 +222,16 @@ Full schema in `DATA-MODEL.md`. Core tables:
 |-------|---------|
 | `tournaments` | Top-level container |
 | `courts` | Physical courts per tournament |
-| `players` | Participants (no auth required) |
+| `players` | Participants (no auth required). anon/authenticated may SELECT only `PUBLIC_PLAYER_COLUMNS` (`src/lib/supabase/types.ts`); email/phone/payment fields are service-role only — never `select('*')` / `players(*)` from the browser or RLS-bound clients |
 | `matches` | Core — status, scores, court, referee |
 | `announcements` | Organizer messages |
-| `volunteers` | Signup data — role: referee/volunteer/helper |
+| `volunteers` | Signup data — role: referee/volunteer/helper. Service-role only (no anon/authenticated access) |
 | `player_videos` | Player highlight clips — pending/approved/rejected |
 | `email_recipients` | Per-tournament marketing list |
 | `email_campaigns` | Sent campaigns |
 | `email_sends` | Per-recipient send records |
 | `push_subscriptions` | VAPID push endpoint data |
-| `site_settings` | Key/value — homepage content |
+| `site_settings` | Key/value — homepage/scholarship/email template content, Stripe keys, `invite_token`. Server-only (no RLS policies); new keys must be added to `src/lib/site-settings.ts` |
 | `profiles` | Extended user data — name, club, ranking, photo, role |
 | `organizers` | Per-tournament admin/scorer access |
 
@@ -238,8 +245,11 @@ Full schema in `DATA-MODEL.md`. Core tables:
 - `superadmin` — can also manage users
 
 **Auth flows:**
-- Email/password sign in
-- Sign up → confirm email → sign in
+- Email/password sign in (or magic link — `shouldCreateUser: false`)
+- **Sign-up is invite-only.** Public sign-up is disabled in Supabase Auth and `/login` has no sign-up mode. The only way to create an account is the shared invite link `/join/[token]` (token in `site_settings.invite_token`; admins copy/regenerate it in `/admin/users`). `/join` takes **first name, last name, email only — no password**. `POST /api/join` validates the token, creates an **unconfirmed** user via `auth.admin.generateLink({ type: 'signup' })` with a random throwaway password nobody knows, and emails a confirmation link (via Resend) to `/auth/confirm?token_hash=…&type=signup`. That page **does not consume the token on GET** (email link scanners like Defender Safe Links prefetch links); it shows a "Confirm my account" button that form-POSTs to `/auth/confirm/verify`, which calls `verifyOtp` (cookie-aware server client, same-origin check), **replaces the account's password with a random one** (user-facing `PUT /auth/v1/user` with the new session — not the admin API, which would log that session out), and 303s to `/account/set-password`, where the person picks their password (`supabase.auth.updateUser`) and confirms their name. The confirm button ignores double submits, and a failed verify for an account confirmed in the last 10 minutes in the same browser continues to set-password. Existing **unconfirmed** emails: `/api/join` first resets the pending account's password to a random value (admin `updateUserById`, before `generateLink`, because an admin password change clears the confirmation token), then calls `generateLink` **without** `options.data` — GoTrue merges `options.data` into an existing unconfirmed user's metadata, so skipping it keeps the stored name. The call still issues a new confirmation token, which invalidates any earlier confirmation link (expected for a resend; capped at 3 per address per hour, plus 30 submits per IP per hour). No name is used in the email for an existing account. Existing **confirmed** emails get a "you already have an account" email. Same response in every case (no account enumeration). An invite-token lookup failure returns 503 (page shows a retry state), not "invalid link".
+- **Invite token rotation after deploys that change token exposure:** (1) push and wait for the Vercel deploy to be live; (2) check `curl -s https://squash-tournament-app.vercel.app/api/site-settings | grep -c invite_token` prints 0; (3) turn OFF "Allow new users to sign up" in Supabase Auth; (4) an admin presses Regenerate in `/admin/users` (or run `update site_settings set value = gen_random_uuid()::text, updated_at = now() where key = 'invite_token';`) and shares only the new link; (5) review `auth.users` created since the token was exposed and delete/demote unknown accounts, and delete (or reset to a random password) every pre-existing unconfirmed user. Never rotate before step 1 — the old `GET /api/site-settings` would leak the new token.
+- Auth landing routes (`/auth/callback`, `/auth/confirm/verify`) only redirect to `/login?error=<code>` (`invalid_link`, `link_expired`, `confirm_failed`); `/login` maps known codes to fixed copy in `src/lib/auth-errors.ts` and ignores anything else.
+- Volunteer/referee signup (`/t/[slug]/volunteer`) only records the signup — it never creates an account. Referees who need to score get the invite link.
 - "Forgot password?" → `resetPasswordForEmail` → email → `/account/reset-password` (sets new password via `supabase.auth.updateUser`)
 - Account profile page has "Change Password" section for users signed in via any method
 
@@ -283,9 +293,13 @@ Migration: `supabase/player-videos-migration.sql`
 
 ```
 /                              Homepage
-/login                         Sign in / up / reset password
+/login                         Sign in / magic link / reset password
+/join/[token]                  Invite-only account sign-up
+/auth/confirm                  Email confirmation page (button → POST /auth/confirm/verify → session)
+/auth/callback                 PKCE code exchange landing
 /account                       User profile (name, club, ranking, photo, password)
 /account/reset-password        Password reset landing (from email link)
+/account/set-password          New account: choose password after confirming email
 
 /t/[slug]                      Tournament landing page
 /t/[slug]/courts               Live court board
@@ -338,7 +352,8 @@ Migration: `supabase/player-videos-migration.sql`
 - [x] Match detail pages
 - [x] Full scoring app (4-step: confirm → serve → warmup → scoring)
 - [x] Auto game/match detection (PAR 11, win by 2, best of 5)
-- [x] Volunteer/referee public signup
+- [x] Volunteer/referee public signup (no account created)
+- [x] Invite-only account sign-up (`/join/[token]` name + email → scanner-safe confirm page `/auth/confirm` → `/account/set-password`)
 - [x] Admin: match management (list + schedule views, inline time edit, quick court move)
 - [x] Admin: court management + auto-assign
 - [x] Admin: draw generation + bracket scheduling
@@ -409,7 +424,7 @@ The Chrome extension blocks JS return values containing sensitive data but does 
 
 ## Pending / Wishlist
 
-- [ ] Resend domain verification (seattlesquash.com) so emails reach any recipient
+- [x] Resend domain verification (seattlesquash.com) so emails reach any recipient
 - [ ] ClubLocker CSV player import (with optional live rating lookup at import time)
 - [ ] CSV export for players/results
 - [ ] Bracket visualization

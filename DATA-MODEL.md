@@ -158,7 +158,7 @@ create table announcements (
 
 ## volunteers
 
-Public signups for referee, volunteer, or helper roles. No auth required to sign up.
+Public signups for referee, volunteer, or helper roles. No auth required to sign up, and signing up does not create an account (accounts are invite-only via `/join/[token]`).
 
 ```sql
 create table volunteers (
@@ -326,7 +326,7 @@ create table site_settings (
 
 ## profiles
 
-Extended user data for authenticated accounts. Auto-created on first sign-in.
+Extended user data for authenticated accounts. Auto-created by the `on_auth_user_created` trigger when an account is created.
 
 ```sql
 create table profiles (

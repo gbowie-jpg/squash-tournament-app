@@ -32,7 +32,7 @@ export default function PlayerManagement({
     if (!tournament) return;
     fetch(`/api/tournaments/${tournament.id}/players`)
       .then((r) => r.json())
-      .then((data) => { setPlayers(data); setLoading(false); });
+      .then((data) => { setPlayers(Array.isArray(data) ? data : []); setLoading(false); });
   }, [tournament]);
 
   const handleSubmit = async (e: React.FormEvent) => {

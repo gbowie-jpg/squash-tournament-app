@@ -47,7 +47,8 @@ export default function VolunteersAdmin({
       fetch(`/api/tournaments/${tournament.id}/volunteers`).then((r) => r.json()),
       fetch(`/api/tournaments/${tournament.id}/matches`).then((r) => r.json()),
     ]).then(([v, m]) => {
-      setVolunteers(v);
+      // Non-organizers get a 401/403 error object, not an array
+      setVolunteers(Array.isArray(v) ? v : []);
       setMatches(m);
       setLoading(false);
     });

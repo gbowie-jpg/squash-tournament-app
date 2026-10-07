@@ -1,39 +1,55 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireRole } from '@/lib/supabase/require-role';
+import { PUBLIC_SETTING_KEYS, validateSettingsPatch } from '@/lib/site-settings';
 
-// Keys that must never be exposed via the public GET endpoint
-const SENSITIVE_KEY_PATTERNS = ['secret', 'private', 'webhook'];
-const isSensitive = (key: string) =>
-  SENSITIVE_KEY_PATTERNS.some((p) => key.toLowerCase().includes(p));
-
-// GET all non-sensitive site settings as a flat key→value object (public)
+// GET public site settings as a flat key→value object (public).
+// Only allowlisted keys are ever returned — see src/lib/site-settings.ts.
 export async function GET() {
   const supabase = createAdminClient();
-  const { data, error } = await supabase.from('site_settings').select('key, value');
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const { data, error } = await supabase
+    .from('site_settings')
+    .select('key, value')
+    .in('key', [...PUBLIC_SETTING_KEYS]);
+
+  if (error) {
+    console.error('[site-settings] GET failed:', error.message);
+    return NextResponse.json(
+      { error: 'Failed to load settings' },
+      { status: 500, headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
 
   const settings: Record<string, string | null> = {};
-  for (const row of data || []) {
-    if (!isSensitive(row.key)) settings[row.key] = row.value;
+  for (const row of (data ?? []) as { key: string; value: string | null }[]) {
+    settings[row.key] = row.value;
   }
-  return NextResponse.json(settings);
+  return NextResponse.json(settings, { headers: { 'Cache-Control': 'no-store' } });
 }
 
-// PATCH — upsert one or many keys (admin only)
+// PATCH — upsert one or many allowlisted keys (admin only)
 export async function PATCH(req: NextRequest) {
   const auth = await requireRole('admin');
   if (auth.error) return auth.error;
 
-  const supabase = createAdminClient();
-  const body: Record<string, string | null> = await req.json();
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
 
-  const rows = Object.entries(body).map(([key, value]) => ({
+  const result = validateSettingsPatch(body);
+  if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
+
+  const now = new Date().toISOString();
+  const rows = Object.entries(result.values).map(([key, value]) => ({
     key,
-    value: value === '' ? null : value,
-    updated_at: new Date().toISOString(),
+    value,
+    updated_at: now,
   }));
 
+  const supabase = createAdminClient();
   const { error } = await supabase
     .from('site_settings')
     .upsert(rows, { onConflict: 'key' });

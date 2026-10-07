@@ -4,8 +4,10 @@ import { getProgression } from '@/lib/draws/progression';
 import { requireTournamentOrganizer } from '@/lib/supabase/require-role';
 import { sendPushToAll } from '@/lib/push';
 import { sendSmsToAll } from '@/lib/sms';
+import { PUBLIC_PLAYER_COLUMNS } from '@/lib/supabase/types';
 
-const MATCH_SELECT = '*, player1:players!player1_id(*), player2:players!player2_id(*), court:courts!court_id(*), referee:volunteers!referee_id(id, name)';
+// Returned to callers (GET is public) — players limited to public columns.
+const MATCH_SELECT = `*, player1:players!player1_id(${PUBLIC_PLAYER_COLUMNS}), player2:players!player2_id(${PUBLIC_PLAYER_COLUMNS}), court:courts!court_id(*), referee:volunteers!referee_id(id, name)`;
 
 export async function GET(
   _req: NextRequest,

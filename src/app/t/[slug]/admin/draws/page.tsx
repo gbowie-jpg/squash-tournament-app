@@ -247,8 +247,9 @@ export default function DrawsPage({
     fetch(`/api/tournaments/${tournament.id}/players`)
       .then((r) => r.json())
       .then((data) => {
+        // Players GET is organizer-only; a 401/403 returns an error object
         setPlayers(
-          data
+          (Array.isArray(data) ? data : [])
             .filter((p: any) => (p.draw || 'Unassigned') === selectedDraw)
             .map((p: any) => ({ id: p.id, name: p.name, seed: p.seed, draw: p.draw })),
         );

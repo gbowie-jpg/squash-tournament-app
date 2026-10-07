@@ -66,7 +66,8 @@ export default function MatchManagement({
       fetch(`/api/tournaments/${tournamentId}/courts`).then((r) => r.json()),
     ]);
     setMatches(m);
-    setPlayers(p);
+    // Players GET is organizer-only; a 401/403 returns an error object
+    setPlayers(Array.isArray(p) ? p : []);
     setCourts(c);
     setLoading(false);
   };

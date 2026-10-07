@@ -3,6 +3,7 @@ import SiteNav from '@/components/layout/SiteNav';
 import SiteFooter from '@/components/layout/SiteFooter';
 import ScholarshipForm from './ScholarshipForm';
 import { heroBackground, getTextColors } from '@/lib/gradients';
+import { SCHOLARSHIP_SETTING_KEYS } from '@/lib/site-settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,14 +19,7 @@ export default async function ScholarshipPage() {
   const { data: rows } = await supabase
     .from('site_settings')
     .select('key, value')
-    .in('key', [
-      'scholarship_open',
-      'scholarship_hero_gradient',
-      'scholarship_hero_text_color',
-      'scholarship_hero_image_url',
-      'scholarship_hero_overlay',
-      'scholarship_hero_subtitle',
-    ]);
+    .in('key', [...SCHOLARSHIP_SETTING_KEYS]);
 
   const s: Record<string, string | null> = {};
   for (const row of rows ?? []) s[row.key] = row.value;

@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireTournamentOrganizer } from '@/lib/supabase/require-role';
 
+/** GET: Full player rows (incl. contact + payment fields) — organizer only. */
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const auth = await requireTournamentOrganizer(id);
+  if (auth.error) return auth.error;
+
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('players')

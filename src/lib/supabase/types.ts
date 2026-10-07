@@ -280,10 +280,50 @@ export type Match = Database['public']['Tables']['matches']['Row'];
 export type Announcement = Database['public']['Tables']['announcements']['Row'];
 export type Volunteer = Database['public']['Tables']['volunteers']['Row'];
 
-// Match with joined player/court data
+/**
+ * Player columns that anyone may read. Everything else on `players` (email,
+ * phone, payment_status, stripe_session_id, gender, club_locker_id, …) is
+ * private: only server routes using the service role may read it, and only
+ * organizer-gated routes may return it.
+ *
+ * The anon/authenticated roles are granted SELECT on exactly these columns
+ * (supabase/players-pii-lockdown-migration.sql), so any browser or RLS-bound
+ * query on `players` must name only these — `select('*')` or `players(*)`
+ * fails once that migration has run. Keep this list, PublicPlayer and the
+ * migration's grant in sync.
+ *
+ * city/rating/ranking are not here: the live DB doesn't have them yet
+ * (supabase/add-player-extended-fields.sql hasn't been run). If that migration
+ * is run and they should be public, add them here, to PublicPlayer, and to the
+ * column grant.
+ *
+ * Usable directly in selects and embeds: `players!player1_id(${PUBLIC_PLAYER_COLUMNS})`.
+ */
+export const PUBLIC_PLAYER_COLUMNS =
+  'id, tournament_id, name, first_name, last_name, seed, club, draw, created_at';
+
+export type PublicPlayer = Pick<
+  Player,
+  | 'id'
+  | 'tournament_id'
+  | 'name'
+  | 'first_name'
+  | 'last_name'
+  | 'seed'
+  | 'club'
+  | 'draw'
+  | 'created_at'
+>;
+
+/** Profile fields shown on a public player page (signed-in viewers only). */
+export type PublicProfile = Pick<Profile, 'full_name' | 'photo_url' | 'bio' | 'club' | 'squash_ranking'>;
+
+export const PUBLIC_PROFILE_COLUMNS = 'full_name, photo_url, bio, club, squash_ranking';
+
+// Match with joined player/court data (players limited to public columns)
 export type MatchWithDetails = Match & {
-  player1: Player | null;
-  player2: Player | null;
+  player1: PublicPlayer | null;
+  player2: PublicPlayer | null;
   court: Court | null;
   referee: { id: string; name: string } | null;
 };

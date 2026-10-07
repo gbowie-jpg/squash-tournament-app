@@ -3,12 +3,15 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { requireTournamentOrganizer } from '@/lib/supabase/require-role';
 import { rateLimit, limits } from '@/lib/rateLimit';
 
-/** GET: List all volunteers for a tournament (public). */
+/** GET: List all volunteers (incl. contact details) for a tournament — organizer only. */
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const auth = await requireTournamentOrganizer(id);
+  if (auth.error) return auth.error;
+
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('volunteers')
@@ -21,68 +24,69 @@ export async function GET(
   return NextResponse.json(data);
 }
 
-/** POST: Sign up as a volunteer + create auth account. */
+/**
+ * POST: Public volunteer / referee signup.
+ * Records the signup only — it does NOT create an account. Accounts are
+ * invite-only (/join/[token]); referees who need to score get the invite link.
+ */
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
 
-  const limited = rateLimit(req, limits.publicSignup, id);
+  // Fixed bucket (IP only) so varying the tournament id in the path can't reset the limit
+  const limited = rateLimit(req, { ...limits.publicSignup, bucket: 'volunteer-signup' });
   if (limited) return limited;
 
-  const supabase = createAdminClient();
-  const body = await req.json();
+  let body: Record<string, unknown>;
+  try {
+    const parsed = await req.json();
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error();
+    body = parsed as Record<string, unknown>;
+  } catch {
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+  }
 
-  const { name, email, phone, role, notes, password } = body;
+  const { name, email, phone, role, notes } = body;
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     return NextResponse.json({ error: 'Name is required' }, { status: 400 });
   }
   if (!email || typeof email !== 'string' || email.trim().length === 0) {
     return NextResponse.json({ error: 'Email is required' }, { status: 400 });
   }
-  if (!password || typeof password !== 'string' || password.length < 6) {
-    return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 });
+  if (!email.includes('@')) {
+    return NextResponse.json({ error: 'A valid email address is required' }, { status: 400 });
+  }
+
+  const supabase = createAdminClient();
+
+  // Tournament must exist and not be over
+  const { data: tournament } = await supabase
+    .from('tournaments')
+    .select('id, status')
+    .eq('id', id)
+    .maybeSingle();
+  if (!tournament) {
+    return NextResponse.json({ error: 'Tournament not found' }, { status: 404 });
+  }
+  if (tournament.status === 'completed') {
+    return NextResponse.json({ error: 'This tournament has finished — volunteer signup is closed' }, { status: 400 });
   }
 
   const validRoles = ['referee', 'volunteer', 'helper'];
-  const safeRole = validRoles.includes(role) ? role : 'volunteer';
+  const safeRole = typeof role === 'string' && validRoles.includes(role) ? role : 'volunteer';
   const normalizedEmail = email.trim().toLowerCase();
 
-  // Attempt to create an auth account. If the email already exists, Supabase
-  // returns an error — we treat that silently so we never reveal whether an
-  // email is registered (fixes email enumeration + removes the O(n) listUsers call).
-  if (password && typeof password === 'string' && password.length >= 6) {
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email: normalizedEmail,
-      password,
-      email_confirm: true,
-      user_metadata: { full_name: name.trim() },
-    });
-
-    // Only create profile for genuinely new accounts; ignore "already exists" silently
-    if (!authError && authData?.user) {
-      await supabase
-        .from('profiles')
-        .upsert({
-          id: authData.user.id,
-          email: normalizedEmail,
-          full_name: name.trim(),
-          role: 'user',
-        }, { onConflict: 'id' });
-    }
-  }
-
-  // Create volunteer record (no auth dependency — signup works with or without an account)
   const { data, error } = await supabase
     .from('volunteers')
     .insert({
       tournament_id: id,
       name: name.trim(),
       email: normalizedEmail,
-      phone: phone?.trim() || null,
+      phone: typeof phone === 'string' ? phone.trim() || null : null,
       role: safeRole,
-      notes: notes?.trim() || null,
+      notes: typeof notes === 'string' ? notes.trim() || null : null,
     })
     .select()
     .single();
@@ -95,7 +99,6 @@ export async function POST(
     { onConflict: 'tournament_id,email', ignoreDuplicates: true },
   );
 
-  // Never reveal whether an account was created or already existed
   return NextResponse.json({ ok: true, id: data.id }, { status: 201 });
 }
 

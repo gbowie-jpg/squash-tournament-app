@@ -3,17 +3,22 @@
 import { Suspense, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { isSafeRelativePath } from '@/lib/safe-redirect';
+import { authErrorMessage } from '@/lib/auth-errors';
 
 function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [mode, setMode] = useState<'signin' | 'signup' | 'reset' | 'magic'>('signin');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [mode, setMode] = useState<'signin' | 'reset' | 'magic'>('signin');
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectParam = searchParams.get('redirect');
+  // /login?error=<code> from /auth/callback or /auth/confirm/verify — only known
+  // codes map to (fixed) messages; raw query text is never displayed.
+  const [error, setError] = useState<string | null>(() => authErrorMessage(searchParams.get('error')));
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const rawRedirect = searchParams.get('redirect');
+  const redirectParam = isSafeRelativePath(rawRedirect) ? rawRedirect : null;
   const supabase = createClient();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -44,15 +49,6 @@ function LoginForm() {
         }
         router.push(dest);
         router.refresh();
-      } else if (mode === 'signup') {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-        });
-        if (error) { setError(error.message); return; }
-        setMessage('Check your email for a confirmation link — clicking it will sign you in automatically.');
-        setMode('signin');
       } else if (mode === 'reset') {
         const origin = window.location.origin;
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -85,7 +81,7 @@ function LoginForm() {
 
         <form onSubmit={handleSubmit} className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-6 space-y-4">
           <h2 className="font-semibold text-lg text-[var(--text-primary)]">
-            {mode === 'signin' ? 'Sign In' : mode === 'signup' ? 'Create Account' : mode === 'reset' ? 'Reset Password' : 'Magic Link'}
+            {mode === 'signin' ? 'Sign In' : mode === 'reset' ? 'Reset Password' : 'Magic Link'}
           </h2>
 
           {error && (
@@ -155,27 +151,22 @@ function LoginForm() {
               ? 'Sending…'
               : mode === 'signin'
               ? 'Sign In'
-              : mode === 'signup'
-              ? 'Create Account'
               : mode === 'reset'
               ? 'Send Reset Email'
               : 'Send Magic Link'}
           </button>
 
-          <p className="text-center text-sm text-[var(--text-secondary)]">
-            {mode === 'signin' ? (
-              <>
-                Need an account?{' '}
-                <button type="button" onClick={() => { setMode('signup'); setError(null); }} className="text-[var(--text-primary)] underline">
-                  Sign up
-                </button>
-              </>
-            ) : (
+          {mode === 'signin' ? (
+            <p className="text-center text-xs text-[var(--text-muted)]">
+              Accounts are by invitation — ask a tournament admin for an invite link.
+            </p>
+          ) : (
+            <p className="text-center text-sm text-[var(--text-secondary)]">
               <button type="button" onClick={() => { setMode('signin'); setError(null); setMessage(null); }} className="text-[var(--text-primary)] underline">
                 Back to sign in
               </button>
-            )}
-          </p>
+            </p>
+          )}
 
           {mode === 'magic' && (
             <p className="text-center text-xs text-[var(--text-muted)]">

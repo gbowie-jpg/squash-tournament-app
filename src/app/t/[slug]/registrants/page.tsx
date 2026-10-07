@@ -1,10 +1,10 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import SiteNav from '@/components/layout/SiteNav';
 import SiteFooter from '@/components/layout/SiteFooter';
 import TournamentBottomNav from '@/components/layout/TournamentBottomNav';
-import type { Tournament, Player } from '@/lib/supabase/types';
+import type { Tournament, PublicPlayer } from '@/lib/supabase/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +14,9 @@ export default async function RegistrantsPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const supabase = await createServerSupabaseClient();
+  // Server component: the service role is needed to filter on payment_status,
+  // which anon can't read. Only public columns are selected and rendered.
+  const supabase = createAdminClient();
 
   const { data } = await supabase
     .from('tournaments')
@@ -28,13 +30,13 @@ export default async function RegistrantsPage({
   // Fetch players — name, club, draw, seed only (no contact info)
   const { data: players } = await supabase
     .from('players')
-    .select('id, name, club, draw, seed, payment_status')
+    .select('id, name, club, draw, seed')
     .eq('tournament_id', tournament.id)
     .neq('payment_status', 'pending') // exclude incomplete payments
     .order('seed', { ascending: true, nullsFirst: false })
     .order('name', { ascending: true });
 
-  type PlayerRow = Pick<Player, 'id' | 'name' | 'club' | 'draw' | 'seed' | 'payment_status'>;
+  type PlayerRow = Pick<PublicPlayer, 'id' | 'name' | 'club' | 'draw' | 'seed'>;
   const allPlayers = (players || []) as PlayerRow[];
 
   // Group by draw / division

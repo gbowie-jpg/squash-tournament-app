@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { PUBLIC_PLAYER_COLUMNS } from '@/lib/supabase/types';
 import type { MatchWithDetails, Court, Announcement } from '@/lib/supabase/types';
 
 export function useRealtimeMatches(tournamentId: string) {
@@ -13,7 +14,7 @@ export function useRealtimeMatches(tournamentId: string) {
     const supabase = createClient();
     const { data } = await supabase
       .from('matches')
-      .select('*, player1:players!player1_id(*), player2:players!player2_id(*), court:courts!court_id(*)')
+      .select(`*, player1:players!player1_id(${PUBLIC_PLAYER_COLUMNS}), player2:players!player2_id(${PUBLIC_PLAYER_COLUMNS}), court:courts!court_id(*)`)
       .eq('tournament_id', tournamentId)
       .order('sort_order');
     setMatches((data as MatchWithDetails[]) ?? []);

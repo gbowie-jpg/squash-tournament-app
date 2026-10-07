@@ -1,3 +1,5 @@
+import { EMAIL_TEMPLATE_SETTING_KEYS } from './site-settings';
+
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'Seattle Squash <onboarding@resend.dev>';
 
@@ -206,7 +208,7 @@ export async function getEmailTemplateSettings(
   const { data } = await supabase
     .from('site_settings')
     .select('key, value')
-    .in('key', ['email_heading', 'email_subheading', 'email_header_bg', 'email_header_image_url', 'email_footer_text']);
+    .in('key', [...EMAIL_TEMPLATE_SETTING_KEYS]);
 
   const s: Record<string, string> = {};
   for (const row of data || []) if (row.value) s[row.key] = row.value;
@@ -266,6 +268,66 @@ export function buildCampaignHtml({
     heading,
     subheading,
     bodyHtml: paragraphs,
+    footerHtml,
+  });
+}
+
+/** Escape user-supplied text for safe interpolation into email HTML. */
+export function escapeHtml(text: string) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
+ * Account emails (confirm sign-up, "you already have an account").
+ * `greetingName` and `buttonUrl` are escaped here; `paragraphs` must already be safe HTML.
+ */
+export function buildAccountEmailHtml({
+  subheading,
+  greetingName,
+  paragraphs,
+  buttonLabel,
+  buttonUrl,
+  finePrint,
+  template = {},
+}: {
+  subheading: string;
+  greetingName?: string | null;
+  paragraphs: string[];
+  buttonLabel: string;
+  buttonUrl: string;
+  finePrint?: string;
+  template?: EmailTemplateSettings;
+}) {
+  const headerBg   = template.headerBg   || '#0f172a';
+  const heading    = template.heading    || 'Seattle Squash';
+  const footerText = template.footerText || 'Seattle Squash Racquets Association &nbsp;·&nbsp; P.O. Box 665, Seattle, WA 98111';
+  const safeUrl = escapeHtml(buttonUrl);
+
+  const bodyHtml = `
+    ${greetingName ? `<p style="margin:0 0 18px 0;font-size:15px;color:#0f172a;">Hi ${escapeHtml(greetingName)},</p>` : ''}
+    ${paragraphs.map((p) => `<p style="margin:0 0 18px 0;font-size:15px;line-height:1.7;color:#475569;">${p}</p>`).join('')}
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 28px 0;">
+      <tr><td align="center">
+        <a href="${safeUrl}" style="display:inline-block;background:#0f172a;color:#ffffff;padding:14px 36px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;letter-spacing:0.01em;">${escapeHtml(buttonLabel)}</a>
+      </td></tr>
+    </table>
+    <p style="margin:0 0 6px 0;font-size:12px;color:#94a3b8;line-height:1.6;">If the button doesn&#39;t work, paste this link into your browser:</p>
+    <p style="margin:0 0 18px 0;font-size:12px;line-height:1.6;"><a href="${safeUrl}" style="color:#3b82f6;word-break:break-all;">${safeUrl}</a></p>
+    ${finePrint ? `<p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.6;">${finePrint}</p>` : ''}`;
+
+  const footerHtml = `<p style="margin:0;color:#94a3b8;font-size:12px;line-height:1.6;">${footerText}</p>`;
+
+  return baseLayout({
+    headerBg,
+    headerImageUrl: template.headerImageUrl,
+    heading,
+    subheading,
+    bodyHtml,
     footerHtml,
   });
 }

@@ -2,8 +2,6 @@
 
 import { useState, use } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 import { useTournament } from '@/lib/useTournament';
 import { ChevronLeft, Flag, HandHelping, User, CheckCircle } from 'lucide-react';
 import TournamentBottomNav from '@/components/layout/TournamentBottomNav';
@@ -36,13 +34,11 @@ export default function VolunteerSignup({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = use(params);
-  const router = useRouter();
   const { tournament, loading } = useTournament(slug);
 
   const [form, setForm] = useState({
     name: '',
     email: '',
-    password: '',
     phone: '',
     role: 'referee',
     notes: '',
@@ -64,23 +60,13 @@ export default function VolunteerSignup({
         body: JSON.stringify(form),
       });
       if (!res.ok) {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         setError(data.error || 'Failed to sign up');
         return;
       }
-
-      // Sign in with the new account
-      const supabase = createClient();
-      await supabase.auth.signInWithPassword({
-        email: form.email,
-        password: form.password,
-      });
-
       setSubmitted(true);
-      setTimeout(() => {
-        router.push(`/t/${slug}`);
-        router.refresh();
-      }, 2000);
+    } catch {
+      setError('Network error — please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -124,9 +110,12 @@ export default function VolunteerSignup({
         {submitted ? (
           <div className="bg-[var(--surface-card)] border border-[var(--border)] rounded-2xl p-8 text-center">
             <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" strokeWidth={1.5} />
-            <h2 className="text-xl font-bold text-[var(--text-primary)]">You&apos;re signed up!</h2>
+            <h2 className="text-xl font-bold text-[var(--text-primary)]">Thanks — we got your signup!</h2>
             <p className="text-[var(--text-secondary)] mt-2">
-              Your account has been created. Redirecting to the tournament&hellip;
+              The organizers will be in touch with details.
+            </p>
+            <p className="text-sm text-[var(--text-muted)] mt-2">
+              Refereeing and need to score matches in the app? The organizers will send you an invite link to create an account.
             </p>
             <Link
               href={`/t/${slug}`}
@@ -175,31 +164,16 @@ export default function VolunteerSignup({
               </div>
               <div>
                 <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">
-                  Password <span className="text-red-500">*</span>
+                  Phone
                 </label>
                 <input
-                  type="password"
-                  required
-                  minLength={6}
-                  value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  placeholder="Min 6 characters"
+                  type="tel"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="(555) 123-4567"
                   className="w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-[var(--text-muted)]"
                 />
               </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">
-                Phone
-              </label>
-              <input
-                type="tel"
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                placeholder="(555) 123-4567"
-                className="w-full border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-[var(--text-muted)]"
-              />
             </div>
 
             <div>
@@ -259,18 +233,8 @@ export default function VolunteerSignup({
               disabled={submitting}
               className="w-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-6 py-3 rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
             >
-              {submitting ? 'Creating account…' : 'Sign Up & Create Account'}
+              {submitting ? 'Submitting…' : 'Sign Up'}
             </button>
-
-            <p className="text-center text-sm text-[var(--text-secondary)]">
-              Already have an account?{' '}
-              <Link
-                href={`/login?redirect=/t/${slug}`}
-                className="text-[var(--text-primary)] underline underline-offset-2"
-              >
-                Sign in
-              </Link>
-            </p>
           </form>
         )}
       </main>

@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireAuth } from '@/lib/supabase/auth-check';
 import { rateLimit, limits } from '@/lib/rateLimit';
+import { PUBLIC_PLAYER_COLUMNS } from '@/lib/supabase/types';
+
+// Returned to callers (GET is public) — players limited to public columns.
+const MATCH_DETAIL_SELECT = `*, player1:players!player1_id(${PUBLIC_PLAYER_COLUMNS}), player2:players!player2_id(${PUBLIC_PLAYER_COLUMNS}), court:courts!court_id(*)`;
 
 type Params = { params: Promise<{ id: string; matchId: string }> };
 
@@ -146,7 +150,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   const { data, error } = await supabase
     .from('matches')
-    .select('*, player1:players!player1_id(*), player2:players!player2_id(*), court:courts!court_id(*)')
+    .select(MATCH_DETAIL_SELECT)
     .eq('id', matchId)
     .eq('tournament_id', id)
     .single();
@@ -347,7 +351,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     .from('matches')
     .update(updates)
     .eq('id', matchId)
-    .select('*, player1:players!player1_id(*), player2:players!player2_id(*), court:courts!court_id(*)')
+    .select(MATCH_DETAIL_SELECT)
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

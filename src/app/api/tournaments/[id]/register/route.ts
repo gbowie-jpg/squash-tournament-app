@@ -100,7 +100,7 @@ export async function POST(
       draw: draw?.trim() || null,
       club: club?.trim() || null,
     })
-    .select()
+    .select('id, name, draw, club')
     .single();
 
   if (insertErr) {
@@ -135,5 +135,6 @@ export async function POST(
     html,
   });
 
-  return NextResponse.json(player, { status: 201 });
+  // Only the id — the full row carries contact details the caller doesn't need back.
+  return NextResponse.json({ id: player.id }, { status: 201 });
 }

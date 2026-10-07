@@ -2,30 +2,33 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+
+const TOO_MANY = 'Too many attempts — try again in a few minutes.';
+const GENERIC_RETRY = 'Something went wrong. Please try again in a few minutes.';
 
 export default function JoinPage() {
   const { token } = useParams<{ token: string }>();
   const router = useRouter();
-  const supabase = createClient();
 
-  const [valid, setValid] = useState<boolean | null>(null); // null = checking
+  // checking → valid | invalid | limited | error
+  const [status, setStatus] = useState<'checking' | 'valid' | 'invalid' | 'limited' | 'error'>('checking');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
 
-  // Validate the token against the stored one
+  // Validate the token server-side (the stored token is never sent to the browser)
   useEffect(() => {
-    fetch('/api/site-settings')
-      .then((r) => r.json())
-      .then((settings) => {
-        setValid(settings.invite_token === token);
+    fetch(`/api/join?token=${encodeURIComponent(token)}`, { cache: 'no-store' })
+      .then(async (r) => {
+        if (r.status === 429) { setStatus('limited'); return; }
+        if (!r.ok) { setStatus('error'); return; }
+        const d: { valid?: boolean } = await r.json();
+        setStatus(d.valid === true ? 'valid' : 'invalid');
       })
-      .catch(() => setValid(false));
+      .catch(() => setStatus('error'));
   }, [token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,17 +36,28 @@ export default function JoinPage() {
     setError(null);
     setLoading(true);
     try {
-      const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
-      const { error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { full_name: fullName },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
+      const res = await fetch('/api/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, firstName, lastName, email }),
       });
-      if (signUpError) { setError(signUpError.message); return; }
+      if (res.status === 403) { setStatus('invalid'); return; }
+      if (res.status === 429) {
+        // Submit limits are per hour, so show the real wait rather than "a few minutes"
+        const secs = Number(res.headers.get('Retry-After')) || 0;
+        const mins = Math.max(1, Math.ceil(secs / 60));
+        setError(`Too many attempts — try again in about ${mins} minute${mins === 1 ? '' : 's'}.`);
+        return;
+      }
+      if (res.status === 400) {
+        const data = await res.json().catch(() => ({}));
+        setError(typeof data.error === 'string' ? data.error : GENERIC_RETRY);
+        return;
+      }
+      if (!res.ok) { setError(GENERIC_RETRY); return; }
       setDone(true);
+    } catch {
+      setError(GENERIC_RETRY);
     } finally {
       setLoading(false);
     }
@@ -61,11 +75,28 @@ export default function JoinPage() {
         </div>
 
         <div className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-6">
-          {valid === null && (
+          {status === 'checking' && (
             <p className="text-sm text-[var(--text-secondary)] text-center py-4">Checking invite link…</p>
           )}
 
-          {valid === false && (
+          {(status === 'limited' || status === 'error') && (
+            <div className="text-center py-4">
+              <h2 className="font-semibold text-[var(--text-primary)]">
+                {status === 'limited' ? 'Too many attempts' : 'Couldn’t check this invite link'}
+              </h2>
+              <p className="text-sm text-[var(--text-secondary)] mt-1 mb-4">
+                {status === 'limited' ? TOO_MANY : GENERIC_RETRY}
+              </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="text-sm underline text-[var(--text-primary)]"
+              >
+                Try again
+              </button>
+            </div>
+          )}
+
+          {status === 'invalid' && (
             <div className="text-center py-4">
               <p className="text-2xl mb-2">🔗</p>
               <h2 className="font-semibold text-[var(--text-primary)]">Invalid invite link</h2>
@@ -75,7 +106,7 @@ export default function JoinPage() {
             </div>
           )}
 
-          {valid === true && !done && (
+          {status === 'valid' && !done && (
             <>
               <h2 className="font-semibold text-lg text-[var(--text-primary)] mb-4">Create your account</h2>
 
@@ -125,19 +156,6 @@ export default function JoinPage() {
                     className={inputCls}
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Password</label>
-                  <input
-                    type="password"
-                    required
-                    minLength={6}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="6+ characters"
-                    autoComplete="new-password"
-                    className={inputCls}
-                  />
-                </div>
                 <button
                   type="submit"
                   disabled={loading}
@@ -161,12 +179,16 @@ export default function JoinPage() {
 
           {done && (
             <div className="text-center py-4">
-              <p className="text-3xl mb-3">🎉</p>
+              <p className="text-3xl mb-3">📬</p>
               <h2 className="font-semibold text-[var(--text-primary)]">
-                Welcome, {firstName}!
+                Check your email to confirm your account
               </h2>
               <p className="text-sm text-[var(--text-secondary)] mt-1 mb-4">
-                Check your email and click the confirmation link — it will sign you in automatically.
+                We sent a confirmation link to <span className="font-medium text-[var(--text-primary)]">{email}</span>.
+                Open it and press <span className="font-medium text-[var(--text-primary)]">Confirm my account</span> — then you&apos;ll choose your password.
+              </p>
+              <p className="text-xs text-[var(--text-muted)]">
+                Nothing arrived after a few minutes? Check your spam folder.
               </p>
             </div>
           )}

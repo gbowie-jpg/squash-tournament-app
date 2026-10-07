@@ -2,9 +2,35 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireAuth } from '@/lib/supabase/auth-check';
 import { requireTournamentOrganizer } from '@/lib/supabase/require-role';
+import { emailsMatch, isUuid } from '@/lib/player-access';
+
+/** Owner of the player (signed-in email = player email) or a tournament organizer. */
+async function canSeeAllPlayerVideos(
+  supabase: ReturnType<typeof createAdminClient>,
+  tournamentId: string,
+  playerId: string,
+): Promise<boolean> {
+  if (!isUuid(playerId)) return false;
+  const auth = await requireAuth();
+  if (auth.error) return false;
+
+  const { data: player } = await supabase
+    .from('players')
+    .select('email')
+    .eq('id', playerId)
+    .eq('tournament_id', tournamentId)
+    .maybeSingle();
+  if (player && emailsMatch(auth.user.email, player.email)) return true;
+
+  const organizer = await requireTournamentOrganizer(tournamentId);
+  return !organizer.error;
+}
 
 // GET /api/tournaments/[id]/videos?status=pending|approved|all&player_id=xxx
-// Public callers only get approved videos. pending/rejected/all requires organizer auth.
+// Public callers only get approved videos. pending/rejected/all requires organizer
+// auth — except status=all for one player_id, which the player themselves may see
+// (signed-in email matches the player's email). Anyone else asking for that gets
+// approved videos only, not an error.
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -14,17 +40,21 @@ export async function GET(
   const requestedStatus = url.searchParams.get('status') || 'approved';
   const playerId = url.searchParams.get('player_id');
 
-  // Non-approved requests require organizer/admin access
-  if (requestedStatus !== 'approved') {
+  // Clamp to valid values to prevent arbitrary filter injection
+  const validStatuses = ['approved', 'pending', 'rejected', 'all'];
+  let status = validStatuses.includes(requestedStatus) ? requestedStatus : 'approved';
+
+  const supabase = createAdminClient();
+
+  if (status === 'all' && playerId) {
+    // A player's own page: owner or organizer sees everything, others approved only
+    const allowed = await canSeeAllPlayerVideos(supabase, id, playerId);
+    if (!allowed) status = 'approved';
+  } else if (status !== 'approved') {
+    // Moderation queue — organizer/admin only
     const auth = await requireTournamentOrganizer(id);
     if (auth.error) return auth.error;
   }
-
-  // Clamp to valid values to prevent arbitrary filter injection
-  const validStatuses = ['approved', 'pending', 'rejected', 'all'];
-  const status = validStatuses.includes(requestedStatus) ? requestedStatus : 'approved';
-
-  const supabase = createAdminClient();
 
   let query = supabase
     .from('player_videos')

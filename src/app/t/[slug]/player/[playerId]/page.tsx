@@ -7,7 +7,7 @@ import { useRealtimeMatches } from '@/lib/realtime/hooks';
 import { formatScore } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { Player, MatchWithDetails, Profile, PlayerVideo } from '@/lib/supabase/types';
+import type { MatchWithDetails, PlayerVideo, PublicPlayer, PublicProfile } from '@/lib/supabase/types';
 import { ChevronLeft, Upload, Play, Clock, CheckCircle, XCircle, Film } from 'lucide-react';
 import PullToRefresh from '@/components/PullToRefresh';
 import RefreshButton from '@/components/RefreshButton';
@@ -48,10 +48,15 @@ export default function PlayerProfile({
   const { slug, playerId } = use(params);
   const { tournament, loading: tLoading } = useTournament(slug);
   const { matches, loading: mLoading } = useRealtimeMatches(tournament?.id ?? '');
-  const [player, setPlayer] = useState<Player | null>(null);
-  const [playerProfile, setPlayerProfile] = useState<Profile | null>(null);
+  const [player, setPlayer] = useState<PublicPlayer | null>(null);
+  const [playerProfile, setPlayerProfile] = useState<PublicProfile | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+  // Decided server-side (player emails never reach the browser)
+  const [isOwnProfile, setIsOwnProfile] = useState(false);
+  const [playerLoaded, setPlayerLoaded] = useState(false);
+  // 'notfound' only for a real 404; 'busy' (429) and 'error' (5xx/network) get a retry
+  const [loadState, setLoadState] = useState<'loading' | 'ok' | 'notfound' | 'busy' | 'error'>('loading');
+  const [reloadKey, setReloadKey] = useState(0);
 
   // Videos
   const [videos, setVideos] = useState<PlayerVideo[]>([]);
@@ -71,38 +76,39 @@ export default function PlayerProfile({
 
   useEffect(() => {
     if (!tournament) return;
-    const supabase = createClient();
+    let cancelled = false;
+    setPlayerLoaded(false);
+    setLoadState('loading');
 
-    supabase
-      .from('players')
-      .select('*')
-      .eq('id', playerId)
-      .single()
-      .then(({ data }) => {
-        const playerData = data as Player | null;
-        setPlayer(playerData);
-        if (playerData?.email) {
-          supabase
-            .from('profiles')
-            .select('*')
-            .eq('email', playerData.email)
-            .maybeSingle()
-            .then(({ data: profile }) => setPlayerProfile(profile as Profile | null));
-        }
+    type Body = { player: PublicPlayer; profile: PublicProfile | null; isOwn: boolean };
+    fetch(`/api/tournaments/${tournament.id}/players/${playerId}`)
+      .then(async (res) => {
+        if (res.ok) return { state: 'ok' as const, body: (await res.json()) as Body };
+        if (res.status === 404) return { state: 'notfound' as const, body: null };
+        return { state: res.status === 429 ? ('busy' as const) : ('error' as const), body: null };
+      })
+      .catch(() => ({ state: 'error' as const, body: null }))
+      .then(({ state, body }) => {
+        if (cancelled) return;
+        setPlayer(body?.player ?? null);
+        setPlayerProfile(body?.profile ?? null);
+        setIsOwnProfile(!!body?.isOwn);
+        setLoadState(state);
+        setPlayerLoaded(true);
       });
 
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setCurrentUserId(user?.id ?? null);
-      setCurrentUserEmail(user?.email ?? null);
+    createClient().auth.getUser().then(({ data: { user } }) => {
+      if (!cancelled) setCurrentUserId(user?.id ?? null);
     });
-  }, [tournament, playerId]);
+
+    return () => { cancelled = true; };
+  }, [tournament, playerId, reloadKey]);
 
   useEffect(() => {
-    if (!tournament) return;
-    // Show own pending/rejected videos too
-    const isOwn = !!currentUserEmail && !!player?.email && player.email === currentUserEmail;
-    loadVideos(tournament.id, isOwn);
-  }, [tournament, player, currentUserEmail, loadVideos]);
+    if (!tournament || !playerLoaded) return;
+    // Owners also see their pending/rejected videos (the server re-checks ownership)
+    loadVideos(tournament.id, isOwnProfile);
+  }, [tournament, playerLoaded, isOwnProfile, loadVideos, reloadKey]);
 
   const handleVideoUpload = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -217,10 +223,17 @@ export default function PlayerProfile({
   const playerFullName = player
     ? [player.first_name, player.last_name].filter(Boolean).join(' ') || player.name
     : null;
-  const displayName = playerProfile?.full_name || playerFullName || 'Loading…';
+  const displayName =
+    playerProfile?.full_name ||
+    playerFullName ||
+    (loadState === 'notfound'
+      ? 'Player not found'
+      : loadState === 'busy' || loadState === 'error'
+        ? 'Couldn’t load player'
+        : 'Loading…');
+  const loadFailed = loadState === 'busy' || loadState === 'error';
   const displayClub = playerProfile?.club || player?.club;
   const photo = playerProfile?.photo_url;
-  const isOwnProfile = !!currentUserEmail && !!player?.email && player.email === currentUserEmail;
 
   const approvedVideos = videos.filter((v) => v.status === 'approved');
   const ownPendingVideos = isOwnProfile ? videos.filter((v) => v.status !== 'approved') : [];
@@ -255,20 +268,29 @@ export default function PlayerProfile({
 
             <div className="flex-1 min-w-0">
               <h1 className="text-xl font-bold tracking-tight truncate">{displayName}</h1>
+              {loadFailed && (
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <span className="text-sm text-[var(--text-secondary)]">
+                    {loadState === 'busy'
+                      ? 'Busy right now — pull to refresh or try again in a moment.'
+                      : 'Something went wrong — try again.'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setReloadKey((k) => k + 1)}
+                    className="text-xs font-medium px-2.5 py-1 rounded-md border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  >
+                    Try again
+                  </button>
+                </div>
+              )}
               <div className="flex flex-wrap items-center gap-2 mt-0.5">
                 {displayClub && <span className="text-sm text-muted-foreground">{displayClub}</span>}
-                {(player?.rating != null || playerProfile?.squash_ranking) && (
+                {/* players.rating/ranking/city aren't on the live DB yet — see PUBLIC_PLAYER_COLUMNS */}
+                {playerProfile?.squash_ranking && (
                   <span className="text-xs font-medium bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
-                    Rating: {player?.rating ?? playerProfile?.squash_ranking}
+                    Rating: {playerProfile.squash_ranking}
                   </span>
-                )}
-                {player?.ranking != null && (
-                  <span className="text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 px-2 py-0.5 rounded-full">
-                    #{player.ranking} ranked
-                  </span>
-                )}
-                {player?.city && (
-                  <span className="text-xs text-muted-foreground">{player.city}</span>
                 )}
               </div>
               {playerProfile?.bio && (

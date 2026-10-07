@@ -20,6 +20,7 @@ import TournamentBottomNav from '@/components/layout/TournamentBottomNav';
 import CountdownTimer from '@/components/CountdownTimer';
 import InfoAccordion from '@/components/InfoAccordion';
 import { heroBackground, getTextColors } from '@/lib/gradients';
+import { escapeLikePattern, sameText } from '@/lib/player-access';
 
 export default async function TournamentLanding({
   params,
@@ -45,7 +46,7 @@ export default async function TournamentLanding({
     { count: inProgress },
     { count: completed },
   ] = await Promise.all([
-    supabase.from('players').select('*', { count: 'exact', head: true }).eq('tournament_id', tournament.id),
+    supabase.from('players').select('id', { count: 'exact', head: true }).eq('tournament_id', tournament.id),
     supabase.from('matches').select('*', { count: 'exact', head: true }).eq('tournament_id', tournament.id),
     supabase.from('matches').select('*', { count: 'exact', head: true }).eq('tournament_id', tournament.id).eq('status', 'in_progress'),
     supabase.from('matches').select('*', { count: 'exact', head: true }).eq('tournament_id', tournament.id).eq('status', 'completed'),
@@ -90,21 +91,37 @@ export default async function TournamentLanding({
       const firstName = nameParts[0];
       const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : null;
 
-      let playerQuery = supabase
+      // The profile name is user-controlled, so never interpolate it into .or(...)
+      // (commas/parens/dots would inject PostgREST filters). Use separate ilike
+      // filters with escaped patterns, then re-check each candidate exactly.
+      type NameRow = { id: string; name: string; first_name: string | null; last_name: string | null };
+      const byFullName = supabase
         .from('players')
-        .select('id')
-        .eq('tournament_id', tournament.id);
+        .select('id, name, first_name, last_name')
+        .eq('tournament_id', tournament.id)
+        .ilike('name', escapeLikePattern(profileName));
+      const byParts = lastName
+        ? supabase
+            .from('players')
+            .select('id, name, first_name, last_name')
+            .eq('tournament_id', tournament.id)
+            .ilike('first_name', escapeLikePattern(firstName))
+            .ilike('last_name', escapeLikePattern(lastName))
+        : null;
 
-      if (lastName) {
-        playerQuery = playerQuery.or(
-          `name.ilike.${profileName},and(first_name.ilike.${firstName},last_name.ilike.${lastName})`
-        );
-      } else {
-        playerQuery = playerQuery.ilike('name', profileName);
-      }
-
-      const { data: matchedPlayers } = await playerQuery;
-      myPlayerIds = (matchedPlayers ?? []).map((p: { id: string }) => p.id);
+      const [fullRes, partsRes] = await Promise.all([byFullName, byParts]);
+      const candidates = [
+        ...((fullRes.data ?? []) as NameRow[]),
+        ...(((partsRes?.data) ?? []) as NameRow[]),
+      ];
+      myPlayerIds = [...new Set(
+        candidates
+          .filter((p) =>
+            sameText(p.name, profileName) ||
+            (!!lastName && sameText(p.first_name, firstName) && sameText(p.last_name, lastName)),
+          )
+          .map((p) => p.id),
+      )];
 
       if (myPlayerIds.length > 0) {
         const { data: myMatchesRaw } = await supabase

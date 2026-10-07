@@ -90,7 +90,7 @@ Run SQL files in `supabase/` via Supabase Dashboard → SQL Editor (or Managemen
 - **Player lookup** — find matches by name, view full draw sheet
 - **Player profile** — personal match history + highlight video uploads
 - **Announcements** — urgent and normal updates from the organizer
-- **Volunteer signup** — public form to sign up as referee, volunteer, or helper
+- **Volunteer signup** — public form to sign up as referee, volunteer, or helper (records the signup only; no account is created)
 
 ### For Scorers
 - **Full scoring app** — 4-step flow: confirm → serve selection → warmup → live scoring
@@ -119,7 +119,10 @@ Run SQL files in `supabase/` via Supabase Dashboard → SQL Editor (or Managemen
 
 ```
 /                              Homepage (tournament list)
-/login                         Sign in / sign up / reset password
+/login                         Sign in / magic link / reset password (no public sign-up)
+/join/[token]                  Invite-only account sign-up (link from /admin/users)
+/auth/confirm                  Email confirmation page (button POSTs to /auth/confirm/verify)
+/account/set-password          Choose a password after confirming a new account
 /account                       User profile (name, club, ranking, photo, password)
 /account/reset-password        Password reset landing (from email link)
 

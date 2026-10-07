@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { isSafeRelativePath } from '@/lib/safe-redirect';
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -53,12 +54,7 @@ export async function middleware(request: NextRequest) {
     const redirect = request.nextUrl.searchParams.get('redirect');
     // Only allow relative paths — reject anything with a protocol or double-slash
     // to prevent open redirect phishing (e.g. /login?redirect=https://evil.com)
-    const isSafeRedirect =
-      redirect &&
-      redirect.startsWith('/') &&
-      !redirect.startsWith('//') &&
-      !redirect.includes(':');
-    return NextResponse.redirect(new URL(isSafeRedirect ? redirect : '/admin', request.url));
+    return NextResponse.redirect(new URL(isSafeRelativePath(redirect) ? redirect : '/admin', request.url));
   }
 
   // Security headers

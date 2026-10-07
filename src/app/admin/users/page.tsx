@@ -230,7 +230,7 @@ export default function UserManagement() {
             <div>
               <h2 className="font-semibold text-foreground">Invite Link</h2>
               <p className="text-sm text-muted-foreground mt-0.5">
-                Share this link with anyone you want to join. They&apos;ll create their own account — you can set their role once they&apos;re in.
+                This link is the only way to create an account — share it with people who need one (e.g. referees who score matches). They confirm their email before they can sign in; you can set their role once they&apos;re in. Anyone with the link can sign up, so regenerate it if it gets shared too widely.
               </p>
               {inviteToken && (
                 <code className="block mt-2 text-xs text-muted-foreground bg-surface border border-border rounded px-2 py-1.5 font-mono truncate max-w-xs sm:max-w-sm md:max-w-md">

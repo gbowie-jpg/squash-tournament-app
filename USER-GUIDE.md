@@ -125,7 +125,7 @@ Volunteers and referees go to `/t/[slug]/volunteer` and fill in:
 - Role: **Referee**, **Volunteer**, or **Helper**
 - Optional notes
 
-No login required — signups go directly to the volunteer list.
+No login required — signups go directly to the volunteer list. Signing up does **not** create an account. Referees who need to score matches in the app should be sent the invite link (see below).
 
 ### Managing volunteers
 
@@ -262,6 +262,10 @@ The bucket should be set to **public** so URLs work without auth.
 ---
 
 ## Your Account & Password
+
+### Getting an account
+
+Accounts are **invite-only** — there is no public sign-up. An admin copies the invite link from **Admin → Users** and shares it. The person opens the link and enters their name and email (no password yet). We email them a confirmation link; it opens a **Confirm your email** page where they press **Confirm my account**, which signs them in and takes them to **Set your password** to choose a password (and check their name). If the email doesn't arrive, submitting the form again sends a fresh link — the earlier link then stops working, so use the newest email (up to 3 resends per address per hour). Regenerating the link in **Admin → Users** stops the old one working immediately.
 
 Go to `/account` (click your initial in the top-right nav → My Account).
 

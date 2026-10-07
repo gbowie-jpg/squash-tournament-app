@@ -4,7 +4,9 @@ import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { useTournament } from '@/lib/useTournament';
 import { createClient } from '@/lib/supabase/client';
-import type { Player } from '@/lib/supabase/types';
+import type { PublicPlayer } from '@/lib/supabase/types';
+
+type PlayerRow = Pick<PublicPlayer, 'id' | 'name' | 'club' | 'draw' | 'seed'>;
 import TournamentBottomNav from '@/components/layout/TournamentBottomNav';
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import PullToRefresh from '@/components/PullToRefresh';
@@ -14,7 +16,7 @@ import ThemeToggle from '@/components/ThemeToggle';
 export default function PlayerLookup({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
   const { tournament, loading: tLoading } = useTournament(slug);
-  const [players, setPlayers] = useState<Player[]>([]);
+  const [players, setPlayers] = useState<PlayerRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
@@ -23,13 +25,13 @@ export default function PlayerLookup({ params }: { params: Promise<{ slug: strin
     const supabase = createClient();
     supabase
       .from('players')
-      .select('*')
+      .select('id, name, club, draw, seed')
       .eq('tournament_id', tournament.id)
       .order('draw')
       .order('seed', { nullsFirst: false })
       .order('name')
       .then(({ data }) => {
-        setPlayers((data as Player[]) ?? []);
+        setPlayers((data as PlayerRow[]) ?? []);
         setLoading(false);
       });
   }, [tournament]);

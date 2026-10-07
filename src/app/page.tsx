@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation';
 import SiteNav from '@/components/layout/SiteNav';
 import SiteFooter from '@/components/layout/SiteFooter';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { HOMEPAGE_SETTING_KEYS } from '@/lib/site-settings';
 import type { Tournament } from '@/lib/supabase/types';
 import { heroBackground, getTextColors } from '@/lib/gradients';
 
@@ -15,10 +17,13 @@ export default async function Home() {
   }
 
   const supabase = await createServerSupabaseClient();
+  // site_settings has no anon/authenticated RLS access — read the homepage keys
+  // with the service-role client (server component only, never shipped to the browser).
+  const admin = createAdminClient();
 
   const [{ data: tournaments }, { data: settingsRows }] = await Promise.all([
     supabase.from('tournaments').select('*').order('start_date', { ascending: false }),
-    supabase.from('site_settings').select('key, value'),
+    admin.from('site_settings').select('key, value').in('key', [...HOMEPAGE_SETTING_KEYS]),
   ]);
 
   const allTournaments = (tournaments ?? []) as Tournament[];
