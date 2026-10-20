@@ -56,7 +56,7 @@ NEXT_PUBLIC_VAPID_PUBLIC_KEY
 VAPID_PRIVATE_KEY
 ```
 
-VAPID keys are already generated and set in `.env.local` and Vercel. Never commit key values — this repo is public.
+VAPID keys are set in `.env.local` and Vercel (Production, Preview, Development — all the same pair). Never commit key values — this repo is public. Rotation procedure: see **Push Notifications** below.
 
 Auth redirect URLs configured in Supabase:
 - `https://squash-tournament-app.vercel.app/**`
@@ -127,6 +127,7 @@ src/
     account/photo/route.ts
     push/subscribe/route.ts
     push/send/route.ts
+    push/status/route.ts              # GET (admin): VAPID self-check ok/reason + public-key fingerprint, never key values
     email/route.ts
   components/
     layout/
@@ -230,7 +231,7 @@ Full schema in `DATA-MODEL.md`. Core tables:
 | `email_recipients` | Per-tournament marketing list |
 | `email_campaigns` | Sent campaigns |
 | `email_sends` | Per-recipient send records |
-| `push_subscriptions` | VAPID push endpoint data |
+| `push_subscriptions` | VAPID push endpoint data, tagged with `vapid_public_key` (the key the browser subscribed with). Service-role only (no RLS policies) |
 | `site_settings` | Key/value — homepage/scholarship/email template content, Stripe keys, `invite_token`. Server-only (no RLS policies); new keys must be added to `src/lib/site-settings.ts` |
 | `profiles` | Extended user data — name, club, ranking, photo, role |
 | `organizers` | Per-tournament admin/scorer access |
@@ -273,6 +274,22 @@ When a match moves to `in_progress`, the next `scheduled` match on the same cour
 When a match is completed with a winner, the winner is automatically progressed to the next round match (via `getProgression()` in `src/lib/draws/progression.ts`).
 
 ---
+
+## Push Notifications
+
+- **Key tagging:** each `push_subscriptions` row stores `vapid_public_key`, the public key the browser subscribed with (`PushManager` / `sw.js` send it as `applicationServerKey`; missing/invalid → NULL). `sendPushToAll()` (`src/lib/push.ts`) sends **only** to rows whose key equals the configured `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (trimmed). NULL/other-key rows are skipped (reported as `skipped`), never deleted by the sender — so a Preview/dev/rollback build with a different keypair can't wipe production rows (they all share the production DB).
+- **Self-check:** on first send, `checkVapidKeypair()` (`src/lib/vapid.ts`) derives the public key from `VAPID_PRIVATE_KEY` (P-256 ECDH) and compares bytes with `NEXT_PUBLIC_VAPID_PUBLIC_KEY`. Missing/malformed/mismatched → logs `[push] VAPID self-check failed` (fingerprint only), sends nothing, prunes nothing; `/api/push/send` returns 503. VAPID setup is lazy, so a bad key never breaks routes that import `push.ts` (e.g. matches).
+- **Pruning** (`planPrunes()` in `src/lib/push-prune.ts`, for rows actually sent to): 404/410 → delete; 401/403 → delete only if the self-check passed **and** another send to the same push service in that batch succeeded (circuit breaker against our own credential problems); anything else → keep.
+- **Endpoint allowlist:** `POST /api/push/subscribe` only accepts https endpoints on FCM, Mozilla autopush, Apple (`*.push.apple.com`) and WNS (`*.notify.windows.com`) — `isAllowedPushEndpoint()`. Others → 400 (prevents SSRF).
+- **Client migration:** on load (once per page load, shared across mounted bells) `PushManager` compares the browser subscription's `applicationServerKey` with the build's key. Same → re-POSTs once per endpoint+key (localStorage marker) so legacy NULL rows get tagged. Different → DELETE old row, `unsubscribe()`, re-subscribe with the new key, POST. Granted but no subscription → auto-subscribes only if the user previously opted in (`push:optedIn`).
+- `sw.js` `notificationclick` only opens same-origin URLs (else `/`); `pushsubscriptionchange` re-subscribes with the old subscription's key and POSTs it (tagged accurately; the page migrates it if stale).
+
+**VAPID rotation:**
+1. `npx web-push generate-vapid-keys --json` (keep the output out of the repo and chat).
+2. Set `NEXT_PUBLIC_VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` in Vercel for **Production, Preview and Development** (private key marked Sensitive) and in `.env.local`.
+3. Deploy via a new build (push to `main`). The public key is inlined at build time, so editing env vars alone does nothing; don't "Redeploy" an old commit that lacks the migration code.
+4. Check Vercel logs for `[push] VAPID self-check failed` (must be absent). Subscribers move to the new key on their next visit; until then they're `skipped`. Rotate a few days before a tournament.
+5. After a few weeks: `delete from push_subscriptions where vapid_public_key is distinct from '<new public key>';` (the public key isn't secret, but don't commit it). Never Instant-Rollback to a deployment built with the old keys.
 
 ## Player Videos
 

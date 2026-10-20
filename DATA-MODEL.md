@@ -289,9 +289,12 @@ create table push_subscriptions (
   p256dh text not null,
   auth text not null,
   user_agent text,
+  vapid_public_key text,            -- key the browser subscribed with; NULL = legacy/unknown (skipped by sender)
   created_at timestamptz default now()
 );
 ```
+
+RLS on, no policies (service role only). The sender only targets rows whose `vapid_public_key` equals the deployed `NEXT_PUBLIC_VAPID_PUBLIC_KEY`.
 
 ---
 

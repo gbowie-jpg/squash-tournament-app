@@ -36,14 +36,24 @@ function SettingsSkeleton() {
 export default function AdminSettings() {
   const { signOut } = useAuth();
   const [vapidStatus, setVapidStatus] = useState<'checking' | 'ok' | 'missing'>('checking');
+  // Non-secret detail from /api/push/status, e.g. "mismatch · fp abc123def456".
+  const [vapidDetail, setVapidDetail] = useState<string | null>(null);
   const [resendStatus, setResendStatus] = useState<'checking' | 'ok' | 'missing'>('checking');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.allSettled([
-      fetch('/api/push/send', { method: 'GET' }).then((r) => {
-        setVapidStatus(r.status === 405 ? 'ok' : 'missing');
-      }).catch(() => setVapidStatus('missing')),
+      fetch('/api/push/status', { cache: 'no-store' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j: { ok?: boolean; reason?: string; fingerprint?: string | null } | null) => {
+          setVapidStatus(j?.ok === true ? 'ok' : 'missing');
+          const parts = [
+            j && j.ok !== true && typeof j.reason === 'string' ? j.reason : null,
+            j && typeof j.fingerprint === 'string' ? `fp ${j.fingerprint}` : null,
+          ].filter(Boolean);
+          setVapidDetail(parts.length > 0 ? parts.join(' · ') : null);
+        })
+        .catch(() => setVapidStatus('missing')),
 
       fetch('/api/email/status').then((r) => {
         setResendStatus(r.ok ? 'ok' : 'missing');
@@ -82,7 +92,11 @@ export default function AdminSettings() {
             />
             <IntegrationRow
               label="Push Notifications (VAPID)"
-              description="Required for browser push announcements"
+              description={
+                vapidDetail
+                  ? `Required for browser push announcements (${vapidDetail})`
+                  : 'Required for browser push announcements'
+              }
               status={vapidStatus}
               envVar="NEXT_PUBLIC_VAPID_PUBLIC_KEY + VAPID_PRIVATE_KEY"
             />

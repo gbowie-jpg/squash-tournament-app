@@ -102,8 +102,12 @@ export const limits = {
   publicSignup: { window: 60 * 60_000, max: 8 },
   /** Score updates: 60 per minute per IP (interactive scoring) */
   scoring: { window: 60_000, max: 60 },
-  /** Push subscribe: 10 per hour per IP */
-  pushSubscribe: { window: 60 * 60_000, max: 10 },
+  /**
+   * Push subscribe (POST): 100 per hour per IP. Venue devices share one NAT
+   * IP, and after a VAPID rotation every device re-POSTs on its next visit.
+   * The POST is an idempotent upsert with endpoint-host and key-shape checks.
+   */
+  pushSubscribe: { window: 60 * 60_000, max: 100 },
   /**
    * Public detail reads (e.g. player profile lookup): 600 per minute per IP.
    * High on purpose: everyone at a venue usually shares one NAT IP on the club

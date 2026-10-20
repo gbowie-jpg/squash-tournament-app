@@ -10,5 +10,6 @@ export async function POST(req: NextRequest) {
   if (!title || !body) return NextResponse.json({ error: 'title and body required' }, { status: 400 });
 
   const result = await sendPushToAll({ title, body, url, urgent });
-  return NextResponse.json(result);
+  // Misconfigured VAPID keys or a DB failure: report it instead of "sent to 0".
+  return NextResponse.json(result, { status: result.error ? 503 : 200 });
 }

@@ -59,10 +59,19 @@ self.addEventListener('push', (event) => {
   );
 });
 
+// Only open pages on this site: relative paths or same-origin URLs, else '/'.
+function sameOriginUrl(raw) {
+  try {
+    const target = new URL(raw || '/', self.location.origin);
+    if (target.origin === self.location.origin) return target.href;
+  } catch (e) { /* fall through */ }
+  return self.location.origin + '/';
+}
+
 // Notification click: open URL, focus if already open, clear badge if none left
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = event.notification.data?.url || '/';
+  const url = sameOriginUrl(event.notification.data?.url);
 
   event.waitUntil(
     Promise.all([
@@ -88,6 +97,48 @@ self.addEventListener('notificationclick', (event) => {
       }),
     ])
   );
+});
+
+// Push service rotated/expired the subscription: re-subscribe with the same
+// key and tell the server. The key sent is the one actually used, so if it is
+// an old (rotated-out) key the server stores it tagged as such, the sender
+// skips it, and the page migrates it to the current key on the next visit.
+function toBase64Url(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil((async () => {
+    const oldSub = event.oldSubscription;
+    const oldKey = oldSub && oldSub.options ? oldSub.options.applicationServerKey : null;
+    let sub = event.newSubscription;
+    if (!sub) {
+      if (!oldKey) return; // nothing to re-subscribe with; the page handles it on next visit
+      sub = await self.registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: oldKey });
+    }
+    if (oldSub && oldSub.endpoint !== sub.endpoint) {
+      await fetch('/api/push/subscribe', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint: oldSub.endpoint }),
+      }).catch(() => {});
+    }
+    const key = (sub.options && sub.options.applicationServerKey) || oldKey;
+    await fetch('/api/push/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        endpoint: sub.endpoint,
+        p256dh: toBase64Url(sub.getKey('p256dh')),
+        auth: toBase64Url(sub.getKey('auth')),
+        userAgent: self.navigator.userAgent,
+        applicationServerKey: key ? toBase64Url(key) : undefined,
+      }),
+    });
+  })().catch(() => {}));
 });
 
 // Message from app: clear badge when user opens the app

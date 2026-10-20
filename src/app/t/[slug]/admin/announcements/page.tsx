@@ -55,8 +55,13 @@ export default function AnnouncementComposer({
           }),
         });
         if (pushRes.ok) {
-          const { sent } = await pushRes.json();
-          setPushStatus(`Push sent to ${sent} subscriber${sent !== 1 ? 's' : ''}`);
+          const { sent, skipped } = await pushRes.json();
+          setPushStatus(
+            `Push sent to ${sent} subscriber${sent !== 1 ? 's' : ''}` +
+              (skipped ? ` (${skipped} awaiting re-subscribe)` : ''),
+          );
+        } else if (pushRes.status === 503) {
+          setPushStatus('Push failed — push notifications are misconfigured');
         } else {
           setPushStatus('Push failed — check auth');
         }
