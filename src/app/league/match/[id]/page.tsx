@@ -6,6 +6,7 @@ import { TeamLogo, UpdatedLabel } from '@/components/league/LeagueParts';
 import { createLeagueReadClient } from '@/lib/league/db';
 import { fixtureWinner, isPlayed } from '@/lib/league/standings';
 import { formatLeagueDate, formatLeagueTime, pacificToday } from '@/lib/league/time';
+import { formatCourts } from '@/lib/league/view';
 import {
   FIXTURE_COLUMNS, SEASON_COLUMNS, TEAM_COLUMNS, isRubberInProgress,
   type LeagueFixture, type LeagueRubber, type LeagueSeason, type LeagueTeam,
@@ -68,7 +69,7 @@ export default async function LeagueMatchPage({ params }: { params: Promise<{ id
           {time ? ` · ${time}` : ''}
         </p>
         <p className="text-center text-sm text-[var(--text-muted)] mb-6">
-          {f.venue_name ?? 'Venue TBD'}{f.court ? ` · Court ${f.court}` : ''}
+          {f.venue_name ?? 'Venue TBD'}{f.court ? ` · ${formatCourts(f.court)}` : ''}
         </p>
 
         <div className="flex items-center gap-4 bg-[var(--surface-card)] border border-[var(--border)] rounded-2xl p-5">
@@ -103,7 +104,7 @@ export default async function LeagueMatchPage({ params }: { params: Promise<{ id
               return (
                 <div key={r.id} className="bg-[var(--surface-card)] border border-[var(--border)] rounded-xl p-4">
                   <div className="flex items-center justify-between text-xs text-[var(--text-muted)] mb-2">
-                    <span>#{r.position}{r.court ? ` · Court ${r.court}` : ''}</span>
+                    <span>#{r.position}{r.court ? ` · ${formatCourts(r.court)}` : ''}</span>
                     {isRubberInProgress(r) ? (
                       <span className="font-semibold uppercase" style={{ color: '#dc2626' }}>● In progress</span>
                     ) : r.is_complete ? (

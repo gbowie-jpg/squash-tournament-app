@@ -5,7 +5,7 @@ import {
 import { computeStandings, fixtureWinner } from '@/lib/league/standings';
 import { decideSyncMode } from '@/lib/league/sync';
 import { addDays, pacificLocalToIso, pacificToday } from '@/lib/league/time';
-import { recentResults, upcomingFixtures } from '@/lib/league/view';
+import { formatCourts, recentResults, upcomingFixtures } from '@/lib/league/view';
 import type { LeagueFixture, LeagueTeam } from '@/lib/league/types';
 
 describe('Club Locker parsing', () => {
@@ -150,6 +150,15 @@ describe('time + view helpers', () => {
     expect(pacificToday(new Date('2026-10-21T02:00:00Z'))).toBe('2026-10-20');
     expect(addDays('2026-10-31', 1)).toBe('2026-11-01');
     expect(pacificLocalToIso('2026-12-01T19:00:00')).toBe('2026-12-02T03:00:00.000Z'); // PST = UTC−8
+  });
+
+  it('spells out combo court codes', () => {
+    expect(formatCourts('2')).toBe('Court 2');
+    expect(formatCourts('67')).toBe('Courts 6 & 7');
+    expect(formatCourts('4G')).toBe('Courts 4 & Glass');
+    expect(formatCourts('G')).toBe('Glass court');
+    expect(formatCourts('A')).toBe('Court A');
+    expect(formatCourts(null)).toBeNull();
   });
 
   it('picks the next league week and the latest results', () => {

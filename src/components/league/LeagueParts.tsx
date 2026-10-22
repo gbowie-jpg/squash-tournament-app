@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { fixtureWinner, isPlayed, type StandingRow } from '@/lib/league/standings';
 import { formatLeagueDate, formatLeagueTime, timeAgo } from '@/lib/league/time';
+import { formatCourts } from '@/lib/league/view';
 import { CLUB_NAMES, type LeagueFixture, type LeagueTeam } from '@/lib/league/types';
 
 export const PLAYOFF_SPOTS = 4;
@@ -81,7 +82,7 @@ export function FixtureCard({
         <span className="truncate">
           {showDate && `${formatLeagueDate(f.match_date)} · `}
           {f.venue_name ?? 'Venue TBD'}
-          {f.court ? ` · Court ${f.court}` : ''}
+          {f.court ? ` · ${formatCourts(f.court)}` : ''}
         </span>
         {live ? (
           <span className="shrink-0 font-semibold uppercase tracking-wide" style={{ color: '#dc2626' }}>● Live</span>

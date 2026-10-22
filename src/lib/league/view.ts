@@ -19,6 +19,19 @@ export function recentResults(fixtures: LeagueFixture[], today: string): LeagueF
   return played.filter((f) => f.match_date >= from).sort((a, b) => b.match_date.localeCompare(a.match_date));
 }
 
+/**
+ * Club Locker court codes list each court as one character, G = glass court:
+ * '2' → 'Court 2', '67' → 'Courts 6 & 7', '4G' → 'Courts 4 & Glass'.
+ */
+export function formatCourts(code: string | null): string | null {
+  const c = code?.trim().toUpperCase();
+  if (!c) return null;
+  if (!/^[0-9G]+$/.test(c)) return `Court ${code!.trim()}`;
+  const courts = [...c].map((ch) => (ch === 'G' ? 'Glass' : ch));
+  if (courts.length === 1) return courts[0] === 'Glass' ? 'Glass court' : `Court ${courts[0]}`;
+  return `Courts ${courts.slice(0, -1).join(', ')} & ${courts.at(-1)}`;
+}
+
 export function groupByDate(fixtures: LeagueFixture[]): [string, LeagueFixture[]][] {
   const map = new Map<string, LeagueFixture[]>();
   for (const f of fixtures) {
