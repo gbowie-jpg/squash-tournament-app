@@ -3,10 +3,7 @@ import { redirect } from 'next/navigation';
 import SiteNav from '@/components/layout/SiteNav';
 import SiteFooter from '@/components/layout/SiteFooter';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
-import { HOMEPAGE_SETTING_KEYS } from '@/lib/site-settings';
 import type { Tournament } from '@/lib/supabase/types';
-import { heroBackground, getTextColors } from '@/lib/gradients';
 import LeagueHub from '@/components/league/LeagueHub';
 import { loadCurrentSeason } from '@/lib/league/db';
 
@@ -19,13 +16,9 @@ export default async function Home() {
   }
 
   const supabase = await createServerSupabaseClient();
-  // site_settings has no anon/authenticated RLS access — read the homepage keys
-  // with the service-role client (server component only, never shipped to the browser).
-  const admin = createAdminClient();
 
-  const [{ data: tournaments }, { data: settingsRows }, league] = await Promise.all([
+  const [{ data: tournaments }, league] = await Promise.all([
     supabase.from('tournaments').select('*').order('start_date', { ascending: false }),
-    admin.from('site_settings').select('key, value').in('key', [...HOMEPAGE_SETTING_KEYS]),
     loadCurrentSeason(),
   ]);
 
@@ -33,67 +26,20 @@ export default async function Home() {
   const upcoming = allTournaments.filter((t) => t.status === 'upcoming' || t.status === 'active');
   const past = allTournaments.filter((t) => t.status === 'completed');
 
-  // Flatten settings into a key→value map
-  const s: Record<string, string | null> = {};
-  for (const row of (settingsRows ?? []) as { key: string; value: string | null }[]) {
-    s[row.key] = row.value;
-  }
-
-  const heroImage = s.homepage_hero_image;
-  const heroGradient = s.homepage_hero_gradient;
-  const heroOverlay = s.homepage_hero_overlay !== 'false';
-  const textColors = getTextColors(s.homepage_hero_text_color);
-  const heroTitle = s.homepage_hero_title || 'Unleash your inner athlete and play the ultimate game.';
-  const heroSubtitle = s.homepage_hero_subtitle || 'Your home for competitive squash in the Pacific Northwest. Over 70 years of fostering the squash community in Seattle.';
-  const cta1Label = s.homepage_cta1_label || 'Winter League';
-  const cta1Href = s.homepage_cta1_href || '/league';
-  const cta2Label = s.homepage_cta2_label || 'Donate';
-  const cta2Href = s.homepage_cta2_href || '/donate';
-
+  // News, about, donations etc. live on seattlesquash.com — this page is the
+  // app's home: league night first, then tournaments.
   return (
     <div className="min-h-screen flex flex-col bg-[var(--surface)]">
       <SiteNav />
 
-      {/* Hero */}
-      <section
-        className="relative text-white"
-        style={{ background: heroBackground(heroImage, heroGradient, heroOverlay) }}
-      >
-        <div className="max-w-6xl mx-auto px-4 py-14 md:py-20">
-          <div className="max-w-2xl">
-            <p className="font-medium text-sm uppercase tracking-wider mb-3" style={{ color: textColors.accent }}>
-              Seattle Squash Racquets Association
-            </p>
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight" style={{ color: textColors.heading }}>
-              {heroTitle}
-            </h1>
-            <p className="text-lg mt-4 leading-relaxed" style={{ color: textColors.body }}>
-              {heroSubtitle}
-            </p>
-            <div className="flex flex-wrap gap-3 mt-8">
-              <Link
-                href={cta1Href}
-                className="bg-white text-[#1a2332] px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors"
-              >
-                {cta1Label}
-              </Link>
-              <Link
-                href={cta2Href}
-                className="border border-white/30 text-white px-6 py-3 rounded-lg font-semibold hover:bg-white/10 transition-colors"
-              >
-                {cta2Label}
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+      <h1 className="sr-only">Seattle Squash</h1>
 
       {/* Winter League */}
       <LeagueHub league={league} />
 
       {/* Tournaments */}
       <section id="tournaments" className="scroll-mt-4 flex-1">
-        <div className="max-w-6xl mx-auto px-4 py-16">
+        <div className="max-w-6xl mx-auto px-4 py-12">
           <h2 className="text-2xl font-bold mb-2 text-[var(--text-primary)]">Tournaments</h2>
           <p className="text-[var(--text-secondary)] mb-8">Live draws, real-time scores, and match schedules.</p>
 

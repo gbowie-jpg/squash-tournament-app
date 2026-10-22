@@ -10,20 +10,6 @@
  * get a 400 and the public page that reads it will see nothing.
  */
 
-/** Homepage hero (read by src/app/page.tsx, edited in /admin/content). */
-export const HOMEPAGE_SETTING_KEYS = [
-  'homepage_hero_image',
-  'homepage_hero_gradient',
-  'homepage_hero_overlay',
-  'homepage_hero_text_color',
-  'homepage_hero_title',
-  'homepage_hero_subtitle',
-  'homepage_cta1_label',
-  'homepage_cta1_href',
-  'homepage_cta2_label',
-  'homepage_cta2_href',
-] as const;
-
 /** Scholarship page (read by src/app/scholarship, edited in /admin/settings). */
 export const SCHOLARSHIP_SETTING_KEYS = [
   'scholarship_open',
@@ -45,7 +31,6 @@ export const EMAIL_TEMPLATE_SETTING_KEYS = [
 
 /** Readable by anyone via GET /api/site-settings; writable by admins via PATCH. */
 export const PUBLIC_SETTING_KEYS = [
-  ...HOMEPAGE_SETTING_KEYS,
   ...SCHOLARSHIP_SETTING_KEYS,
   'sponsor_splash_duration_ms',
   ...EMAIL_TEMPLATE_SETTING_KEYS,

@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import {
   PUBLIC_SETTING_KEYS,
   WRITE_ONLY_SETTING_KEYS,
-  HOMEPAGE_SETTING_KEYS,
   SCHOLARSHIP_SETTING_KEYS,
   EMAIL_TEMPLATE_SETTING_KEYS,
   isPublicSettingKey,
@@ -29,11 +28,15 @@ describe('site settings key lists', () => {
     for (const key of WRITE_ONLY_SETTING_KEYS) expect(pub.has(key)).toBe(false);
   });
 
-  it('includes every homepage, scholarship and email template key in the public list', () => {
-    for (const key of [...HOMEPAGE_SETTING_KEYS, ...SCHOLARSHIP_SETTING_KEYS, ...EMAIL_TEMPLATE_SETTING_KEYS]) {
+  it('includes every scholarship and email template key in the public list', () => {
+    for (const key of [...SCHOLARSHIP_SETTING_KEYS, ...EMAIL_TEMPLATE_SETTING_KEYS]) {
       expect(isPublicSettingKey(key)).toBe(true);
     }
     expect(isPublicSettingKey('sponsor_splash_duration_ms')).toBe(true);
+  });
+
+  it('no longer accepts the removed homepage hero keys', () => {
+    expect(isWritableSettingKey('homepage_hero_title')).toBe(false);
   });
 
   it('has no secret-looking keys in the public list', () => {
@@ -46,16 +49,16 @@ describe('site settings key lists', () => {
 describe('validateSettingsPatch', () => {
   it('accepts known keys with string/null values and converts "" to null', () => {
     const result = validateSettingsPatch({
-      homepage_hero_title: 'Hello',
-      homepage_hero_image: '',
+      scholarship_hero_subtitle: 'Hello',
+      scholarship_hero_image_url: '',
       stripe_secret_key: 'sk_test_x',
       email_footer_text: null,
     });
     expect(result).toEqual({
       ok: true,
       values: {
-        homepage_hero_title: 'Hello',
-        homepage_hero_image: null,
+        scholarship_hero_subtitle: 'Hello',
+        scholarship_hero_image_url: null,
         stripe_secret_key: 'sk_test_x',
         email_footer_text: null,
       },
@@ -68,23 +71,23 @@ describe('validateSettingsPatch', () => {
   });
 
   it('rejects unknown keys even alongside known ones', () => {
-    const result = validateSettingsPatch({ homepage_hero_title: 'x', foo: 'bar' });
+    const result = validateSettingsPatch({ scholarship_hero_subtitle: 'x', foo: 'bar' });
     expect(result.ok).toBe(false);
   });
 
   it.each([
     ['number', { sponsor_splash_duration_ms: 3000 }],
     ['boolean', { scholarship_open: true }],
-    ['object', { homepage_hero_title: { a: 1 } }],
-    ['array value', { homepage_hero_title: ['x'] }],
+    ['object', { scholarship_hero_subtitle: { a: 1 } }],
+    ['array value', { scholarship_hero_subtitle: ['x'] }],
   ])('rejects non-string value (%s)', (_label, body) => {
     expect(validateSettingsPatch(body).ok).toBe(false);
   });
 
   it.each([
     ['null', null],
-    ['array', [['homepage_hero_title', 'x']]],
-    ['string', 'homepage_hero_title'],
+    ['array', [['scholarship_hero_subtitle', 'x']]],
+    ['string', 'scholarship_hero_subtitle'],
     ['number', 1],
     ['empty object', {}],
   ])('rejects non-object / empty body (%s)', (_label, body) => {
@@ -92,7 +95,7 @@ describe('validateSettingsPatch', () => {
   });
 
   it('rejects __proto__ smuggling', () => {
-    const body = JSON.parse('{"__proto__": {"x": 1}, "homepage_hero_title": "x"}');
+    const body = JSON.parse('{"__proto__": {"x": 1}, "scholarship_hero_subtitle": "x"}');
     expect(validateSettingsPatch(body).ok).toBe(false);
   });
 });

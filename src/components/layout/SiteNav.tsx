@@ -22,12 +22,8 @@ export default function SiteNav() {
         <div className="flex items-center gap-2">
           {!gated && (
             <div className="hidden md:flex items-center gap-6 text-sm mr-2">
-              <Link href="/events" className="text-white/70 hover:text-white transition-colors">Events</Link>
-              <Link href="/league"className="text-white/70 hover:text-white transition-colors">Winter League</Link>
-              <Link href="/galleries" className="text-white/70 hover:text-white transition-colors">Galleries</Link>
-              <Link href="/scholarship" className="text-white/70 hover:text-white transition-colors">Scholarship</Link>
-              <Link href="/about" className="text-white/70 hover:text-white transition-colors">About</Link>
-              <Link href="/contact" className="text-white/70 hover:text-white transition-colors">Contact</Link>
+              <Link href="/league" className="text-white/70 hover:text-white transition-colors">Winter League</Link>
+              <Link href="/#tournaments" className="text-white/70 hover:text-white transition-colors">Tournaments</Link>
             </div>
           )}
           <GlobalSearch />

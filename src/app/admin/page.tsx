@@ -30,7 +30,7 @@ export default function AdminDashboard() {
 
   const cards: Card[] = [
     { href: '/admin/tournaments', label: 'Tournaments', desc: 'Create and manage tournament draws, scheduling, and scoring', Icon: Trophy, ready: true },
-    { href: '/admin/content', label: 'Site Content', desc: 'Homepage hero image, headline, and tournament graphics', Icon: ImageIcon, ready: true },
+    { href: '/admin/content', label: 'Tournament Graphics', desc: 'Hero images and graphics for each tournament', Icon: ImageIcon, ready: true },
     { href: '#', label: 'Recordings', desc: 'Match recordings and video management', Icon: Video, ready: false },
     { href: '#', label: 'SSRA Events', desc: 'League nights, clinics, and community events', Icon: CalendarDays, ready: false },
     { href: '/admin/email', label: 'Email Marketing', desc: 'Send newsletters and updates to members and the community', Icon: Mail, ready: true },

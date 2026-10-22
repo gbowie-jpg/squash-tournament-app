@@ -6,6 +6,8 @@ Real-time tournament companion app for **SSRA (Seattle Squash Racquets Associati
 Deployed at **squash-tournament-app.vercel.app** (Vercel, auto-deploys on push to `main`).
 Supabase project ref: **rhrkkwvrehntnqqadehq**
 
+**App, not website.** seattlesquash.com (WordPress) is the public website — news, about, donations, newsletters. Don't add website/marketing pages here; build things that need an app (push, live data, knowing who the player is). Removed 2026-10-21: /about, /contact, /donate, /galleries, /events, homepage hero. Scholarship and global email marketing are still here pending a decision.
+
 **This is NOT a Club Locker replacement.** Club Locker handles registration, draws, and seeding. This fills the gap Club Locker ignores: live communication and management during the tournament day. Strategy: companion app now, absorb Club Locker functions over time.
 
 **Owner:** Geof Bowie (gbowie@gmail.com). Personal project, not FASTSIGNS work.
@@ -70,7 +72,7 @@ Auth redirect URLs configured in Supabase:
 ```
 src/
   app/
-    page.tsx                          # Homepage — hero + league hub (next league night, results, playoff race) + tournaments
+    page.tsx                          # App home — league hub (next league night, results, playoff race) + tournaments. No marketing content
     league/
       page.tsx                        # Winter League — this week, latest results, standings per division
       division/[id]/page.tsx          # Full standings + schedule (id = Club Locker division id)
@@ -91,7 +93,7 @@ src/
     admin/
       page.tsx                        # Top-level admin dashboard
       tournaments/page.tsx            # Create/manage tournaments (dark theme)
-      content/page.tsx                # Homepage hero + tournament graphics editor
+      content/page.tsx                # Tournament graphics (links to each tournament's image settings)
       email/page.tsx                  # Global email marketing (tag-based)
       settings/page.tsx               # Integrations, env vars, URL reference
       users/page.tsx                  # User management (superadmin)
@@ -242,7 +244,7 @@ Full schema in `DATA-MODEL.md`. Core tables:
 | `email_campaigns` | Sent campaigns |
 | `email_sends` | Per-recipient send records |
 | `push_subscriptions` | VAPID push endpoint data, tagged with `vapid_public_key` (the key the browser subscribed with). Service-role only (no RLS policies) |
-| `site_settings` | Key/value — homepage/scholarship/email template content, Stripe keys, `invite_token`. Server-only (no RLS policies); new keys must be added to `src/lib/site-settings.ts` |
+| `site_settings` | Key/value — scholarship/email template content, Stripe keys, `invite_token`. Server-only (no RLS policies); new keys must be added to `src/lib/site-settings.ts` |
 | `profiles` | Extended user data — name, club, ranking, photo, role |
 | `organizers` | Per-tournament admin/scorer access |
 | `league_seasons` / `league_divisions` / `league_teams` / `league_roster` / `league_fixtures` / `league_rubbers` | Read-only mirror of the Club Locker Winter League (`supabase/league-migration.sql`). Public SELECT, written only by the sync (service role). `league_divisions.rating_band` is hand-set; sync never overwrites it |
@@ -367,7 +369,7 @@ Migration: `supabase/player-videos-migration.sql`
 
 /admin                         Top-level admin dashboard
 /admin/tournaments             Create/manage tournaments
-/admin/content                 Homepage hero + tournament graphics
+/admin/content                 Tournament graphics
 /admin/email                   Global email marketing
 /admin/settings                Integrations + env var reference
 /admin/users                   User management (superadmin)
