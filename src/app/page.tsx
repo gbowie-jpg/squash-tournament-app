@@ -7,6 +7,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { HOMEPAGE_SETTING_KEYS } from '@/lib/site-settings';
 import type { Tournament } from '@/lib/supabase/types';
 import { heroBackground, getTextColors } from '@/lib/gradients';
+import LeagueHub from '@/components/league/LeagueHub';
+import { loadCurrentSeason } from '@/lib/league/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,9 +23,10 @@ export default async function Home() {
   // with the service-role client (server component only, never shipped to the browser).
   const admin = createAdminClient();
 
-  const [{ data: tournaments }, { data: settingsRows }] = await Promise.all([
+  const [{ data: tournaments }, { data: settingsRows }, league] = await Promise.all([
     supabase.from('tournaments').select('*').order('start_date', { ascending: false }),
     admin.from('site_settings').select('key, value').in('key', [...HOMEPAGE_SETTING_KEYS]),
+    loadCurrentSeason(),
   ]);
 
   const allTournaments = (tournaments ?? []) as Tournament[];
@@ -42,8 +45,8 @@ export default async function Home() {
   const textColors = getTextColors(s.homepage_hero_text_color);
   const heroTitle = s.homepage_hero_title || 'Unleash your inner athlete and play the ultimate game.';
   const heroSubtitle = s.homepage_hero_subtitle || 'Your home for competitive squash in the Pacific Northwest. Over 70 years of fostering the squash community in Seattle.';
-  const cta1Label = s.homepage_cta1_label || 'View Tournaments';
-  const cta1Href = s.homepage_cta1_href || '#tournaments';
+  const cta1Label = s.homepage_cta1_label || 'Winter League';
+  const cta1Href = s.homepage_cta1_href || '/league';
   const cta2Label = s.homepage_cta2_label || 'Donate';
   const cta2Href = s.homepage_cta2_href || '/donate';
 
@@ -56,7 +59,7 @@ export default async function Home() {
         className="relative text-white"
         style={{ background: heroBackground(heroImage, heroGradient, heroOverlay) }}
       >
-        <div className="max-w-6xl mx-auto px-4 py-20 md:py-28">
+        <div className="max-w-6xl mx-auto px-4 py-14 md:py-20">
           <div className="max-w-2xl">
             <p className="font-medium text-sm uppercase tracking-wider mb-3" style={{ color: textColors.accent }}>
               Seattle Squash Racquets Association
@@ -85,20 +88,8 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* What We Do */}
-      <section className="bg-[var(--surface-card)] border-b border-[var(--border)]">
-        <div className="max-w-6xl mx-auto px-4 py-16">
-          <h2 className="text-2xl font-bold text-center mb-10 text-[var(--text-secondary)]">What We Do</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <FeatureCard emoji="📣" color="blue" title="Communication"
-              desc="Keeping the community informed on local squash activity, events, and league updates across the Pacific Northwest." />
-            <FeatureCard emoji="🏆" color="green" title="Tournaments & League"
-              desc="Tuesday night league matches from November to March, plus the Washington State Open and Seattle City Championships." />
-            <FeatureCard emoji="🤝" color="amber" title="Support"
-              desc="Funding Howe Cup teams, coaching programs, junior development, and growing squash participation across all levels." />
-          </div>
-        </div>
-      </section>
+      {/* Winter League */}
+      <LeagueHub league={league} />
 
       {/* Tournaments */}
       <section id="tournaments" className="scroll-mt-4 flex-1">
@@ -136,23 +127,6 @@ export default async function Home() {
       </section>
 
       <SiteFooter />
-    </div>
-  );
-}
-
-function FeatureCard({ emoji, color, title, desc }: { emoji: string; color: string; title: string; desc: string }) {
-  const bg: Record<string, string> = {
-    blue: 'bg-blue-100 dark:bg-blue-950/40',
-    green: 'bg-green-100 dark:bg-green-950/40',
-    amber: 'bg-amber-100 dark:bg-amber-950/40',
-  };
-  return (
-    <div className="bg-[var(--surface-card)] rounded-xl border border-[var(--border)] p-6 text-center">
-      <div className={`w-14 h-14 ${bg[color]} rounded-full flex items-center justify-center mx-auto mb-4`}>
-        <span className="text-2xl">{emoji}</span>
-      </div>
-      <h3 className="font-semibold text-lg mb-2 text-[var(--text-primary)]">{title}</h3>
-      <p className="text-[var(--text-secondary)] text-sm leading-relaxed">{desc}</p>
     </div>
   );
 }

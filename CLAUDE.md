@@ -54,6 +54,7 @@ RESEND_API_KEY
 RESEND_FROM_EMAIL
 NEXT_PUBLIC_VAPID_PUBLIC_KEY
 VAPID_PRIVATE_KEY
+LEAGUE_SYNC_SECRET          # bearer token pg_cron sends to /api/league/sync (same value in supabase/league-cron.sql)
 ```
 
 VAPID keys are set in `.env.local` and Vercel (Production, Preview, Development — all the same pair). Never commit key values — this repo is public. Rotation procedure: see **Push Notifications** below.
@@ -69,7 +70,13 @@ Auth redirect URLs configured in Supabase:
 ```
 src/
   app/
-    page.tsx                          # Homepage — tournament list + hero
+    page.tsx                          # Homepage — hero + league hub (next league night, results, playoff race) + tournaments
+    league/
+      page.tsx                        # Winter League — this week, latest results, standings per division
+      division/[id]/page.tsx          # Full standings + schedule (id = Club Locker division id)
+      team/[id]/page.tsx              # Roster by rating (playing order) + fixtures (id = Club Locker team id)
+      match/[id]/page.tsx             # Scorecard with rubbers, auto-refreshes on match day (id = Club Locker scorecard id)
+    winter-league/page.tsx            # Redirects to /league
     layout.tsx                        # Root layout — ThemeProvider, NavigationLoadingBar, manifest
     not-found.tsx                     # Custom 404
     login/page.tsx                    # Sign in / magic link / Password reset (no public sign-up)
@@ -120,6 +127,7 @@ src/
     tournaments/[id]/videos/route.ts  # GET/POST/PATCH/DELETE player videos
     tournaments/[id]/email/route.ts
     tournaments/[id]/referees/assign/route.ts
+    league/sync/route.ts              # POST: Club Locker league sync (pg_cron bearer secret or admin session)
     site-settings/route.ts            # GET public allowlisted keys / PATCH (admin) — key lists in src/lib/site-settings.ts
     join/route.ts                     # Invite-only sign-up (GET token check, POST create + confirmation email)
     auth/me/route.ts
@@ -144,6 +152,7 @@ src/
     PushManager.tsx
     ServiceWorkerRegistrar.tsx
     admin/CsvUpload.tsx
+    league/                           # LeagueHub (homepage block), LeagueParts (FixtureCard, StandingsTable…), LeagueShell, AutoRefresh
   lib/
     supabase/
       client.ts                       # Browser Supabase client
@@ -151,6 +160,7 @@ src/
       admin.ts                        # Admin client (service role)
       types.ts                        # DB types — keep in sync with schema
       auth-check.ts                   # requireAuth() helper
+    league/                           # clublocker.ts (fetch + parse), sync.ts, standings.ts, db.ts (public read client), types.ts, time.ts, view.ts
     realtime/hooks.ts                 # useRealtimeMatches() — Supabase Realtime subscription
     gradients.ts                      # GRADIENT_PRESETS, TEXT_COLOR_PRESETS, heroBackground()
     useTournament.ts                  # Client hook: fetch tournament by slug
@@ -235,6 +245,7 @@ Full schema in `DATA-MODEL.md`. Core tables:
 | `site_settings` | Key/value — homepage/scholarship/email template content, Stripe keys, `invite_token`. Server-only (no RLS policies); new keys must be added to `src/lib/site-settings.ts` |
 | `profiles` | Extended user data — name, club, ranking, photo, role |
 | `organizers` | Per-tournament admin/scorer access |
+| `league_seasons` / `league_divisions` / `league_teams` / `league_roster` / `league_fixtures` / `league_rubbers` | Read-only mirror of the Club Locker Winter League (`supabase/league-migration.sql`). Public SELECT, written only by the sync (service role). `league_divisions.rating_band` is hand-set; sync never overwrites it |
 
 ---
 
@@ -291,6 +302,17 @@ When a match is completed with a winner, the winner is automatically progressed 
 4. Check Vercel logs for `[push] VAPID self-check failed` (must be absent). Subscribers move to the new key on their next visit; until then they're `skipped`. Rotate a few days before a tournament.
 5. After a few weeks: `delete from push_subscriptions where vapid_public_key is distinct from '<new public key>';` (the public key isn't secret, but don't commit it). Never Instant-Rollback to a deployment built with the old keys.
 
+## Winter League (Club Locker mirror)
+
+Club Locker is the system of record for the league: captains enter scores there (US Squash sanctioned, ratings, late-entry penalties). This app **never collects league scores** — it mirrors Club Locker's public league API and presents it.
+
+- **Sync** (`src/lib/league/sync.ts`): pg_cron (`supabase/league-cron.sql`) POSTs `/api/league/sync?mode=auto` every 5 min with `Authorization: Bearer $LEAGUE_SYNC_SECRET`. `decideSyncMode()`: full sync hourly (divisions, standings, schedule, rosters, recent/missing rubbers); live sync every ~5 min on days with fixtures after 5:30 PM Pacific (standings, schedule, today's rubbers); otherwise no-op. Admins can force one: `POST /api/league/sync?mode=full` with a session cookie.
+- Failed Club Locker requests keep the last rows and are recorded in `league_seasons.last_sync_error` (not readable by anon). Pages show "Updated from Club Locker X ago".
+- **Privacy:** Club Locker responses include captain emails/phones and roster payment fields (`AmountPaid`, `Owes`). The `parse*` functions in `clublocker.ts` keep only public fields — never widen them to pass those through.
+- **Standings** (`standings.ts`): points from Club Locker's `TotalPointsTeamwins` (includes penalties); W–L/rubbers/games/points computed from fixtures; 2–2 matches won on games then rally points; ties on points broken by team W–L, rubber, game, then point differential (league rules). Verified to match Club Locker on 2026-10-20 results.
+- **New season:** insert a `league_seasons` row with the Club Locker season id (from `clublocker.com/leagues/<id>/home`) and `is_current = true`, set the old one false. Set `rating_band` on the divisions by hand after the first sync.
+- Dates/times are Pacific; Club Locker live-scoring timestamps have no offset and are converted in `pacificLocalToIso()`.
+
 ## Player Videos
 
 Supabase Storage bucket: `player-videos` (public).
@@ -317,6 +339,11 @@ Migration: `supabase/player-videos-migration.sql`
 /account                       User profile (name, club, ranking, photo, password)
 /account/reset-password        Password reset landing (from email link)
 /account/set-password          New account: choose password after confirming email
+
+/league                        Winter League (this week, results, standings)
+/league/division/[clId]        Division standings + schedule
+/league/team/[clId]            Team roster + fixtures
+/league/match/[clId]           League scorecard (rubbers, live on match day)
 
 /t/[slug]                      Tournament landing page
 /t/[slug]/courts               Live court board
@@ -384,6 +411,7 @@ Migration: `supabase/player-videos-migration.sql`
 - [x] Password reset flow (email → `/auth/callback?next=/account/reset-password` → reset form)
 - [x] Change password from account profile
 - [x] Player video uploads with admin approval
+- [x] Winter League mirror from Club Locker (`/league`: fixtures, live rubbers, results, standings, rosters) + league hub on the homepage
 
 ## Club Locker API (US Squash)
 
@@ -407,6 +435,13 @@ https://api.ussquash.com/resources/
 | Rankings (paginated) | `GET /rankings/{groupId}/current?divisions={divId}&pageNumber={n}` |
 | Player match history | `GET /res/user/{playerId}/matches_profile/page/{n}?pageSize=50` |
 | Player profile | `GET /res/user/{playerId}` |
+| League season → divisions (public) | `GET /leagues/info/{seasonId}` |
+| Division standings (public) | `GET /divisions/standings/{divisionId}` |
+| Division schedule + results (public) | `GET /divisions/schedule/{divisionId}/` — "Sets" = games, "Games" = rally points |
+| Team roster (public) | `GET /teams/{teamId}/players` |
+| Scorecard rubbers, home-oriented, with names (public) | `GET /leagues/scorecards/live?id={scorecardId}` |
+
+League endpoints need no token. SSRA Winter League 2026–27 = season **2625** (divisions 6537/6538/6539).
 
 ### SSRA-Specific IDs
 - **Org ID:** 18
