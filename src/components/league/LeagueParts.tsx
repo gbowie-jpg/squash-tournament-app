@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { fixtureWinner, isPlayed, type StandingRow } from '@/lib/league/standings';
 import { formatLeagueDate, formatLeagueTime, timeAgo } from '@/lib/league/time';
-import { formatCourts } from '@/lib/league/view';
+import { formatCourts, resultLabel } from '@/lib/league/view';
 import { CLUB_NAMES, type LeagueFixture, type LeagueTeam } from '@/lib/league/types';
 
 export const PLAYOFF_SPOTS = 4;
@@ -87,7 +87,7 @@ export function FixtureCard({
         {live ? (
           <span className="shrink-0 font-semibold uppercase tracking-wide" style={{ color: '#dc2626' }}>● Live</span>
         ) : played ? (
-          <span className="shrink-0">{f.cl_status === 'Confirmed' ? 'Final' : f.cl_status}</span>
+          <span className="shrink-0">{resultLabel(f.cl_status)}</span>
         ) : (
           time && <span className="shrink-0">{time}</span>
         )}
@@ -111,8 +111,8 @@ export function StandingsTable({
 }) {
   const shown = limit ? rows.slice(0, limit) : rows;
   const anyPlayed = rows.some((r) => r.played > 0);
-  const th = 'px-2 py-2 text-right font-medium';
-  const td = 'px-2 py-2 text-right tabular-nums';
+  const th = 'px-2 py-2 text-right font-medium whitespace-nowrap';
+  const td = 'px-2 py-2 text-right tabular-nums whitespace-nowrap';
 
   return (
     <div className="overflow-x-auto">
@@ -136,7 +136,7 @@ export function StandingsTable({
               style={i === PLAYOFF_SPOTS - 1 && rows.length > PLAYOFF_SPOTS && !limit ? { borderBottom: '2px dashed var(--border)' } : undefined}
             >
               <td className="px-2 py-2 text-[var(--text-muted)] tabular-nums">{anyPlayed ? i + 1 : '–'}</td>
-              <td className="px-2 py-2">
+              <td className="px-2 py-2 w-full max-w-0">
                 <Link href={`/league/team/${r.team.cl_team_id}`} className="flex items-center gap-2 min-w-0 hover:underline">
                   <TeamLogo team={r.team} size={22} />
                   <span className="truncate text-[var(--text-primary)]">{r.team.name}</span>

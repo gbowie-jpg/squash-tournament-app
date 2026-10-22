@@ -6,7 +6,7 @@ import { TeamLogo, UpdatedLabel } from '@/components/league/LeagueParts';
 import { createLeagueReadClient } from '@/lib/league/db';
 import { fixtureWinner, isPlayed } from '@/lib/league/standings';
 import { formatLeagueDate, formatLeagueTime, pacificToday } from '@/lib/league/time';
-import { formatCourts } from '@/lib/league/view';
+import { formatCourts, resultLabel } from '@/lib/league/view';
 import {
   FIXTURE_COLUMNS, SEASON_COLUMNS, TEAM_COLUMNS, isRubberInProgress,
   type LeagueFixture, type LeagueRubber, type LeagueSeason, type LeagueTeam,
@@ -83,7 +83,7 @@ export default async function LeagueMatchPage({ params }: { params: Promise<{ id
             {anyLive && f.match_date === today ? (
               <p className="text-xs font-semibold uppercase tracking-wide mt-1" style={{ color: '#dc2626' }}>● Live</p>
             ) : played ? (
-              <p className="text-xs text-[var(--text-muted)] mt-1">{f.cl_status === 'Confirmed' ? 'Final' : f.cl_status}</p>
+              <p className="text-xs text-[var(--text-muted)] mt-1">{resultLabel(f.cl_status)}</p>
             ) : null}
           </div>
           {teamBlock(away, 'Away', winner === 'away')}

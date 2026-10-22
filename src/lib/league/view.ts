@@ -20,6 +20,16 @@ export function recentResults(fixtures: LeagueFixture[], today: string): LeagueF
 }
 
 /**
+ * Status label for a played fixture. Club Locker keeps Score_Entered at
+ * 'Scheduled' until the losing captain confirms, even with scores in.
+ */
+export function resultLabel(clStatus: string): string {
+  if (clStatus === 'Confirmed') return 'Final';
+  if (clStatus === 'Scheduled') return 'Unconfirmed';
+  return clStatus;
+}
+
+/**
  * Club Locker court codes list each court as one character, G = glass court:
  * '2' → 'Court 2', '67' → 'Courts 6 & 7', '4G' → 'Courts 4 & Glass'.
  */
