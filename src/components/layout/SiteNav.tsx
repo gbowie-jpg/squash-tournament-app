@@ -23,7 +23,7 @@ export default function SiteNav() {
           {!gated && (
             <div className="hidden md:flex items-center gap-6 text-sm mr-2">
               <Link href="/league" className="text-white/70 hover:text-white transition-colors">Winter League</Link>
-              <Link href="/#tournaments" className="text-white/70 hover:text-white transition-colors">Tournaments</Link>
+              <Link href="/tournaments" className="text-white/70 hover:text-white transition-colors">Tournaments</Link>
             </div>
           )}
           <GlobalSearch />

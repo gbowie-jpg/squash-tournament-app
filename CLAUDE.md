@@ -72,7 +72,8 @@ Auth redirect URLs configured in Supabase:
 ```
 src/
   app/
-    page.tsx                          # App home — league hub (next league night, results, playoff race) + tournaments. No marketing content
+    page.tsx                          # App home — HomeGrid (Winter League, Tournaments, Box Leagues*, Ladders* — *coming soon) + league hub. No marketing content
+    tournaments/page.tsx              # SSRA app tournaments + upcoming WA/OR/ID US Squash events from Club Locker (links out to register)
     league/
       page.tsx                        # Winter League — this week, latest results, standings per division
       division/[id]/page.tsx          # Full standings + schedule (id = Club Locker division id)
@@ -154,6 +155,7 @@ src/
     PushManager.tsx
     ServiceWorkerRegistrar.tsx
     admin/CsvUpload.tsx
+    home/                             # HomeGrid (homepage tiles with live status lines), TournamentCard
     league/                           # LeagueHub (homepage block), LeagueParts (FixtureCard, StandingsTable…), LeagueShell, AutoRefresh
   lib/
     supabase/
@@ -162,6 +164,7 @@ src/
       admin.ts                        # Admin client (service role)
       types.ts                        # DB types — keep in sync with schema
       auth-check.ts                   # requireAuth() helper
+    tournaments/pnw.ts                # Club Locker tournament search for WA/OR/ID, cached 1 hr via fetch revalidate (not stored); drops organizer contact fields
     league/                           # clublocker.ts (fetch + parse), sync.ts, standings.ts, db.ts (public read client), types.ts, time.ts, view.ts
     realtime/hooks.ts                 # useRealtimeMatches() — Supabase Realtime subscription
     gradients.ts                      # GRADIENT_PRESETS, TEXT_COLOR_PRESETS, heroBackground()
@@ -342,6 +345,7 @@ Migration: `supabase/player-videos-migration.sql`
 /account/reset-password        Password reset landing (from email link)
 /account/set-password          New account: choose password after confirming email
 
+/tournaments                   SSRA tournaments + Pacific Northwest US Squash events
 /league                        Winter League (this week, results, standings)
 /league/division/[clId]        Division standings + schedule
 /league/team/[clId]            Team roster + fixtures
@@ -441,6 +445,7 @@ https://api.ussquash.com/resources/
 | Division standings (public) | `GET /divisions/standings/{divisionId}` |
 | Division schedule + results (public) | `GET /divisions/schedule/{divisionId}/` — "Sets" = games, "Games" = rally points |
 | Team roster (public) | `GET /teams/{teamId}/players` |
+| Tournament search by state (public; returns ≤50, includes organizer contacts — drop them) | `GET /tournaments/?state=WA` |
 | Scorecard rubbers, home-oriented, with names (public) | `GET /leagues/scorecards/live?id={scorecardId}` |
 
 League endpoints need no token. SSRA Winter League 2026–27 = season **2625** (divisions 6537/6538/6539).
